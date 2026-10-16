@@ -1,0 +1,2095 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>全方位財務系統與現金流收支平衡表</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- FontAwesome 圖示庫 -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <style>
+    :root {
+      --bg-canvas: #dfe5e1;       /* 啞光鼠尾草灰綠 */
+      --card-surface: #faf8f5;    /* 溫和手帳奶白 */
+      --header-deep: #222e27;     /* 結構深墨黑綠 */
+      --sage-primary: #3b5245;    /* 架構墨綠 */
+      --sage-muted: #5e7568;      /* 說明文字灰綠 */
+      --amber-accent: #c86f32;    /* 琥珀焦糖亮點色 */
+      --amber-bg: #fcf3eb;        /* 琥珀淡底 */
+      --border-soft: #d3ccc0;     /* 沉著細邊框 */
+      --input-bg: #e9edea;        /* 低反光輸入底 */
+      --text-title: #222e27;      /* 標題深墨黑 */
+      --text-body: #3c4b42;       /* 內文墨黑 */
+      --summary-bg: #f7efe4;      /* 淺焙焦糖唯讀底 */
+      --danger-color: #b8334a;    /* 支出赤字紅 */
+      --success-color: #21613e;   /* 盈餘收益綠 */
+      --breakeven-bg: #fcedf0;    /* 兩平警戒淡紅 */
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-canvas);
+      color: var(--text-body);
+      padding: 12px 16px;
+      line-height: 1.35;
+    }
+
+    .container-custom {
+      max-width: 1780px;
+      margin: 0 auto;
+    }
+
+    /* 頂部 Header */
+    .header-bar {
+      background: linear-gradient(135deg, var(--header-deep) 0%, var(--sage-primary) 100%);
+      color: var(--card-surface);
+      padding: 10px 18px;
+      border-radius: 9px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+      box-shadow: 0 3px 8px rgba(34, 46, 39, 0.15);
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .nav-breadcrumbs {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .back-home {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      color: #b8c7be;
+      text-decoration: none;
+      font-size: 0.76rem;
+      padding: 3px 7px;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.08);
+      transition: all 0.2s;
+    }
+    .back-home:hover {
+      color: #ffffff;
+      background: rgba(255, 255, 255, 0.2);
+    }
+    .mono { font-family: monospace; }
+    .text-xs { font-size: 0.72rem; }
+    .sys-badge {
+      background: rgba(94, 117, 104, 0.35);
+      color: #e2ede6;
+      border: 1px solid var(--sage-muted);
+      padding: 2px 5px;
+      border-radius: 4px;
+      font-size: 0.68rem;
+      font-family: monospace;
+      font-weight: bold;
+    }
+
+    .header-title-box {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .header-title-box h1 {
+      font-size: 1.22rem;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      color: var(--card-surface);
+    }
+    .header-title-box .subtitle {
+      font-size: 0.76rem;
+      color: #b8c7be;
+    }
+
+    .action-btn-group {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px 10px;
+      font-size: 0.76rem;
+      font-weight: 600;
+      border-radius: 5px;
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--card-surface);
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .btn:hover {
+      background: rgba(255, 255, 255, 0.22);
+      border-color: rgba(255, 255, 255, 0.4);
+    }
+
+    .btn-danger {
+      background: rgba(184, 51, 74, 0.45);
+      border-color: rgba(224, 90, 112, 0.55);
+    }
+    .btn-danger:hover {
+      background: rgba(184, 51, 74, 0.75);
+    }
+
+    .btn-sm-primary {
+      background: var(--amber-accent);
+      border: none;
+      color: #ffffff;
+      padding: 3px 9px;
+      font-size: 0.74rem;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: background 0.2s;
+    }
+    .btn-sm-primary:hover { background: #ad5b22; }
+
+    /* 頂層系統主頁籤切換 */
+    .main-nav-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+      border-bottom: 2px solid var(--border-soft);
+      padding-bottom: 4px;
+    }
+    .main-nav-btn {
+      padding: 7px 18px;
+      font-size: 0.88rem;
+      font-weight: 700;
+      border-radius: 6px 6px 0 0;
+      color: var(--sage-muted);
+      background: transparent;
+      border: 1px solid transparent;
+      border-bottom: none;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .main-nav-btn.active {
+      background: var(--card-surface);
+      color: var(--amber-accent);
+      border-color: var(--border-soft);
+      border-bottom: 2px solid var(--card-surface);
+      margin-bottom: -6px;
+      box-shadow: 0 -2px 6px rgba(0,0,0,0.03);
+    }
+
+    /* 卡片基礎樣式 */
+    .card {
+      background: var(--card-surface);
+      border-radius: 8px;
+      padding: 10px 12px;
+      box-shadow: 0 1px 4px rgba(34, 46, 39, 0.05);
+      border: 1px solid var(--border-soft);
+    }
+
+    .card-header-flex {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1.5px solid var(--sage-primary);
+      padding-bottom: 4px;
+      margin-bottom: 8px;
+    }
+
+    .card-title {
+      font-weight: 700;
+      font-size: 0.88rem;
+      color: var(--text-title);
+      white-space: nowrap;
+    }
+
+    /* 模組一：現金流樣式 (橫向滑動標的與收支) */
+    .targets-full-row {
+      margin-bottom: 10px;
+    }
+
+    .targets-scroll-wrapper {
+      display: flex;
+      flex-direction: row;
+      flex-wrap: nowrap;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
+    .targets-scroll-wrapper::-webkit-scrollbar,
+    .table-container::-webkit-scrollbar,
+    .overflow-x-auto::-webkit-scrollbar,
+    .table-scroll-container::-webkit-scrollbar {
+      height: 6px;
+      width: 6px;
+    }
+    .targets-scroll-wrapper::-webkit-scrollbar-thumb,
+    .table-container::-webkit-scrollbar-thumb,
+    .overflow-x-auto::-webkit-scrollbar-thumb,
+    .table-scroll-container::-webkit-scrollbar-thumb {
+      background: var(--border-soft);
+      border-radius: 3px;
+    }
+
+    .target-item-box {
+      flex: 0 0 162px;
+      background: #f2efe9;
+      padding: 6px 7px;
+      border-radius: 5px;
+      border: 1px solid var(--border-soft);
+      position: relative;
+    }
+    .btn-remove-target {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      background: transparent;
+      border: none;
+      color: var(--sage-muted);
+      cursor: pointer;
+      font-size: 0.74rem;
+      line-height: 1;
+    }
+    .btn-remove-target:hover { color: var(--danger-color); }
+
+    .target-duo-inputs {
+      display: flex;
+      gap: 4px;
+    }
+
+    .dashboard-second-row {
+      display: flex;
+      flex-direction: row;
+      gap: 10px;
+      margin-bottom: 10px;
+      align-items: stretch;
+    }
+
+    @media (max-width: 1100px) {
+      .dashboard-second-row {
+        flex-direction: column;
+      }
+    }
+
+    .expenses-card { flex: 3.3; }
+    .expenses-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+    .incomes-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+    }
+    .income-input-duo {
+      display: flex;
+      gap: 3px;
+    }
+    .income-input-duo input[type="text"] {
+      flex: 1.1;
+      font-size: 0.74rem;
+      padding: 3px 5px;
+    }
+    .income-input-duo input[type="number"] {
+      flex: 1.4;
+    }
+
+    .summary-card {
+      flex: 2.1;
+      background-color: var(--summary-bg);
+      border: 1px solid var(--border-soft);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .summary-grid-top, .summary-grid-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+      margin-bottom: 5px;
+    }
+
+    .summary-box {
+      background: var(--card-surface);
+      padding: 5px 7px;
+      border-radius: 5px;
+      border: 1px solid var(--border-soft);
+    }
+    .summary-box .label {
+      font-size: 0.67rem;
+      color: var(--sage-muted);
+      font-weight: 600;
+    }
+    .summary-box .value {
+      font-size: 0.88rem;
+      font-weight: bold;
+      color: var(--text-title);
+      text-align: right;
+    }
+    .summary-box.highlight {
+      background: var(--amber-bg);
+      border-color: var(--amber-accent);
+    }
+    .summary-box.highlight .label {
+      color: var(--amber-accent);
+    }
+    .summary-box.highlight .value {
+      font-size: 0.96rem;
+      color: var(--amber-accent);
+    }
+
+    .form-group-compact {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .form-group-compact label {
+      font-size: 0.7rem;
+      color: var(--sage-muted);
+      font-weight: 600;
+    }
+
+    input[type="number"], input[type="text"] {
+      width: 100%;
+      padding: 3px 6px;
+      border: 1px solid var(--border-soft);
+      border-radius: 4px;
+      background-color: var(--input-bg);
+      color: var(--text-title);
+      text-align: right;
+      font-weight: 600;
+      font-size: 0.8rem;
+      height: 27px;
+      transition: border-color 0.15s;
+    }
+    input[type="number"]:focus, input[type="text"]:focus {
+      outline: none;
+      border-color: var(--amber-accent);
+      background-color: #ffffff;
+    }
+    input[type="text"] {
+      text-align: left;
+      background-color: #ffffff;
+    }
+
+    /* 現金流 25 階試算表 */
+    .table-container {
+      background: var(--card-surface);
+      border-radius: 8px;
+      box-shadow: 0 1px 4px rgba(34, 46, 39, 0.05);
+      border: 1px solid var(--border-soft);
+      overflow-x: auto;
+      max-height: none;
+      position: relative;
+    }
+
+    #matrix-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      font-size: 0.77rem;
+      line-height: 1.3;
+      white-space: nowrap;
+    }
+
+    #matrix-table th, #matrix-table td {
+      padding: 4.5px 8px;
+      text-align: right;
+      border-right: 1px solid var(--border-soft);
+      border-bottom: 1px solid var(--border-soft);
+      background-color: var(--card-surface);
+      color: var(--text-body);
+      height: 26px;
+    }
+
+    #matrix-table th {
+      background-color: #e5e2dc;
+      color: var(--text-title);
+      font-weight: 700;
+      padding: 5px 8px;
+    }
+
+    .th-header-group {
+      background-color: #dad5cb !important;
+      text-align: center;
+      color: var(--header-deep);
+    }
+
+    #matrix-table tbody tr:nth-child(odd) td { background-color: var(--card-surface); }
+    #matrix-table tbody tr:nth-child(even) td { background-color: #f2efe9; }
+    #matrix-table tbody tr:hover td { background-color: var(--amber-bg) !important; }
+    #matrix-table tbody tr.breakeven-row td {
+      background-color: var(--breakeven-bg) !important;
+      border-top: 1.5px solid var(--danger-color);
+      border-bottom: 1.5px solid var(--danger-color);
+    }
+
+    /* 左側固定 */
+    .sticky-left-1 { position: sticky; left: 0px; width: 78px; min-width: 78px; max-width: 78px; z-index: 5; }
+    .sticky-left-2 { position: sticky; left: 78px; width: 44px; min-width: 44px; max-width: 44px; z-index: 5; }
+    .sticky-left-3 { position: sticky; left: 122px; width: 60px; min-width: 60px; max-width: 60px; z-index: 5; border-right: 1.5px solid var(--sage-muted); }
+
+    /* 右側固定 */
+    .sticky-right-4 { position: sticky; right: 270px; width: 90px; min-width: 90px; max-width: 90px; z-index: 5; border-left: 1.5px solid var(--sage-muted); }
+    .sticky-right-3 { position: sticky; right: 180px; width: 90px; min-width: 90px; max-width: 90px; z-index: 5; }
+    .sticky-right-2 { position: sticky; right: 90px; width: 90px; min-width: 90px; max-width: 90px; z-index: 5; }
+    .sticky-right-1 { position: sticky; right: 0px; width: 90px; min-width: 90px; max-width: 90px; z-index: 5; }
+
+    #matrix-table thead th.sticky-left-1,
+    #matrix-table thead th.sticky-left-2,
+    #matrix-table thead th.sticky-left-3,
+    #matrix-table thead th.sticky-right-4,
+    #matrix-table thead th.sticky-right-3,
+    #matrix-table thead th.sticky-right-2,
+    #matrix-table thead th.sticky-right-1 {
+      z-index: 10;
+      background-color: #dad5cb;
+    }
+
+    .text-center { text-align: center; }
+    .font-bold { font-weight: bold; }
+    .negative { color: var(--danger-color) !important; font-weight: bold; }
+    .positive { color: var(--success-color) !important; font-weight: bold; }
+
+    .breakeven-tag {
+      background-color: var(--danger-color);
+      color: white;
+      padding: 1px 4px;
+      border-radius: 3px;
+      font-size: 0.66rem;
+    }
+
+    /* 模組二：複利計算機專用樣式 */
+    .card-style {
+      background-color: var(--card-surface);
+      border: 1px solid var(--border-soft);
+      box-shadow: 0 2px 6px rgba(34, 46, 39, 0.05);
+    }
+    .input-blue {
+      background-color: var(--input-bg);
+      border: 1px solid var(--border-soft);
+      color: var(--text-title);
+      transition: all 0.2s ease-in-out;
+    }
+    .input-blue:focus {
+      background-color: #ffffff;
+      border-color: var(--amber-accent);
+      outline: none;
+      box-shadow: 0 0 0 2px rgba(200, 111, 50, 0.2);
+    }
+    .tab-btn {
+      color: var(--sage-muted);
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s ease;
+    }
+    .tab-btn.active {
+      color: var(--amber-accent);
+      border-bottom-color: var(--amber-accent);
+      font-weight: 600;
+    }
+    .ticker-tab {
+      background-color: #e3e8e5;
+      color: var(--sage-muted);
+      border: 1px solid var(--border-soft);
+    }
+    .ticker-tab.active {
+      background-color: var(--sage-primary);
+      color: #ffffff;
+      border-color: var(--sage-primary);
+    }
+
+    /* 解決向上捲動數字穿透表頭核心 CSS */
+    .table-scroll-container {
+      max-height: 580px;
+      overflow-y: auto;
+      overflow-x: auto;
+      position: relative;
+    }
+    .table-scroll-container table {
+      border-collapse: separate;
+      border-spacing: 0;
+    }
+    .sticky-header th {
+      position: sticky !important;
+      top: 0 !important;
+      z-index: 30 !important;
+      background-color: var(--header-deep) !important; /* 實心深墨黑綠，絕對不透明 */
+      color: #faf8f5 !important;
+      box-shadow: 0 1px 0 var(--border-soft);
+    }
+    /* 表頭黃色高亮欄位的實心覆蓋 */
+    .sticky-header th.th-highlight {
+      background-color: #2e3d34 !important;
+      color: var(--amber-accent) !important;
+    }
+
+    /* 解決輸入框 % 與 $ 換行破版核心 CSS */
+    .table-input-cell {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      white-space: nowrap !important;
+    }
+    .table-input-cell input {
+      height: 24px;
+      padding: 1px 4px;
+      font-size: 0.75rem;
+    }
+
+    @media print {
+      body { background-color: #ffffff; padding: 0; }
+      .header-bar { background: var(--header-deep) !important; color: #ffffff !important; -webkit-print-color-adjust: exact; }
+      .action-btn-group, .main-nav-tabs, .btn-remove-target, .btn-sm-primary { display: none !important; }
+      .targets-scroll-wrapper { flex-wrap: wrap !important; overflow-x: visible !important; }
+      .dashboard-second-row { display: flex !important; flex-direction: row !important; }
+      .card, .summary-card, .card-style { break-inside: avoid; }
+      .table-container, .table-scroll-container { border: none; box-shadow: none; overflow: visible; max-height: none; }
+      th, td { position: static !important; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container-custom">
+  
+  <!-- 頂部 Header -->
+  <div class="header-bar">
+    <div class="header-title-box">
+      <div class="nav-breadcrumbs">
+        <a href="index.html#modules-overview" class="back-home">
+          <span class="mono">←</span> 返回上一頁
+        </a>
+        <a href="index.html#hero-cover" class="back-home">
+          <i class="fa-solid fa-house text-xs"></i> 封面
+        </a>
+        <span style="color:#5e7568;" class="mono text-xs">/</span>
+        <span class="sys-badge">SYS_01</span>
+      </div>
+      <h1 id="top-header-title">全方位財務系統與現金流收支平衡表</h1>
+      <div class="subtitle" id="top-header-subtitle">季配息級距與息收支出兩平點分析 (25階壓力測試 / 複利推估雙核心)</div>
+    </div>
+    
+    <div class="action-btn-group">
+      <button class="btn" onclick="exportDataCurrentModule()">💾 匯出備份 (.json)</button>
+      <button class="btn" onclick="document.getElementById('import-file').click()">📂 匯入備份</button>
+      <input type="file" id="import-file" accept=".json" style="display:none" onchange="importDataCurrentModule(event)">
+      <button class="btn" onclick="window.print()">🖨️ 列印報告 (PDF)</button>
+      <button class="btn btn-danger" onclick="resetCurrentModule()">🔄 清空重置</button>
+    </div>
+  </div>
+
+  <!-- 頂層模組切換頁籤 -->
+  <div class="main-nav-tabs">
+    <button class="main-nav-btn active" id="main-tab-cashflow" onclick="switchMainTab('cashflow')">
+      <i class="fa-solid fa-scale-balanced"></i> 現金流量收支平衡表 (25階)
+    </button>
+    <button class="main-nav-btn" id="main-tab-compound" onclick="switchMainTab('compound')">
+      <i class="fa-solid fa-chart-line"></i> 複利推估與資產規劃計算機
+    </button>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- 模組一：現金流量收支平衡表 (25階)          -->
+  <!-- ========================================== -->
+  <div id="module-cashflow-container">
+    
+    <!-- 第一層：投資標的與配息設定 -->
+    <div class="card targets-full-row">
+      <div class="card-header-flex">
+        <div class="card-title">投資標的與配息設定 (橫向捲動檢視)</div>
+        <button class="btn-sm-primary" onclick="addTarget()">+ 新增標的</button>
+      </div>
+      <div class="targets-scroll-wrapper" id="targets-container"></div>
+    </div>
+
+    <!-- 第二層：固定支出/收入 與 總計彙整 -->
+    <div class="dashboard-second-row">
+      
+      <!-- 固定支出與收入 -->
+      <div class="card expenses-card">
+        <div class="card-title" style="border-bottom: 1.5px solid var(--sage-primary); padding-bottom: 3px; margin-bottom: 6px;">固定支出設定 (月)</div>
+        <div class="expenses-grid">
+          <div class="form-group-compact">
+            <label for="expense-life">生活費</label>
+            <input type="number" id="expense-life" value="0" onfocus="this.select()" oninput="onCashflowInputChange()">
+          </div>
+          <div class="form-group-compact">
+            <label for="expense-ins">勞健保險</label>
+            <input type="number" id="expense-ins" value="0" onfocus="this.select()" oninput="onCashflowInputChange()">
+          </div>
+          <div class="form-group-compact">
+            <label for="expense-loan">貸款總額</label>
+            <input type="number" id="expense-loan" value="0" onfocus="this.select()" oninput="onCashflowInputChange()">
+          </div>
+          <div class="form-group-compact">
+            <label for="expense-pledge">質押利息</label>
+            <input type="number" id="expense-pledge" value="0" onfocus="this.select()" oninput="onCashflowInputChange()">
+          </div>
+          <div class="form-group-compact">
+            <label for="expense-extra" style="color: var(--amber-accent);">投資支出</label>
+            <input type="number" id="expense-extra" value="0" onfocus="this.select()" oninput="onCashflowInputChange()">
+          </div>
+        </div>
+
+        <div class="card-title" style="border-bottom: 1.5px solid var(--sage-primary); padding-bottom: 3px; margin-bottom: 6px; margin-top: 6px;">收入來源設定 (月) (來源備註 / 金額)</div>
+        <div class="incomes-grid">
+          <div class="form-group-compact">
+            <label style="color: var(--sage-primary);">主動收入</label>
+            <div class="income-input-duo">
+              <input type="text" id="income-active-name" placeholder="備註名稱" oninput="onCashflowInputChange()">
+              <input type="number" id="income-active" value="0" onfocus="this.select()" oninput="onCashflowInputChange()">
+            </div>
+          </div>
+          <div class="form-group-compact">
+            <label style="color: var(--sage-primary);">其他收入 1</label>
+            <div class="income-input-duo">
+              <input type="text" id="income-other1-name" placeholder="備註名稱" oninput="onCashflowInputChange()">
+              <input type="number" id="income-other1" value="0" onfocus="this.select()" oninput="onCashflowInputChange()">
+            </div>
+          </div>
+          <div class="form-group-compact">
+            <label style="color: var(--sage-primary);">其他收入 2</label>
+            <div class="income-input-duo">
+              <input type="text" id="income-other2-name" placeholder="備註名稱" oninput="onCashflowInputChange()">
+              <input type="number" id="income-other2" value="0" onfocus="this.select()" oninput="onCashflowInputChange()">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 支出總計彙整 -->
+      <div class="card summary-card">
+        <div class="card-title" style="color: var(--text-title); border-bottom: 1.5px solid var(--amber-accent); padding-bottom: 3px; margin-bottom: 6px;">支出總計彙整</div>
+        <div class="summary-grid-top">
+          <div class="summary-box">
+            <div class="label">生活支出/月</div>
+            <div class="value" id="sum-life-monthly">$0</div>
+          </div>
+          <div class="summary-box">
+            <div class="label">負債支出/月</div>
+            <div class="value" id="sum-debt-monthly">$0</div>
+          </div>
+          <div class="summary-box">
+            <div class="label" style="color: var(--amber-accent);">投資支出/月</div>
+            <div class="value" id="sum-extra-monthly">$0</div>
+          </div>
+        </div>
+
+        <div class="summary-grid-row">
+          <div class="summary-box highlight">
+            <div class="label">月總支出 (防守線)</div>
+            <div class="value" id="sum-total-monthly">$0</div>
+          </div>
+          <div class="summary-box highlight">
+            <div class="label">季總支出</div>
+            <div class="value" id="sum-total-quarterly">$0</div>
+          </div>
+          <div class="summary-box highlight">
+            <div class="label">年總支出</div>
+            <div class="value" id="sum-total-yearly">$0</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- 下半部：試算表格 -->
+    <div class="table-container">
+      <table id="matrix-table">
+        <thead id="matrix-thead"></thead>
+        <tbody id="matrix-tbody"></tbody>
+      </table>
+    </div>
+
+  </div>
+
+
+  <!-- ========================================== -->
+  <!-- 模組二：全方位財務系統與複利推估計算機    -->
+  <!-- ========================================== -->
+  <div id="module-compound-container" class="hidden space-y-5">
+    
+    <!-- 標的管理操作區 -->
+    <div class="card-style rounded-xl p-4 md:p-5">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-3 border-b border-[var(--border-soft)]">
+        <div>
+          <h2 class="text-xl md:text-2xl font-bold tracking-wide" style="color: var(--header-deep)">複利推估與資產配置規劃</h2>
+          <p class="text-xs md:text-sm mt-0.5" style="color: var(--sage-muted)">複利滾存 · 配息現金流三分調度（再投入 / 生活支出 / 質押還款）· 多標的資產對照</p>
+        </div>
+        
+        <div class="flex flex-wrap items-center gap-2">
+          <button onclick="addTicker()" class="px-3 py-1.5 text-xs md:text-sm font-medium rounded-lg text-white shadow-sm transition" style="background-color: var(--sage-primary);">
+            + 新增標的
+          </button>
+          <button onclick="renameCurrentTicker()" class="px-3 py-1.5 text-xs md:text-sm font-medium rounded-lg border transition" style="border-color: var(--border-soft); color: var(--text-body); background-color: #ffffff;">
+            ✏️ 重命名
+          </button>
+          <button onclick="deleteCurrentTicker()" class="px-3 py-1.5 text-xs md:text-sm font-medium rounded-lg text-white shadow-sm transition" style="background-color: var(--danger-color);">
+            🗑️ 刪除標的
+          </button>
+        </div>
+      </div>
+
+      <!-- 標的分頁列 -->
+      <div class="mt-3 flex items-center gap-2 overflow-x-auto pb-1" id="ticker-tabs-container"></div>
+    </div>
+
+    <!-- 基礎參數與現金流規劃面板 -->
+    <div class="card-style rounded-xl p-4 md:p-5 space-y-4">
+      <h3 class="text-base font-bold flex items-center gap-2" style="color: var(--header-deep)">
+        <span>⚙️</span> <span id="current-ticker-title-display">標的試算與現金流規劃</span>
+      </h3>
+      
+      <!-- 第一排：基本推估參數 -->
+      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3 text-xs md:text-sm">
+        <div>
+          <label class="block mb-1 text-xs font-semibold" style="color: var(--sage-muted)">標的代號 / 名稱</label>
+          <input type="text" id="input-symbol" onchange="updateCurrentTickerMeta()" class="w-full px-2.5 py-1 rounded input-blue text-center font-bold">
+        </div>
+        <div>
+          <label class="block mb-1 text-xs font-semibold" style="color: var(--sage-muted)">推估年限 (年)</label>
+          <input type="number" id="input-years" min="1" max="50" onchange="updateCurrentTickerMeta()" class="w-full px-2.5 py-1 rounded input-blue text-center font-bold">
+        </div>
+        <div>
+          <label class="block mb-1 text-xs font-semibold" style="color: var(--sage-muted)">起始年齡 (age)</label>
+          <input type="number" id="input-age" onchange="updateCurrentTickerMeta()" class="w-full px-2.5 py-1 rounded input-blue text-center font-bold">
+        </div>
+        <div>
+          <label class="block mb-1 text-xs font-semibold" style="color: var(--sage-muted)">起始西元年</label>
+          <input type="number" id="input-year" onchange="updateCurrentTickerMeta()" class="w-full px-2.5 py-1 rounded input-blue text-center font-bold">
+        </div>
+        <div>
+          <label class="block mb-1 text-xs font-semibold" style="color: var(--sage-muted)">定期定額-初始現值</label>
+          <input type="number" id="input-dca-init" onchange="updateCurrentTickerMeta()" class="w-full px-2.5 py-1 rounded input-blue text-center font-bold">
+        </div>
+        <div>
+          <label class="block mb-1 text-xs font-semibold" style="color: var(--sage-muted)">單筆投入-初始現值</label>
+          <input type="number" id="input-lump-init" onchange="updateCurrentTickerMeta()" class="w-full px-2.5 py-1 rounded input-blue text-center font-bold">
+        </div>
+      </div>
+
+      <!-- 第二排：配息與現金流調度（再投入 / 生活支出 / 質押還款） -->
+      <div class="bg-[var(--input-bg)] p-3.5 rounded-lg border border-[var(--border-soft)] space-y-2.5">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 border-b border-[var(--border-soft)] pb-1.5">
+          <span class="text-xs font-bold uppercase tracking-wider" style="color: var(--sage-primary)">💡 配息率與現金流調度設定 (三分法)</span>
+          <span id="payout-ratio-warning" class="text-xs font-bold" style="color: var(--success-color)">✓ 分配比例合計 100%</span>
+        </div>
+
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs md:text-sm">
+          <div>
+            <label class="block mb-1 text-xs font-semibold" style="color: var(--sage-muted)">預估年配息率 (%)</label>
+            <input type="number" id="input-div-rate" step="0.1" min="0" max="100" onchange="updateCurrentTickerMeta()" class="w-full px-2 py-1 rounded input-blue text-center font-bold">
+          </div>
+          <div>
+            <label class="block mb-1 text-xs font-semibold" style="color: var(--amber-accent)">1. 再投入複利 (%)</label>
+            <input type="number" id="input-ratio-reinvest" step="1" min="0" max="100" onchange="updateCurrentTickerMeta()" class="w-full px-2 py-1 rounded input-blue text-center font-bold">
+          </div>
+          <div>
+            <label class="block mb-1 text-xs font-semibold" style="color: var(--sage-primary)">2. 生活支出開銷 (%)</label>
+            <input type="number" id="input-ratio-living" step="1" min="0" max="100" onchange="updateCurrentTickerMeta()" class="w-full px-2 py-1 rounded input-blue text-center font-bold">
+          </div>
+          <div>
+            <label class="block mb-1 text-xs font-semibold" style="color: var(--danger-color)">3. 質押/債務還款 (%)</label>
+            <input type="number" id="input-ratio-debt" step="1" min="0" max="100" onchange="updateCurrentTickerMeta()" class="w-full px-2 py-1 rounded input-blue text-center font-bold">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 檢視模式頁籤 (視角切換) -->
+    <div class="flex border-b border-[var(--border-soft)] gap-6 text-sm md:text-base font-medium">
+      <button onclick="switchCompoundViewTab('overview')" id="tab-btn-overview" class="tab-btn active pb-2">總覽對照 & 資產圖表</button>
+      <button onclick="switchCompoundViewTab('dca')" id="tab-btn-dca" class="tab-btn pb-2">定期定額推估明細</button>
+      <button onclick="switchCompoundViewTab('lump')" id="tab-btn-lump" class="tab-btn pb-2">單筆投入推估明細</button>
+    </div>
+
+    <!-- VIEW 1: 總覽對照 & 資產圖表 -->
+    <div id="view-overview" class="space-y-5">
+      
+      <!-- 目前標的試算卡片總結 -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- 定期定額卡片 -->
+        <div class="summary-card p-4 rounded-xl space-y-3">
+          <div class="flex items-center justify-between border-b border-[var(--border-soft)] pb-1.5">
+            <span class="text-xs md:text-sm font-bold tracking-wider" style="color: var(--amber-accent)">[ 定期定額推估總結 ]</span>
+            <span class="text-xs" style="color: var(--sage-muted)">本金 + 再投入複利</span>
+          </div>
+          <div class="grid grid-cols-3 gap-2 text-center">
+            <div>
+              <div class="text-xs" style="color: var(--sage-muted)">累計投入本金</div>
+              <div id="dca-total-cost" class="text-sm md:text-base font-bold mt-0.5" style="color: var(--text-title)">$0</div>
+            </div>
+            <div>
+              <div class="text-xs" style="color: var(--sage-muted)">預估期末資產</div>
+              <div id="dca-final-val" class="text-sm md:text-base font-bold mt-0.5" style="color: var(--success-color)">$0</div>
+            </div>
+            <div>
+              <div class="text-xs" style="color: var(--sage-muted)">資產 ROI</div>
+              <div id="dca-roi" class="text-sm md:text-base font-bold mt-0.5" style="color: var(--amber-accent)">0%</div>
+            </div>
+          </div>
+
+          <div class="pt-2 border-t border-[var(--border-soft)] text-xs space-y-1">
+            <div class="flex justify-between">
+              <span style="color: var(--sage-muted)">累計發放總股息：</span>
+              <span id="dca-total-div" class="font-bold">$0</span>
+            </div>
+            <div class="grid grid-cols-3 gap-1 pt-1 text-center text-[11px]">
+              <div class="bg-white/60 p-1 rounded">
+                <span class="block" style="color: var(--amber-accent)">再投入滾存</span>
+                <span id="dca-div-reinvest" class="font-bold block mt-0.5">$0</span>
+              </div>
+              <div class="bg-white/60 p-1 rounded">
+                <span class="block" style="color: var(--sage-primary)">生活支出開銷</span>
+                <span id="dca-div-living" class="font-bold block mt-0.5">$0</span>
+              </div>
+              <div class="bg-white/60 p-1 rounded">
+                <span class="block" style="color: var(--danger-color)">質押還款本金</span>
+                <span id="dca-div-debt" class="font-bold block mt-0.5">$0</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 單筆投入卡片 -->
+        <div class="summary-card p-4 rounded-xl space-y-3">
+          <div class="flex items-center justify-between border-b border-[var(--border-soft)] pb-1.5">
+            <span class="text-xs md:text-sm font-bold tracking-wider" style="color: var(--sage-primary)">[ 單筆投入推估總結 ]</span>
+            <span class="text-xs" style="color: var(--sage-muted)">本金 + 再投入複利</span>
+          </div>
+          <div class="grid grid-cols-3 gap-2 text-center">
+            <div>
+              <div class="text-xs" style="color: var(--sage-muted)">累計投入本金</div>
+              <div id="lump-total-cost" class="text-sm md:text-base font-bold mt-0.5" style="color: var(--text-title)">$0</div>
+            </div>
+            <div>
+              <div class="text-xs" style="color: var(--sage-muted)">預估期末資產</div>
+              <div id="lump-final-val" class="text-sm md:text-base font-bold mt-0.5" style="color: var(--success-color)">$0</div>
+            </div>
+            <div>
+              <div class="text-xs" style="color: var(--sage-muted)">資產 ROI</div>
+              <div id="lump-roi" class="text-sm md:text-base font-bold mt-0.5" style="color: var(--amber-accent)">0%</div>
+            </div>
+          </div>
+
+          <div class="pt-2 border-t border-[var(--border-soft)] text-xs space-y-1">
+            <div class="flex justify-between">
+              <span style="color: var(--sage-muted)">累計發放總股息：</span>
+              <span id="lump-total-div" class="font-bold">$0</span>
+            </div>
+            <div class="grid grid-cols-3 gap-1 pt-1 text-center text-[11px]">
+              <div class="bg-white/60 p-1 rounded">
+                <span class="block" style="color: var(--amber-accent)">再投入滾存</span>
+                <span id="lump-div-reinvest" class="font-bold block mt-0.5">$0</span>
+              </div>
+              <div class="bg-white/60 p-1 rounded">
+                <span class="block" style="color: var(--sage-primary)">生活支出開銷</span>
+                <span id="lump-div-living" class="font-bold block mt-0.5">$0</span>
+              </div>
+              <div class="bg-white/60 p-1 rounded">
+                <span class="block" style="color: var(--danger-color)">質押還款本金</span>
+                <span id="lump-div-debt" class="font-bold block mt-0.5">$0</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 圖表呈現與勾選控制面板 -->
+      <div class="card-style rounded-xl p-4 md:p-5 space-y-3">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-2 border-b border-[var(--border-soft)] pb-2.5">
+          <h4 class="text-sm md:text-base font-bold" style="color: var(--header-deep)">📈 資產成長對照曲線圖 (同標的一色 · 實線定期定額 / 虛線單筆投入)</h4>
+          
+          <div class="flex items-center gap-2 text-xs">
+            <button onclick="toggleMergedChartMode()" id="btn-toggle-merge" class="px-2 py-1 rounded border font-semibold transition" style="border-color: var(--amber-accent); color: var(--amber-accent); background: #fff;">🔀 合併全資產顯示</button>
+            <button onclick="setAllChartCheckboxes(true)" class="px-2 py-1 rounded border transition" style="border-color: var(--border-soft); background: #fff;">全選顯示</button>
+            <button onclick="setAllChartCheckboxes(false)" class="px-2 py-1 rounded border transition" style="border-color: var(--border-soft); background: #fff;">全不顯示</button>
+          </div>
+        </div>
+
+        <div id="chart-controls-container" class="flex flex-wrap items-center gap-2 text-xs bg-[var(--input-bg)] p-2.5 rounded-lg border border-[var(--border-soft)]"></div>
+
+        <div class="relative w-full h-[320px] md:h-[380px]">
+          <canvas id="growthChart"></canvas>
+        </div>
+      </div>
+
+      <!-- 所有標的數據總覽比較表 -->
+      <div class="card-style rounded-xl p-4 md:p-5 space-y-3">
+        <h4 class="text-sm md:text-base font-bold" style="color: var(--header-deep)">📊 所有標的推估績效彙整表</h4>
+        <div class="overflow-x-auto">
+          <table class="w-full text-xs md:text-sm text-left border-collapse min-w-[700px]">
+            <thead>
+              <tr class="text-xs uppercase">
+                <th class="p-2.5 rounded-tl-lg">標的名稱</th>
+                <th class="p-2.5">推估年限</th>
+                <th class="p-2.5">定期定額期末資產</th>
+                <th class="p-2.5">定期定額 ROI</th>
+                <th class="p-2.5">單筆投入期末資產</th>
+                <th class="p-2.5">單筆投入 ROI</th>
+                <th class="p-2.5 rounded-tr-lg">配息處理</th>
+              </tr>
+            </thead>
+            <tbody id="overview-table-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- VIEW 2: 定期定額明細表 (表頭實心不透明防穿透、輸入格單行不換行) -->
+    <div id="view-dca" class="hidden space-y-4">
+      <div class="card-style rounded-xl p-4 md:p-5">
+        <div class="flex items-center justify-between mb-3">
+          <h4 class="text-sm md:text-base font-bold" style="color: var(--header-deep)">定期定額 - 逐年推估明細 (含配息三分法現金流)</h4>
+          <span class="text-xs" style="color: var(--sage-muted)">💡 提示：修改第 1 年總報酬率或扣款金額，後續年份自動同步</span>
+        </div>
+
+        <div class="table-scroll-container">
+          <table class="w-full text-xs md:text-sm border-collapse min-w-[1020px] sticky-header">
+            <thead>
+              <tr class="text-center">
+                <th class="p-2">基數</th>
+                <th class="p-2">Age</th>
+                <th class="p-2">西元</th>
+                <th class="p-2">民國</th>
+                <th class="p-2" style="min-width: 95px;">預估總報酬率</th>
+                <th class="p-2" style="min-width: 105px;">每期扣款</th>
+                <th class="p-2">年度扣款</th>
+                <th class="p-2">年初現值</th>
+                <th class="p-2 th-highlight">當期配息</th>
+                <th class="p-2 th-highlight">再投入金額</th>
+                <th class="p-2">生活支出</th>
+                <th class="p-2">質押還款</th>
+                <th class="p-2">年底預估現值</th>
+              </tr>
+            </thead>
+            <tbody id="dca-table-body" class="text-center"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- VIEW 3: 單筆投入明細表 (表頭實心不透明防穿透、輸入格單行不換行) -->
+    <div id="view-lump" class="hidden space-y-4">
+      <div class="card-style rounded-xl p-4 md:p-5">
+        <div class="flex items-center justify-between mb-3">
+          <h4 class="text-sm md:text-base font-bold" style="color: var(--header-deep)">單筆投入 - 逐年推估明細 (含配息三分法現金流)</h4>
+          <span class="text-xs" style="color: var(--sage-muted)">💡 提示：修改第 1 年總報酬率，後續年份自動同步</span>
+        </div>
+
+        <div class="table-scroll-container">
+          <table class="w-full text-xs md:text-sm border-collapse min-w-[920px] sticky-header">
+            <thead>
+              <tr class="text-center">
+                <th class="p-2">基數</th>
+                <th class="p-2">Age</th>
+                <th class="p-2">西元</th>
+                <th class="p-2">民國</th>
+                <th class="p-2" style="min-width: 95px;">預估總報酬率</th>
+                <th class="p-2">年初現值</th>
+                <th class="p-2 th-highlight">當期配息</th>
+                <th class="p-2 th-highlight">再投入金額</th>
+                <th class="p-2">生活支出</th>
+                <th class="p-2">質押還款</th>
+                <th class="p-2">年底預估現值</th>
+              </tr>
+            </thead>
+            <tbody id="lump-table-body" class="text-center"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<!-- 完整 JavaScript 業務邏輯整合 -->
+<script>
+  let currentActiveModule = 'cashflow'; // 'cashflow' 或 'compound'
+
+  // --- 頂層頁籤切換 ---
+  function switchMainTab(moduleName) {
+    currentActiveModule = moduleName;
+    const btnCashflow = document.getElementById('main-tab-cashflow');
+    const btnCompound = document.getElementById('main-tab-compound');
+    const modCashflow = document.getElementById('module-cashflow-container');
+    const modCompound = document.getElementById('module-compound-container');
+    const titleEl = document.getElementById('top-header-title');
+    const subTitleEl = document.getElementById('top-header-subtitle');
+
+    if (moduleName === 'cashflow') {
+      btnCashflow.classList.add('active');
+      btnCompound.classList.remove('active');
+      modCashflow.classList.remove('hidden');
+      modCompound.classList.add('hidden');
+      titleEl.innerText = '現金流量收支平衡表';
+      subTitleEl.innerText = '季配息級距與息收支出兩平點分析 (25階壓力測試 / 含二代健保 2.11% 扣費計算)';
+    } else {
+      btnCashflow.classList.remove('active');
+      btnCompound.classList.add('active');
+      modCashflow.classList.add('hidden');
+      modCompound.classList.remove('hidden');
+      titleEl.innerText = '全方位財務系統與複利推估計算機';
+      subTitleEl.innerText = '複利滾存 · 配息現金流三分調度（再投入 / 生活支出 / 質押還款）· 多標的資產對照';
+      
+      // 切換時重繪 Chart.js
+      if (chartInstance) {
+        setTimeout(() => chartInstance.resize(), 50);
+      }
+    }
+  }
+
+  // ========================================================
+  // 模組一：現金流量收支平衡表 (25階) LOGIC
+  // ========================================================
+  const CASHFLOW_STORAGE_KEY = 'cashflow_calculator_data_v2';
+  const defaultCashflowTargets = [
+    { name: '標的 A', shares: 0, dividend: 0 },
+    { name: '標的 B', shares: 0, dividend: 0 },
+    { name: '標的 C', shares: 0, dividend: 0 },
+    { name: '標的 D', shares: 0, dividend: 0 },
+    { name: '標的 E', shares: 0, dividend: 0 },
+    { name: '標的 F', shares: 0, dividend: 0 }
+  ];
+
+  let cashflowTargets = JSON.parse(JSON.stringify(defaultCashflowTargets));
+
+  function initCashflowTargetsUI() {
+    const container = document.getElementById('targets-container');
+    let html = '';
+    cashflowTargets.forEach((t, i) => {
+      html += `
+        <div class="target-item-box">
+          ${cashflowTargets.length > 1 ? `<button class="btn-remove-target" onclick="removeCashflowTarget(${i})" title="刪除此標的">✕</button>` : ''}
+          <div class="form-group-compact" style="margin-bottom:3px; padding-right: 14px;">
+            <input type="text" id="target-name-${i}" value="${t.name}" oninput="onCashflowTargetFieldChange(${i}, 'name', this.value)" style="font-weight:bold;">
+          </div>
+          <div class="target-duo-inputs">
+            <div class="form-group-compact" style="flex:1;">
+              <label>股數</label>
+              <input type="number" id="target-shares-${i}" value="${t.shares}" onfocus="this.select()" oninput="onCashflowTargetFieldChange(${i}, 'shares', this.value)">
+            </div>
+            <div class="form-group-compact" style="flex:1;">
+              <label>季配($)</label>
+              <input type="number" step="0.01" id="target-div-${i}" value="${t.dividend}" onfocus="this.select()" oninput="onCashflowTargetFieldChange(${i}, 'dividend', this.value)">
+            </div>
+          </div>
+        </div>
+      `;
+    });
+    container.innerHTML = html;
+  }
+
+  function addTarget() {
+    const nextChar = String.fromCharCode(65 + (cashflowTargets.length % 26));
+    const suffix = cashflowTargets.length >= 26 ? Math.floor(cashflowTargets.length / 26) : '';
+    cashflowTargets.push({ name: `標的 ${nextChar}${suffix}`, shares: 0, dividend: 0 });
+    initCashflowTargetsUI();
+    calculateCashflowAll();
+    saveCashflowToLocalStorage();
+  }
+
+  function removeCashflowTarget(index) {
+    if (cashflowTargets.length <= 1) {
+      alert('請至少保留一檔標的！');
+      return;
+    }
+    cashflowTargets.splice(index, 1);
+    initCashflowTargetsUI();
+    calculateCashflowAll();
+    saveCashflowToLocalStorage();
+  }
+
+  function onCashflowTargetFieldChange(index, field, value) {
+    if (field === 'name') cashflowTargets[index].name = value;
+    else cashflowTargets[index][field] = parseFloat(value) || 0;
+    calculateCashflowAll();
+    saveCashflowToLocalStorage();
+  }
+
+  function formatMoney(num) {
+    return Math.round(num).toLocaleString('zh-TW');
+  }
+
+  function onCashflowInputChange() {
+    calculateCashflowAll();
+    saveCashflowToLocalStorage();
+  }
+
+  function renderCashflowTableHead() {
+    const thead = document.getElementById('matrix-thead');
+    let targetHeadersTop = '';
+    let targetHeadersSub = '';
+
+    cashflowTargets.forEach((t, i) => {
+      targetHeadersTop += `<th colspan="2" class="th-header-group">${t.name || ('標的 ' + (i+1))}</th>`;
+      targetHeadersSub += `<th style="min-width:72px;">當季配息</th><th style="min-width:80px;">稅後淨額</th>`;
+    });
+
+    thead.innerHTML = `
+      <tr>
+        <th rowspan="2" class="text-center sticky-left-1">情境</th>
+        <th rowspan="2" class="text-center sticky-left-2">階梯</th>
+        <th rowspan="2" class="text-center sticky-left-3">配息%</th>
+        ${targetHeadersTop}
+        <th rowspan="2" style="min-width:88px;">月總主動收入</th>
+        <th rowspan="2" style="min-width:88px;">月被動息收</th>
+        <th rowspan="2" class="sticky-right-4">合計月收入</th>
+        <th rowspan="2" class="sticky-right-3">合計季收入</th>
+        <th rowspan="2" class="sticky-right-2">合計年收入</th>
+        <th rowspan="2" class="sticky-right-1">月餘額(損益)</th>
+      </tr>
+      <tr>
+        ${targetHeadersSub}
+      </tr>
+    `;
+  }
+
+  function calculateCashflowAll() {
+    renderCashflowTableHead();
+
+    const expLife = parseFloat(document.getElementById('expense-life').value) || 0;
+    const expIns = parseFloat(document.getElementById('expense-ins').value) || 0;
+    const expLoan = parseFloat(document.getElementById('expense-loan').value) || 0;
+    const expPledge = parseFloat(document.getElementById('expense-pledge').value) || 0;
+    const expExtra = parseFloat(document.getElementById('expense-extra').value) || 0;
+
+    const incActive = parseFloat(document.getElementById('income-active').value) || 0;
+    const incOther1 = parseFloat(document.getElementById('income-other1').value) || 0;
+    const incOther2 = parseFloat(document.getElementById('income-other2').value) || 0;
+    const totalActiveMonthly = incActive + incOther1 + incOther2;
+
+    const lifeMonthly = expLife + expIns;
+    const debtMonthly = expLoan + expPledge;
+    const totalMonthly = lifeMonthly + debtMonthly + expExtra;
+    const totalQuarterly = totalMonthly * 3;
+    const totalYearly = totalMonthly * 12;
+
+    document.getElementById('sum-life-monthly').innerText = '$' + formatMoney(lifeMonthly);
+    document.getElementById('sum-debt-monthly').innerText = '$' + formatMoney(debtMonthly);
+    document.getElementById('sum-extra-monthly').innerText = '$' + formatMoney(expExtra);
+    document.getElementById('sum-total-monthly').innerText = '$' + formatMoney(totalMonthly);
+    document.getElementById('sum-total-quarterly').innerText = '$' + formatMoney(totalQuarterly);
+    document.getElementById('sum-total-yearly').innerText = '$' + formatMoney(totalYearly);
+
+    let rowsHTML = '';
+    let currentRatio = 1.0;
+    let breakevenTriggered = false;
+
+    for (let step = 1; step <= 25; step++) {
+      let scenarioTag = '';
+      if (step === 1) scenarioTag = '基準(100%)';
+      else if (step === 21) scenarioTag = '腰斬(50%)';
+      else if (step === 25) scenarioTag = '極悲觀(40%)';
+
+      let quarterlyNetDividendSum = 0;
+      let targetColsHTML = '';
+
+      for (let i = 0; i < cashflowTargets.length; i++) {
+        const adjustedDiv = cashflowTargets[i].dividend * currentRatio;
+        const grossDividend = cashflowTargets[i].shares * adjustedDiv;
+        
+        let netIncome = grossDividend;
+        if (grossDividend >= 20000) {
+          const taxableBase = Math.min(grossDividend, 10000000);
+          const nhiFee = Math.round(taxableBase * 0.0211);
+          netIncome = grossDividend - nhiFee;
+        }
+
+        quarterlyNetDividendSum += netIncome;
+
+        targetColsHTML += `
+          <td>${adjustedDiv.toFixed(3)}</td>
+          <td>${formatMoney(netIncome)}</td>
+        `;
+      }
+
+      const totalQuarterlyIncome = quarterlyNetDividendSum + (totalActiveMonthly * 3);
+      const totalMonthlyIncome = totalQuarterlyIncome / 3;
+      const totalYearlyIncome = totalQuarterlyIncome * 4;
+      const monthlyPassiveIncome = quarterlyNetDividendSum / 3;
+
+      const monthlyBalance = totalMonthlyIncome - totalMonthly;
+
+      let isBreakevenStep = false;
+      if (!breakevenTriggered && monthlyBalance < 0 && totalMonthly > 0) {
+        isBreakevenStep = true;
+        breakevenTriggered = true;
+        if (!scenarioTag) scenarioTag = '<span class="breakeven-tag">兩平警戒</span>';
+      }
+
+      const balanceClass = monthlyBalance < 0 ? 'negative' : 'positive';
+      const rowClass = isBreakevenStep ? 'breakeven-row' : '';
+
+      rowsHTML += `
+        <tr class="${rowClass}">
+          <td class="text-center font-bold sticky-left-1">${scenarioTag}</td>
+          <td class="text-center sticky-left-2">${step}</td>
+          <td class="text-center font-bold sticky-left-3">${(currentRatio * 100).toFixed(1)}%</td>
+          ${targetColsHTML}
+          <td>${formatMoney(totalActiveMonthly)}</td>
+          <td style="color:var(--amber-accent); font-weight:600;">${formatMoney(monthlyPassiveIncome)}</td>
+          <td class="font-bold sticky-right-4">${formatMoney(totalMonthlyIncome)}</td>
+          <td class="sticky-right-3">${formatMoney(totalQuarterlyIncome)}</td>
+          <td class="sticky-right-2">${formatMoney(totalYearlyIncome)}</td>
+          <td class="${balanceClass} sticky-right-1">${formatMoney(monthlyBalance)}</td>
+        </tr>
+      `;
+
+      currentRatio -= 0.025;
+    }
+
+    document.getElementById('matrix-tbody').innerHTML = rowsHTML;
+  }
+
+  function saveCashflowToLocalStorage() {
+    const data = {
+      targets: cashflowTargets,
+      expenses: {
+        life: document.getElementById('expense-life').value,
+        ins: document.getElementById('expense-ins').value,
+        loan: document.getElementById('expense-loan').value,
+        pledge: document.getElementById('expense-pledge').value,
+        extra: document.getElementById('expense-extra').value
+      },
+      incomes: {
+        activeName: document.getElementById('income-active-name').value,
+        active: document.getElementById('income-active').value,
+        other1Name: document.getElementById('income-other1-name').value,
+        other1: document.getElementById('income-other1').value,
+        other2Name: document.getElementById('income-other2-name').value,
+        other2: document.getElementById('income-other2').value
+      }
+    };
+    localStorage.setItem(CASHFLOW_STORAGE_KEY, JSON.stringify(data));
+  }
+
+  function loadCashflowFromLocalStorage() {
+    const saved = localStorage.getItem(CASHFLOW_STORAGE_KEY);
+    if (!saved) return false;
+    try {
+      const data = JSON.parse(saved);
+      if (Array.isArray(data.targets) && data.targets.length > 0) {
+        cashflowTargets = data.targets;
+      }
+      if (data.expenses) {
+        document.getElementById('expense-life').value = data.expenses.life ?? 0;
+        document.getElementById('expense-ins').value = data.expenses.ins ?? 0;
+        document.getElementById('expense-loan').value = data.expenses.loan ?? 0;
+        document.getElementById('expense-pledge').value = data.expenses.pledge ?? 0;
+        document.getElementById('expense-extra').value = data.expenses.extra ?? 0;
+      }
+      if (data.incomes) {
+        document.getElementById('income-active-name').value = data.incomes.activeName ?? '';
+        document.getElementById('income-active').value = data.incomes.active ?? 0;
+        document.getElementById('income-other1-name').value = data.incomes.other1Name ?? '';
+        document.getElementById('income-other1').value = data.incomes.other1 ?? 0;
+        document.getElementById('income-other2-name').value = data.incomes.other2Name ?? '';
+        document.getElementById('income-other2').value = data.incomes.other2 ?? 0;
+      }
+      return true;
+    } catch (e) {
+      console.error('無效的備份資料', e);
+      return false;
+    }
+  }
+
+
+  // ========================================================
+  // 模組二：全方位財務系統與複利推估計算機 LOGIC
+  // ========================================================
+  const COMPOUND_STORAGE_KEY = 'COMPOUND_CALCULATOR_FINANCIAL_SYSTEM_V4';
+
+  function createDefaultTickerData(symbol = '009816') {
+    return {
+      id: 'ticker_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+      symbol: symbol,
+      years: 30,
+      startAge: 48,
+      startYear: 2026,
+      dcaInit: 192000,
+      lumpInit: 3000000,
+      divRate: 0.05,
+      ratioReinvest: 0.30,
+      ratioLiving: 0.50,
+      ratioDebt: 0.20,
+      dcaRows: [{ rate: 0.08, monthly: 16000 }],
+      lumpRows: [{ rate: 0.08 }]
+    };
+  }
+
+  let compoundState = {
+    activeTickerId: null,
+    tickers: [],
+    visibleLines: {},
+    isMergedChartMode: false
+  };
+
+  let activeCompoundViewTab = 'overview';
+  let chartInstance = null;
+
+  function loadCompoundFromLocalStorage() {
+    const stored = localStorage.getItem(COMPOUND_STORAGE_KEY);
+    if (stored) {
+      try { compoundState = JSON.parse(stored); } catch (e) { console.error(e); }
+    }
+    if (!compoundState.tickers || compoundState.tickers.length === 0) {
+      const defaultTicker = createDefaultTickerData('009816');
+      compoundState.tickers = [defaultTicker];
+      compoundState.activeTickerId = defaultTicker.id;
+      compoundState.visibleLines = {};
+      compoundState.isMergedChartMode = false;
+      saveCompoundToLocalStorage();
+    }
+    if (!compoundState.activeTickerId && compoundState.tickers.length > 0) {
+      compoundState.activeTickerId = compoundState.tickers[0].id;
+    }
+    if (!compoundState.visibleLines) compoundState.visibleLines = {};
+  }
+
+  function saveCompoundToLocalStorage() {
+    localStorage.setItem(COMPOUND_STORAGE_KEY, JSON.stringify(compoundState));
+  }
+
+  function getCurrentTicker() {
+    return compoundState.tickers.find(t => t.id === compoundState.activeTickerId) || compoundState.tickers[0];
+  }
+
+  function addTicker() {
+    const symbol = prompt('請輸入新標的名稱或代號：', '009826');
+    if (symbol && symbol.trim() !== '') {
+      const newTicker = createDefaultTickerData(symbol.trim());
+      compoundState.tickers.push(newTicker);
+      compoundState.activeTickerId = newTicker.id;
+      saveCompoundToLocalStorage();
+      renderTickerTabs();
+      syncCompoundInputFields();
+      calculateAndRenderCompound();
+    }
+  }
+
+  function renameCurrentTicker() {
+    const current = getCurrentTicker();
+    const newSymbol = prompt('重新命名標的代號：', current.symbol);
+    if (newSymbol && newSymbol.trim() !== '') {
+      current.symbol = newSymbol.trim();
+      saveCompoundToLocalStorage();
+      renderTickerTabs();
+      syncCompoundInputFields();
+      calculateAndRenderCompound();
+    }
+  }
+
+  function deleteCurrentTicker() {
+    if (compoundState.tickers.length <= 1) {
+      alert('請至少保留一個標的進行計算！');
+      return;
+    }
+    const current = getCurrentTicker();
+    if (confirm(`確定要刪除標的【${current.symbol}】嗎？`)) {
+      compoundState.tickers = compoundState.tickers.filter(t => t.id !== current.id);
+      compoundState.activeTickerId = compoundState.tickers[0].id;
+      saveCompoundToLocalStorage();
+      renderTickerTabs();
+      syncCompoundInputFields();
+      calculateAndRenderCompound();
+    }
+  }
+
+  function switchTicker(id) {
+    compoundState.activeTickerId = id;
+    saveCompoundToLocalStorage();
+    renderTickerTabs();
+    syncCompoundInputFields();
+    calculateAndRenderCompound();
+  }
+
+  function renderTickerTabs() {
+    const container = document.getElementById('ticker-tabs-container');
+    container.innerHTML = '';
+    compoundState.tickers.forEach(t => {
+      const isActive = t.id === compoundState.activeTickerId;
+      const btn = document.createElement('button');
+      btn.className = `ticker-tab px-3.5 py-1 rounded-lg text-xs md:text-sm font-semibold whitespace-nowrap transition ${isActive ? 'active shadow' : ''}`;
+      btn.innerText = t.symbol;
+      btn.onclick = () => switchTicker(t.id);
+      container.appendChild(btn);
+    });
+  }
+
+  function syncCompoundInputFields() {
+    const t = getCurrentTicker();
+    document.getElementById('input-symbol').value = t.symbol;
+    document.getElementById('input-years').value = t.years;
+    document.getElementById('input-age').value = t.startAge;
+    document.getElementById('input-year').value = t.startYear;
+    document.getElementById('input-dca-init').value = t.dcaInit;
+    document.getElementById('input-lump-init').value = t.lumpInit;
+
+    document.getElementById('input-div-rate').value = (t.divRate * 100).toFixed(1);
+    document.getElementById('input-ratio-reinvest').value = Math.round(t.ratioReinvest * 100);
+    document.getElementById('input-ratio-living').value = Math.round(t.ratioLiving * 100);
+    document.getElementById('input-ratio-debt').value = Math.round(t.ratioDebt * 100);
+
+    document.getElementById('current-ticker-title-display').innerText = `【${t.symbol}】試算與現金流規劃`;
+    validatePayoutRatios();
+  }
+
+  function updateCurrentTickerMeta() {
+    const t = getCurrentTicker();
+    t.symbol = document.getElementById('input-symbol').value || '未命名';
+    t.years = Math.max(1, Math.min(50, parseInt(document.getElementById('input-years').value) || 30));
+    t.startAge = parseInt(document.getElementById('input-age').value) || 0;
+    t.startYear = parseInt(document.getElementById('input-year').value) || 2026;
+    t.dcaInit = parseFloat(document.getElementById('input-dca-init').value) || 0;
+    t.lumpInit = parseFloat(document.getElementById('input-lump-init').value) || 0;
+
+    t.divRate = (parseFloat(document.getElementById('input-div-rate').value) || 0) / 100;
+    t.ratioReinvest = (parseFloat(document.getElementById('input-ratio-reinvest').value) || 0) / 100;
+    t.ratioLiving = (parseFloat(document.getElementById('input-ratio-living').value) || 0) / 100;
+    t.ratioDebt = (parseFloat(document.getElementById('input-ratio-debt').value) || 0) / 100;
+
+    validatePayoutRatios();
+    saveCompoundToLocalStorage();
+    renderTickerTabs();
+    calculateAndRenderCompound();
+  }
+
+  function validatePayoutRatios() {
+    const t = getCurrentTicker();
+    const sum = Math.round((t.ratioReinvest + t.ratioLiving + t.ratioDebt) * 100);
+    const warnEl = document.getElementById('payout-ratio-warning');
+    if (sum === 100) {
+      warnEl.innerText = "✓ 分配比例合計 100%";
+      warnEl.style.color = "var(--success-color)";
+    } else {
+      warnEl.innerText = `⚠️ 分配比例合計為 ${sum}% (建議調整為 100%)`;
+      warnEl.style.color = "var(--danger-color)";
+    }
+  }
+
+  function calculateTickerResults(t) {
+    const years = t.years;
+    const dcaData = [];
+    const lumpData = [];
+
+    let curDcaPv = t.dcaInit;
+    let totalDcaInvested = t.dcaInit;
+    let totalDcaDiv = 0, totalDcaReinvest = 0, totalDcaLiving = 0, totalDcaDebt = 0;
+
+    for (let i = 0; i < years; i++) {
+      let rowSetting = t.dcaRows[i];
+      if (!rowSetting) {
+        const prevSetting = i > 0 ? dcaData[i - 1] : { rate: 0.08, monthly: 16000 };
+        rowSetting = { rate: prevSetting.rate, monthly: prevSetting.monthly };
+      }
+
+      const totalRate = rowSetting.rate !== undefined ? rowSetting.rate : (i > 0 ? dcaData[i-1].rate : 0.08);
+      const monthly = rowSetting.monthly !== undefined ? rowSetting.monthly : (i > 0 ? dcaData[i-1].monthly : 16000);
+      
+      const annualPayment = monthly * 12;
+      totalDcaInvested += annualPayment;
+
+      const divRate = t.divRate;
+      const capGainRate = Math.max(0, totalRate - divRate);
+
+      const annualDividend = (curDcaPv + annualPayment / 2) * divRate;
+      const divReinvest = annualDividend * t.ratioReinvest;
+      const divLiving = annualDividend * t.ratioLiving;
+      const divDebt = annualDividend * t.ratioDebt;
+
+      totalDcaDiv += annualDividend;
+      totalDcaReinvest += divReinvest;
+      totalDcaLiving += divLiving;
+      totalDcaDebt += divDebt;
+
+      const endValue = (curDcaPv * (1 + capGainRate)) + (annualPayment * (1 + capGainRate / 2)) + divReinvest;
+
+      dcaData.push({
+        index: i + 1,
+        age: t.startAge + i + 1,
+        yearAD: t.startYear + i + 1,
+        yearROC: t.startYear + i + 1 - 1911,
+        rate: totalRate,
+        monthly: monthly,
+        annualPayment: annualPayment,
+        startVal: curDcaPv,
+        dividend: annualDividend,
+        divReinvest: divReinvest,
+        divLiving: divLiving,
+        divDebt: divDebt,
+        endVal: endValue
+      });
+      curDcaPv = endValue;
+    }
+
+    let curLumpPv = t.lumpInit;
+    const totalLumpInvested = t.lumpInit;
+    let totalLumpDiv = 0, totalLumpReinvest = 0, totalLumpLiving = 0, totalLumpDebt = 0;
+
+    for (let i = 0; i < years; i++) {
+      let rowSetting = t.lumpRows[i];
+      if (!rowSetting) {
+        const prevSetting = i > 0 ? lumpData[i - 1] : { rate: 0.08 };
+        rowSetting = { rate: prevSetting.rate };
+      }
+
+      const totalRate = rowSetting.rate !== undefined ? rowSetting.rate : (i > 0 ? lumpData[i-1].rate : 0.08);
+      const divRate = t.divRate;
+      const capGainRate = Math.max(0, totalRate - divRate);
+
+      const annualDividend = curLumpPv * divRate;
+      const divReinvest = annualDividend * t.ratioReinvest;
+      const divLiving = annualDividend * t.ratioLiving;
+      const divDebt = annualDividend * t.ratioDebt;
+
+      totalLumpDiv += annualDividend;
+      totalLumpReinvest += divReinvest;
+      totalLumpLiving += divLiving;
+      totalLumpDebt += divDebt;
+
+      const endValue = (curLumpPv * (1 + capGainRate)) + divReinvest;
+
+      lumpData.push({
+        index: i + 1,
+        age: t.startAge + i + 1,
+        yearAD: t.startYear + i + 1,
+        yearROC: t.startYear + i + 1 - 1911,
+        rate: totalRate,
+        startVal: curLumpPv,
+        dividend: annualDividend,
+        divReinvest: divReinvest,
+        divLiving: divLiving,
+        divDebt: divDebt,
+        endVal: endValue
+      });
+      curLumpPv = endValue;
+    }
+
+    const dcaFinal = dcaData.length > 0 ? dcaData[dcaData.length - 1].endVal : t.dcaInit;
+    const dcaROI = totalDcaInvested > 0 ? ((dcaFinal - totalDcaInvested) / totalDcaInvested) : 0;
+
+    const lumpFinal = lumpData.length > 0 ? lumpData[lumpData.length - 1].endVal : t.lumpInit;
+    const lumpROI = totalLumpInvested > 0 ? ((lumpFinal - totalLumpInvested) / totalLumpInvested) : 0;
+
+    return {
+      dcaData, lumpData,
+      totalDcaInvested, dcaFinal, dcaROI,
+      totalDcaDiv, totalDcaReinvest, totalDcaLiving, totalDcaDebt,
+      totalLumpInvested, lumpFinal, lumpROI,
+      totalLumpDiv, totalLumpReinvest, totalLumpLiving, totalLumpDebt
+    };
+  }
+
+  function calculateAndRenderCompound() {
+    const current = getCurrentTicker();
+    const currentRes = calculateTickerResults(current);
+
+    document.getElementById('dca-total-cost').innerText = '$' + Math.round(currentRes.totalDcaInvested).toLocaleString();
+    document.getElementById('dca-final-val').innerText = '$' + Math.round(currentRes.dcaFinal).toLocaleString();
+    document.getElementById('dca-roi').innerText = (currentRes.dcaROI * 100).toFixed(2) + '%';
+
+    document.getElementById('dca-total-div').innerText = '$' + Math.round(currentRes.totalDcaDiv).toLocaleString();
+    document.getElementById('dca-div-reinvest').innerText = '$' + Math.round(currentRes.totalDcaReinvest).toLocaleString();
+    document.getElementById('dca-div-living').innerText = '$' + Math.round(currentRes.totalDcaLiving).toLocaleString();
+    document.getElementById('dca-div-debt').innerText = '$' + Math.round(currentRes.totalDcaDebt).toLocaleString();
+
+    document.getElementById('lump-total-cost').innerText = '$' + Math.round(currentRes.totalLumpInvested).toLocaleString();
+    document.getElementById('lump-final-val').innerText = '$' + Math.round(currentRes.lumpFinal).toLocaleString();
+    document.getElementById('lump-roi').innerText = (currentRes.lumpROI * 100).toFixed(2) + '%';
+
+    document.getElementById('lump-total-div').innerText = '$' + Math.round(currentRes.totalLumpDiv).toLocaleString();
+    document.getElementById('lump-div-reinvest').innerText = '$' + Math.round(currentRes.totalLumpReinvest).toLocaleString();
+    document.getElementById('lump-div-living').innerText = '$' + Math.round(currentRes.totalLumpLiving).toLocaleString();
+    document.getElementById('lump-div-debt').innerText = '$' + Math.round(currentRes.totalLumpDebt).toLocaleString();
+
+    renderDcaTable(current, currentRes.dcaData);
+    renderLumpTable(current, currentRes.lumpData);
+    renderOverviewTableAndChart();
+  }
+
+  // 修正後的定期定額明細表渲染（解決符號折行與錯位）
+  function renderDcaTable(ticker, dcaData) {
+    const tbody = document.getElementById('dca-table-body');
+    tbody.innerHTML = '';
+
+    const row0 = document.createElement('tr');
+    row0.innerHTML = `
+      <td class="p-2">0</td>
+      <td class="p-2">${ticker.startAge}</td>
+      <td class="p-2">${ticker.startYear}</td>
+      <td class="p-2">${ticker.startYear - 1911}</td>
+      <td class="p-2">-</td>
+      <td class="p-2">-</td>
+      <td class="p-2">-</td>
+      <td class="p-2">$${Math.round(ticker.dcaInit).toLocaleString()}</td>
+      <td class="p-2">-</td>
+      <td class="p-2">-</td>
+      <td class="p-2">-</td>
+      <td class="p-2">-</td>
+      <td class="p-2 font-bold" style="color: var(--amber-accent)">$${Math.round(ticker.dcaInit).toLocaleString()}</td>
+    `;
+    tbody.appendChild(row0);
+
+    dcaData.forEach((row, idx) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td class="p-2">${row.index}</td>
+        <td class="p-2">${row.age}</td>
+        <td class="p-2">${row.yearAD}</td>
+        <td class="p-2">${row.yearROC}</td>
+        <td class="p-1">
+          <div class="table-input-cell">
+            <input type="number" step="0.1" value="${(row.rate * 100).toFixed(2)}" 
+              onchange="onDcaRowChange(${idx}, 'rate', this.value)"
+              class="w-[58px] text-center rounded input-blue font-semibold">
+            <span class="text-xs text-[var(--sage-muted)] font-bold">%</span>
+          </div>
+        </td>
+        <td class="p-1">
+          <div class="table-input-cell">
+            <span class="text-xs text-[var(--sage-muted)] font-bold">$</span>
+            <input type="number" step="1000" value="${row.monthly}" 
+              onchange="onDcaRowChange(${idx}, 'monthly', this.value)"
+              class="w-[76px] text-right rounded input-blue font-semibold pr-1.5">
+          </div>
+        </td>
+        <td class="p-2">$${Math.round(row.annualPayment).toLocaleString()}</td>
+        <td class="p-2">$${Math.round(row.startVal).toLocaleString()}</td>
+        <td class="p-2 font-semibold" style="color: var(--amber-accent)">$${Math.round(row.dividend).toLocaleString()}</td>
+        <td class="p-2 text-[var(--success-color)] font-medium">$${Math.round(row.divReinvest).toLocaleString()}</td>
+        <td class="p-2 text-[var(--sage-primary)] font-medium">$${Math.round(row.divLiving).toLocaleString()}</td>
+        <td class="p-2 text-[var(--danger-color)] font-medium">$${Math.round(row.divDebt).toLocaleString()}</td>
+        <td class="p-2 font-bold" style="color: var(--amber-accent)">$${Math.round(row.endVal).toLocaleString()}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  // 修正後的單筆投入明細表渲染（解決符號折行與錯位）
+  function renderLumpTable(ticker, lumpData) {
+    const tbody = document.getElementById('lump-table-body');
+    tbody.innerHTML = '';
+
+    const row0 = document.createElement('tr');
+    row0.innerHTML = `
+      <td class="p-2">0</td>
+      <td class="p-2">${ticker.startAge}</td>
+      <td class="p-2">${ticker.startYear}</td>
+      <td class="p-2">${ticker.startYear - 1911}</td>
+      <td class="p-2">-</td>
+      <td class="p-2">$${Math.round(ticker.lumpInit).toLocaleString()}</td>
+      <td class="p-2">-</td>
+      <td class="p-2">-</td>
+      <td class="p-2">-</td>
+      <td class="p-2">-</td>
+      <td class="p-2 font-bold" style="color: var(--sage-primary)">$${Math.round(ticker.lumpInit).toLocaleString()}</td>
+    `;
+    tbody.appendChild(row0);
+
+    lumpData.forEach((row, idx) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td class="p-2">${row.index}</td>
+        <td class="p-2">${row.age}</td>
+        <td class="p-2">${row.yearAD}</td>
+        <td class="p-2">${row.yearROC}</td>
+        <td class="p-1">
+          <div class="table-input-cell">
+            <input type="number" step="0.1" value="${(row.rate * 100).toFixed(2)}" 
+              onchange="onLumpRowChange(${idx}, 'rate', this.value)"
+              class="w-[58px] text-center rounded input-blue font-semibold">
+            <span class="text-xs text-[var(--sage-muted)] font-bold">%</span>
+          </div>
+        </td>
+        <td class="p-2">$${Math.round(row.startVal).toLocaleString()}</td>
+        <td class="p-2 font-semibold" style="color: var(--amber-accent)">$${Math.round(row.dividend).toLocaleString()}</td>
+        <td class="p-2 text-[var(--success-color)] font-medium">$${Math.round(row.divReinvest).toLocaleString()}</td>
+        <td class="p-2 text-[var(--sage-primary)] font-medium">$${Math.round(row.divLiving).toLocaleString()}</td>
+        <td class="p-2 text-[var(--danger-color)] font-medium">$${Math.round(row.divDebt).toLocaleString()}</td>
+        <td class="p-2 font-bold" style="color: var(--sage-primary)">$${Math.round(row.endVal).toLocaleString()}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  function onDcaRowChange(idx, field, val) {
+    const t = getCurrentTicker();
+    const numVal = parseFloat(val) || 0;
+    const parsedVal = field === 'rate' ? numVal / 100 : numVal;
+    if (!t.dcaRows) t.dcaRows = [];
+    while (t.dcaRows.length <= idx) t.dcaRows.push({});
+    t.dcaRows[idx][field] = parsedVal;
+    if (idx === 0) {
+      for (let i = 1; i < t.years; i++) {
+        if (!t.dcaRows[i]) t.dcaRows[i] = {};
+        t.dcaRows[i][field] = parsedVal;
+      }
+    }
+    saveCompoundToLocalStorage();
+    calculateAndRenderCompound();
+  }
+
+  function onLumpRowChange(idx, field, val) {
+    const t = getCurrentTicker();
+    const numVal = parseFloat(val) || 0;
+    const parsedVal = field === 'rate' ? numVal / 100 : numVal;
+    if (!t.lumpRows) t.lumpRows = [];
+    while (t.lumpRows.length <= idx) t.lumpRows.push({});
+    t.lumpRows[idx][field] = parsedVal;
+    if (idx === 0) {
+      for (let i = 1; i < t.years; i++) {
+        if (!t.lumpRows[i]) t.lumpRows[i] = {};
+        t.lumpRows[i][field] = parsedVal;
+      }
+    }
+    saveCompoundToLocalStorage();
+    calculateAndRenderCompound();
+  }
+
+  function renderOverviewTableAndChart() {
+    const tbody = document.getElementById('overview-table-body');
+    tbody.innerHTML = '';
+    const chartDatasets = [];
+    let maxYears = 0;
+
+    const tickerColors = ['#3b5245', '#c86f32', '#4a6fa5', '#b8334a', '#21613e'];
+    const controlsContainer = document.getElementById('chart-controls-container');
+    controlsContainer.innerHTML = '';
+
+    const mergeBtn = document.getElementById('btn-toggle-merge');
+    if (compoundState.isMergedChartMode) {
+      mergeBtn.style.background = 'var(--amber-accent)';
+      mergeBtn.style.color = '#ffffff';
+    } else {
+      mergeBtn.style.background = '#ffffff';
+      mergeBtn.style.color = 'var(--amber-accent)';
+    }
+
+    let mergedDcaPoints = [];
+    let mergedLumpPoints = [];
+
+    compoundState.tickers.forEach((t, i) => {
+      const res = calculateTickerResults(t);
+      maxYears = Math.max(maxYears, t.years);
+      const isCurrent = t.id === compoundState.activeTickerId;
+
+      const tr = document.createElement('tr');
+      tr.style.backgroundColor = isCurrent ? 'rgba(233,237,234,0.6)' : 'transparent';
+      tr.innerHTML = `
+        <td class="p-2.5 font-semibold">
+          ${t.symbol} 
+          ${isCurrent ? '<span class="ml-1 text-[11px] px-1.5 py-0.5 rounded font-normal bg-[var(--amber-bg)] text-[var(--amber-accent)] border border-[var(--border-soft)]">(編輯中)</span>' : ''}
+        </td>
+        <td class="p-2.5">${t.years} 年</td>
+        <td class="p-2.5 font-bold" style="color: var(--amber-accent)">$${Math.round(res.dcaFinal).toLocaleString()}</td>
+        <td class="p-2.5" style="color: var(--amber-accent)">${(res.dcaROI * 100).toFixed(2)}%</td>
+        <td class="p-2.5 font-bold" style="color: var(--sage-primary)">$${Math.round(res.lumpFinal).toLocaleString()}</td>
+        <td class="p-2.5" style="color: var(--sage-primary)">${(res.lumpROI * 100).toFixed(2)}%</td>
+        <td class="p-2.5 text-xs" style="color: var(--sage-muted)">
+          配息 ${(t.divRate*100).toFixed(1)}% (滾存${Math.round(t.ratioReinvest*100)}% / 生活${Math.round(t.ratioLiving*100)}% / 還款${Math.round(t.ratioDebt*100)}%)
+        </td>
+      `;
+      tbody.appendChild(tr);
+
+      const baseColor = tickerColors[i % tickerColors.length];
+      const dcaPoints = [t.dcaInit, ...res.dcaData.map(d => d.endVal)];
+      const lumpPoints = [t.lumpInit, ...res.lumpData.map(d => d.endVal)];
+
+      dcaPoints.forEach((val, yr) => mergedDcaPoints[yr] = (mergedDcaPoints[yr] || 0) + val);
+      lumpPoints.forEach((val, yr) => mergedLumpPoints[yr] = (mergedLumpPoints[yr] || 0) + val);
+
+      if (!compoundState.isMergedChartMode) {
+        const dcaKey = `${t.id}_dca`;
+        const lumpKey = `${t.id}_lump`;
+
+        if (compoundState.visibleLines[dcaKey] === undefined) compoundState.visibleLines[dcaKey] = true;
+        if (compoundState.visibleLines[lumpKey] === undefined) compoundState.visibleLines[lumpKey] = true;
+
+        controlsContainer.appendChild(createChartCheckbox(dcaKey, `${t.symbol} - 定期定額 (實線)`, baseColor));
+        controlsContainer.appendChild(createChartCheckbox(lumpKey, `${t.symbol} - 單筆投入 (虛線)`, baseColor));
+
+        if (compoundState.visibleLines[dcaKey]) {
+          chartDatasets.push({
+            label: `${t.symbol} - 定期定額`,
+            data: dcaPoints,
+            borderColor: baseColor,
+            backgroundColor: baseColor,
+            tension: 0.2,
+            fill: false
+          });
+        }
+
+        if (compoundState.visibleLines[lumpKey]) {
+          chartDatasets.push({
+            label: `${t.symbol} - 單筆投入`,
+            data: lumpPoints,
+            borderColor: baseColor,
+            backgroundColor: baseColor,
+            borderDash: [6, 6],
+            tension: 0.2,
+            fill: false
+          });
+        }
+      }
+    });
+
+    if (compoundState.isMergedChartMode) {
+      const mergedDcaKey = 'merged_dca';
+      const mergedLumpKey = 'merged_lump';
+
+      if (compoundState.visibleLines[mergedDcaKey] === undefined) compoundState.visibleLines[mergedDcaKey] = true;
+      if (compoundState.visibleLines[mergedLumpKey] === undefined) compoundState.visibleLines[mergedLumpKey] = true;
+
+      controlsContainer.appendChild(createChartCheckbox(mergedDcaKey, `全標的總和 - 定期定額 (實線)`, '#c86f32'));
+      controlsContainer.appendChild(createChartCheckbox(mergedLumpKey, `全標的總和 - 單筆投入 (虛線)`, '#3b5245'));
+
+      if (compoundState.visibleLines[mergedDcaKey]) {
+        chartDatasets.push({
+          label: `全標的資產總和 - 定期定額`,
+          data: mergedDcaPoints,
+          borderColor: '#c86f32',
+          backgroundColor: '#c86f32',
+          borderWidth: 3,
+          tension: 0.2,
+          fill: false
+        });
+      }
+
+      if (compoundState.visibleLines[mergedLumpKey]) {
+        chartDatasets.push({
+          label: `全標的資產總和 - 單筆投入`,
+          data: mergedLumpPoints,
+          borderColor: '#3b5245',
+          backgroundColor: '#3b5245',
+          borderWidth: 3,
+          borderDash: [6, 6],
+          tension: 0.2,
+          fill: false
+        });
+      }
+    }
+
+    const labels = Array.from({ length: maxYears + 1 }, (_, i) => `第 ${i} 年`);
+    renderChart(labels, chartDatasets);
+  }
+
+  function createChartCheckbox(key, labelText, colorHex) {
+    const wrapper = document.createElement('label');
+    wrapper.className = 'inline-flex items-center gap-1.5 cursor-pointer px-2 py-0.5 rounded hover:bg-white/50 transition';
+    const isChecked = compoundState.visibleLines[key] !== false;
+    wrapper.innerHTML = `
+      <input type="checkbox" ${isChecked ? 'checked' : ''} onchange="toggleChartLine('${key}', this.checked)" class="rounded text-[var(--sage-primary)] focus:ring-0">
+      <span class="w-2.5 h-2.5 inline-block rounded-full" style="background-color: ${colorHex}"></span>
+      <span style="color: var(--text-body)">${labelText}</span>
+    `;
+    return wrapper;
+  }
+
+  function toggleChartLine(key, checked) {
+    compoundState.visibleLines[key] = checked;
+    saveCompoundToLocalStorage();
+    renderOverviewTableAndChart();
+  }
+
+  function toggleMergedChartMode() {
+    compoundState.isMergedChartMode = !compoundState.isMergedChartMode;
+    saveCompoundToLocalStorage();
+    renderOverviewTableAndChart();
+  }
+
+  function setAllChartCheckboxes(status) {
+    Object.keys(compoundState.visibleLines).forEach(k => {
+      compoundState.visibleLines[k] = status;
+    });
+    saveCompoundToLocalStorage();
+    renderOverviewTableAndChart();
+  }
+
+  function renderChart(labels, datasets) {
+    const ctx = document.getElementById('growthChart').getContext('2d');
+    if (chartInstance) chartInstance.destroy();
+
+    chartInstance = new Chart(ctx, {
+      type: 'line',
+      data: { labels: labels, datasets: datasets },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: {
+            position: 'top',
+            labels: { color: '#222e27', font: { size: 11 } }
+          },
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                let label = context.dataset.label || '';
+                if (label) label += ': ';
+                if (context.parsed.y !== null) label += '$' + Math.round(context.parsed.y).toLocaleString();
+                return label;
+              }
+            }
+          }
+        },
+        scales: {
+          x: {
+            grid: { color: 'rgba(211, 204, 192, 0.4)' },
+            ticks: { color: '#5e7568', font: { size: 11 } }
+          },
+          y: {
+            grid: { color: 'rgba(211, 204, 192, 0.4)' },
+            ticks: {
+              color: '#5e7568',
+              font: { size: 11 },
+              callback: value => '$' + (value / 10000).toLocaleString() + '萬'
+            }
+          }
+        }
+      }
+    });
+  }
+
+  function switchCompoundViewTab(tab) {
+    activeCompoundViewTab = tab;
+    document.getElementById('tab-btn-overview').classList.toggle('active', tab === 'overview');
+    document.getElementById('tab-btn-dca').classList.toggle('active', tab === 'dca');
+    document.getElementById('tab-btn-lump').classList.toggle('active', tab === 'lump');
+
+    document.getElementById('view-overview').classList.toggle('hidden', tab !== 'overview');
+    document.getElementById('view-dca').classList.toggle('hidden', tab !== 'dca');
+    document.getElementById('view-lump').classList.toggle('hidden', tab !== 'lump');
+
+    if (tab === 'overview' && chartInstance) {
+      setTimeout(() => chartInstance.resize(), 50);
+    }
+  }
+
+
+  // ========================================================
+  // 全域匯出、匯入與重置控制 (分模組自動判斷)
+  // ========================================================
+  function exportDataCurrentModule() {
+    if (currentActiveModule === 'cashflow') {
+      saveCashflowToLocalStorage();
+      const dataStr = localStorage.getItem(CASHFLOW_STORAGE_KEY);
+      downloadBlob(dataStr, `現金流量試算表備份_${new Date().toISOString().slice(0,10)}.json`);
+    } else {
+      saveCompoundToLocalStorage();
+      const dataStr = localStorage.getItem(COMPOUND_STORAGE_KEY);
+      downloadBlob(dataStr, `複利推估計算機備份_${new Date().toISOString().slice(0,10)}.json`);
+    }
+  }
+
+  function downloadBlob(content, filename) {
+    const blob = new Blob([content], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function importDataCurrentModule(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        const parsed = JSON.parse(e.target.result);
+        if (currentActiveModule === 'cashflow') {
+          localStorage.setItem(CASHFLOW_STORAGE_KEY, JSON.stringify(parsed));
+          loadCashflowFromLocalStorage();
+          initCashflowTargetsUI();
+          calculateCashflowAll();
+          alert('現金流量試算表備份匯入成功！');
+        } else {
+          localStorage.setItem(COMPOUND_STORAGE_KEY, JSON.stringify(parsed));
+          loadCompoundFromLocalStorage();
+          renderTickerTabs();
+          syncCompoundInputFields();
+          calculateAndRenderCompound();
+          alert('複利推估計算機備份匯入成功！');
+        }
+      } catch (err) {
+        alert('檔案格式錯誤，匯入失敗！');
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  function resetCurrentModule() {
+    if (currentActiveModule === 'cashflow') {
+      if (confirm('確定要清空【現金流量收支平衡表】為初始設定嗎？')) {
+        localStorage.removeItem(CASHFLOW_STORAGE_KEY);
+        cashflowTargets = JSON.parse(JSON.stringify(defaultCashflowTargets));
+        document.getElementById('expense-life').value = 0;
+        document.getElementById('expense-ins').value = 0;
+        document.getElementById('expense-loan').value = 0;
+        document.getElementById('expense-pledge').value = 0;
+        document.getElementById('expense-extra').value = 0;
+        document.getElementById('income-active-name').value = '';
+        document.getElementById('income-active').value = 0;
+        document.getElementById('income-other1-name').value = '';
+        document.getElementById('income-other1').value = 0;
+        document.getElementById('income-other2-name').value = '';
+        document.getElementById('income-other2').value = 0;
+        initCashflowTargetsUI();
+        calculateCashflowAll();
+      }
+    } else {
+      if (confirm('確定要清空【複利推估計算機】並還原為初始設定嗎？')) {
+        localStorage.removeItem(COMPOUND_STORAGE_KEY);
+        const defaultTicker = createDefaultTickerData('009816');
+        compoundState = {
+          activeTickerId: defaultTicker.id,
+          tickers: [defaultTicker],
+          visibleLines: {},
+          isMergedChartMode: false
+        };
+        saveCompoundToLocalStorage();
+        renderTickerTabs();
+        syncCompoundInputFields();
+        calculateAndRenderCompound();
+      }
+    }
+  }
+
+  // --- 頁面初始化 ---
+  window.onload = function() {
+    loadCashflowFromLocalStorage();
+    initCashflowTargetsUI();
+    calculateCashflowAll();
+
+    loadCompoundFromLocalStorage();
+    renderTickerTabs();
+    syncCompoundInputFields();
+    calculateAndRenderCompound();
+  };
+</script>
+
+</body>
+</html>
