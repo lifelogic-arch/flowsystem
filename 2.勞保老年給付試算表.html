@@ -1,0 +1,1312 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SYS_02 勞保老年給付（一次請領 vs 老年年金月領）通用試算表 - 生活型態財務邏輯</title>
+
+    <!-- 🌐 網頁圖示與社群卡片設定 -->
+    <link rel="icon" href="favicon.png" type="image/png">
+    <link rel="apple-touch-icon" href="favicon.png">
+
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google 字體：Inter、Noto Serif TC、Space Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Serif+TC:wght@500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <!-- Chart.js 視覺化圖表庫 -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        :root {
+            --bg-canvas: #dfe5e1;       /* 啞光鼠尾草灰綠 */
+            --card-surface: #faf8f5;    /* 溫和手帳奶白 */
+            --header-deep: #222e27;     /* 結構深墨黑綠 */
+            --sage-primary: #3b5245;    /* 架構墨綠 */
+            --sage-muted: #5e7568;      /* 說明文字灰綠 */
+            --amber-accent: #c86f32;    /* 琥珀焦糖亮點色 */
+            --amber-bg: #fcf3eb;        /* 琥珀淡底 */
+            --border-soft: #d3ccc0;     /* 沉著細邊框 */
+            --input-bg: #e9edea;        /* 低反光輸入底 */
+            --text-title: #222e27;      /* 標題深墨黑 */
+            --text-body: #3c4b42;       /* 內文墨黑 */
+            --highlight-yellow: #f7efe4;/* 淺焙焦糖唯讀底 */
+            --crossover-bg: #eef3ef;    /* 黃金交叉淡綠列 */
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang TC", "Microsoft JhengHei", sans-serif;
+            background-color: var(--bg-canvas);
+            color: var(--text-body);
+            margin: 0;
+            padding: 0 0 40px 0;
+            background-image: 
+                linear-gradient(rgba(70, 95, 80, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(70, 95, 80, 0.05) 1px, transparent 1px);
+            background-size: 32px 32px;
+        }
+
+        .mono {
+            font-family: 'Space Mono', monospace;
+        }
+
+        /* 統一頂部導覽 Header */
+        .blueprint-header {
+            background-color: var(--header-deep);
+            color: #ffffff;
+            box-shadow: 0 4px 16px rgba(34, 46, 39, 0.15);
+            border-bottom: 1px solid #3c4a40;
+            position: sticky;
+            top: 0;
+            z-index: 40;
+            padding: 12px 20px;
+        }
+
+        .header-inner {
+            max-width: 1440px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .back-home {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 12px;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #d1ded6;
+            text-decoration: none;
+            font-size: 12px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+        .back-home:hover {
+            background: rgba(255, 255, 255, 0.18);
+            color: #ffffff;
+        }
+
+        .sys-badge {
+            font-family: 'Space Mono', monospace;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 3px 8px;
+            border-radius: 4px;
+            background: rgba(200, 111, 50, 0.2);
+            color: var(--amber-accent);
+            border: 1px solid rgba(200, 111, 50, 0.4);
+            letter-spacing: 1px;
+        }
+
+        .header-title-text {
+            font-size: 18px;
+            font-weight: 700;
+            margin: 0;
+            letter-spacing: 0.5px;
+            color: #ffffff;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .btn-action {
+            background: rgba(255, 255, 255, 0.08);
+            color: #e5ede8;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            text-decoration: none;
+        }
+
+        .btn-action:hover {
+            background: #ffffff;
+            color: var(--header-deep);
+            border-color: #ffffff;
+        }
+
+        .btn-danger {
+            background: rgba(184, 51, 74, 0.25);
+            border-color: rgba(184, 51, 74, 0.4);
+            color: #fca5a5;
+        }
+        .btn-danger:hover {
+            background: #b8334a;
+            color: #ffffff;
+            border-color: #b8334a;
+        }
+
+        /* 主容器 */
+        .container {
+            width: 100%;
+            max-width: 1440px;
+            margin: 20px auto 0;
+            padding: 0 16px;
+        }
+
+        .card-wrapper {
+            background: var(--card-surface);
+            border-radius: 8px;
+            box-shadow: 0 4px 16px rgba(34, 46, 39, 0.04);
+            border: 1px solid var(--border-soft);
+            overflow: hidden;
+            margin-bottom: 24px;
+        }
+
+        /* 視覺圖表卡片區塊樣式 */
+        .chart-section {
+            padding: 20px;
+            border-bottom: 1px solid var(--border-soft);
+        }
+
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .chart-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--text-title);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 0;
+        }
+
+        .tab-btn-group {
+            display: flex;
+            background: var(--input-bg);
+            padding: 3px;
+            border-radius: 6px;
+            border: 1px solid var(--border-soft);
+            gap: 2px;
+        }
+
+        .tab-btn {
+            background: transparent;
+            border: none;
+            padding: 6px 14px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--sage-muted);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .tab-btn.active {
+            background: var(--sage-primary);
+            color: #ffffff;
+            box-shadow: 0 2px 6px rgba(59, 82, 69, 0.2);
+        }
+
+        .chart-container-box {
+            position: relative;
+            height: 380px;
+            width: 100%;
+        }
+
+        .table-responsive {
+            padding: 20px;
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            min-width: 1260px;
+            border-collapse: separate;
+            border-spacing: 0;
+            border-radius: 6px;
+            overflow: hidden;
+            border: 1px solid var(--border-soft);
+            table-layout: fixed;
+            background: var(--card-surface);
+        }
+
+        th, td {
+            padding: 8px 4px;
+            text-align: center;
+            font-size: 12.5px;
+            border-right: 1px solid var(--border-soft);
+            border-bottom: 1px solid var(--border-soft);
+            vertical-align: middle;
+        }
+
+        .nowrap-cell {
+            white-space: nowrap !important;
+            word-break: keep-all !important;
+        }
+
+        th:last-child, td:last-child {
+            border-right: none;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        .section-header {
+            background-color: var(--header-deep);
+            color: #ffffff;
+            font-weight: 700;
+            font-size: 13.5px;
+            letter-spacing: 0.5px;
+            padding: 10px 4px;
+            white-space: nowrap;
+        }
+
+        .sub-header {
+            background-color: var(--sage-primary);
+            color: #ffffff;
+            font-weight: 600;
+            font-size: 12px;
+            letter-spacing: 0.3px;
+            padding: 8px 4px;
+        }
+
+        .label-cell {
+            background-color: #f2eee8;
+            font-weight: 600;
+            color: var(--text-title);
+            line-height: 1.3;
+            padding: 6px 4px;
+            font-size: 12px;
+        }
+
+        .input-cell {
+            background-color: var(--input-bg) !important;
+            padding: 3px;
+        }
+
+        .input-cell input, .input-cell select {
+            width: 95%;
+            height: 28px;
+            border: 1px solid #c2cdc6;
+            border-radius: 4px;
+            background-color: #ffffff;
+            text-align: center;
+            font-size: 12.5px;
+            font-weight: 700;
+            color: var(--text-title);
+            outline: none;
+            box-sizing: border-box;
+            font-family: 'Space Mono', monospace;
+            transition: all 0.2s ease;
+        }
+
+        .input-cell input:focus, .input-cell select:focus {
+            border-color: var(--amber-accent);
+            box-shadow: 0 0 0 2px rgba(200, 111, 50, 0.2);
+            background-color: #ffffff;
+        }
+
+        .highlight-yellow {
+            background-color: var(--highlight-yellow) !important;
+            font-weight: 700;
+            color: #8c4e20;
+            font-family: 'Space Mono', monospace;
+            white-space: nowrap;
+        }
+
+        .text-red {
+            color: #b8334a;
+            font-weight: 700;
+            font-family: 'Space Mono', monospace;
+            white-space: nowrap;
+        }
+
+        .val-text {
+            font-weight: 600;
+            color: var(--text-title);
+            font-family: 'Space Mono', monospace;
+            white-space: nowrap;
+        }
+
+        .hint-text {
+            font-size: 10.5px;
+            color: #b8334a;
+            display: block;
+            margin-top: 2px;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            white-space: nowrap;
+        }
+
+        .empty-cell {
+            background-color: var(--card-surface);
+        }
+
+        .border-navy-right {
+            border-right: 2px solid var(--header-deep) !important;
+        }
+
+        .crossover-row {
+            background-color: var(--crossover-bg) !important;
+        }
+
+        .crossover-badge {
+            background: var(--amber-accent);
+            color: #ffffff;
+            font-size: 11px;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-weight: 700;
+            display: inline-block;
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+        }
+
+        .status-win-month {
+            color: var(--sage-primary);
+            font-weight: 700;
+            font-size: 11.5px;
+            font-family: 'Space Mono', monospace;
+            white-space: nowrap;
+        }
+
+        .status-win-invest {
+            color: var(--amber-accent);
+            font-weight: 600;
+            font-size: 11.5px;
+            font-family: 'Space Mono', monospace;
+            white-space: nowrap;
+        }
+
+        .footer-action-area {
+            padding: 0 20px 20px 20px;
+        }
+
+        .info-note {
+            font-size: 12.5px;
+            color: var(--sage-muted);
+            line-height: 1.6;
+            background-color: #f2eee8;
+            padding: 12px 16px;
+            border-radius: 6px;
+            border-left: 4px solid var(--sage-primary);
+            width: 100%;
+            box-sizing: border-box;
+            border: 1px solid var(--border-soft);
+            border-left-width: 4px;
+        }
+
+        .info-note a {
+            color: var(--amber-accent);
+            text-decoration: underline;
+            font-weight: 600;
+        }
+
+        @media print {
+            body {
+                padding: 0;
+                background-color: #ffffff !important;
+                background-image: none !important;
+                color: #000000 !important;
+            }
+            .container {
+                box-shadow: none !important;
+                border: none !important;
+                width: 100% !important;
+                max-width: none !important;
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+            .card-wrapper {
+                box-shadow: none !important;
+                border: none !important;
+                page-break-inside: avoid;
+            }
+            .blueprint-header, .tab-btn-group {
+                display: none !important;
+            }
+            .table-responsive {
+                padding: 0 !important;
+                overflow-x: visible !important;
+            }
+            table {
+                min-width: 100% !important;
+            }
+            .chart-container-box {
+                height: 300px !important;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<!-- 統一頂部導覽列 -->
+<header class="blueprint-header">
+    <div class="header-inner">
+        <div class="header-left">
+            <a href="index.html#modules-overview" class="back-home">
+                <span class="mono">←</span> 返回上一頁
+            </a>
+            <a href="index.html#hero-cover" class="back-home">
+                <i class="fa-solid fa-house text-xs"></i> 封面
+            </a>
+            <span style="color:#5e7568;" class="mono text-xs">/</span>
+            <span class="sys-badge">SYS_01</span>
+            <h1 class="header-title-text">勞保老年給付（一次請領 vs 老年年金月領）通用試算系統</h1>
+        </div>
+        <div class="header-actions">
+            <button type="button" class="btn-action" onclick="exportData()">
+                <i class="fa-solid fa-file-export text-emerald-400"></i> 匯出.LABOR備份
+            </button>
+            <button type="button" class="btn-action" onclick="document.getElementById('importFileInput').click()">
+                <i class="fa-solid fa-file-import text-amber-400"></i> 匯入.LABOR備份
+            </button>
+            <button type="button" class="btn-action" onclick="window.print()">
+                <i class="fa-solid fa-print text-indigo-300"></i> 列印評估報告 (PDF)
+            </button>
+            <button type="button" class="btn-action btn-danger" onclick="resetForm(event)">
+                <i class="fa-solid fa-arrow-rotate-left"></i> 清空重來
+            </button>
+            <input type="file" id="importFileInput" style="display: none;" accept=".json,.labor,.txt" onchange="importData(event)">
+        </div>
+    </div>
+</header>
+
+<div class="container">
+    <div class="card-wrapper">
+
+        <!-- 整合 3 種視覺化方案之圖表切換區塊 -->
+        <div class="chart-section">
+            <div class="chart-header">
+                <h2 class="chart-title" id="currentChartTitle">
+                    <i class="fa-solid fa-chart-line" style="color: var(--amber-accent);"></i>
+                    <span>資產累積走勢與黃金交叉評估（30年動態模擬）</span>
+                </h2>
+                <div class="tab-btn-group">
+                    <button type="button" class="tab-btn active" id="btnTab1" onclick="switchChartView(1)">
+                        <i class="fa-solid fa-chart-line"></i> 方案一：黃金交叉走勢
+                    </button>
+                    <button type="button" class="tab-btn" id="btnTab2" onclick="switchChartView(2)">
+                        <i class="fa-solid fa-chart-column"></i> 方案二：年度現金流對照
+                    </button>
+                    <button type="button" class="tab-btn" id="btnTab3" onclick="switchChartView(3)">
+                        <i class="fa-solid fa-layer-group"></i> 方案三：重要年齡里程碑
+                    </button>
+                </div>
+            </div>
+            <div class="chart-container-box">
+                <canvas id="comparisonChart"></canvas>
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table>
+                <colgroup>
+                    <col style="width: 5.5%;"> <!-- 年度 (第 1 年) -->
+                    <col style="width: 5.0%;"> <!-- 年齡 (60 歲) -->
+                    <col style="width: 6.0%;"> <!-- 西元 -->
+                    <col style="width: 5.5%;"> <!-- 民國 -->
+                    <col style="width: 11.5%;"> <!-- 月領 A 累計 -->
+                    <col style="width: 11.5%;"> <!-- 月領 B 累計 -->
+                    <col style="width: 11.5%;"> <!-- 投資期初本金 -->
+                    <col style="width: 9.0%;">  <!-- 投資收益 -->
+                    <col style="width: 9.0%;">  <!-- 再投入額 -->
+                    <col style="width: 11.5%;"> <!-- 期末總資產(本利和) -->
+                    <col style="width: 14.0%;"> <!-- 損益交叉評估 -->
+                </colgroup>
+                <thead>
+                    <tr class="section-header">
+                        <th colspan="4">A. 基本參數與輸入項</th>
+                        <th colspan="2">B. 一次請領給付試算</th>
+                        <th colspan="2">C. 老年年金（月領）試算</th>
+                        <th colspan="3">D. 損益兩平決策分析</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td colspan="3" class="label-cell">最高60個月平均月薪 (元)</td>
+                        <td class="input-cell">
+                            <input type="number" id="avgSalary60" placeholder="例:45800" oninput="calculate()">
+                            <span id="hintCap60" class="hint-text" style="display: none;">上限45,800</span>
+                        </td>
+                        <td class="label-cell">60歲前採計基數</td>
+                        <td class="val-text nowrap-cell" id="baseUnitsUnder60">0.0 基數</td>
+                        <td class="label-cell">提前／展延年數</td>
+                        <td class="text-red nowrap-cell" id="yearsDiff">0.0 年</td>
+                        <td class="label-cell">單純月領回本 (保本期)</td>
+                        <td colspan="2" class="val-text nowrap-cell" id="paybackSummary">0.00 年 (0.00 個月)</td>
+                    </tr>
+                    <tr>
+                        <td colspan="3" class="label-cell">退保前36個月平均月薪 (元)</td>
+                        <td class="input-cell">
+                            <input type="number" id="avgSalary36" placeholder="例:45800" oninput="calculate()">
+                            <span id="hintCap36" class="hint-text" style="display: none;">上限45,800</span>
+                        </td>
+                        <td class="label-cell">總採計基數 (上限50)</td>
+                        <td class="val-text nowrap-cell" id="totalBaseUnits">0.0 基數</td>
+                        <td class="label-cell">展延／減給比例</td>
+                        <td class="text-red nowrap-cell" id="adjustRate">0.00%</td>
+                        <td class="label-cell">投資勝負交叉點</td>
+                        <td colspan="2" class="highlight-yellow nowrap-cell" id="crossoverSummary">試算中...</td>
+                    </tr>
+                    <tr>
+                        <td colspan="3" class="label-cell">勞保投保總年資 (年)</td>
+                        <td class="input-cell">
+                            <input type="number" id="laborYears" placeholder="例:25" step="0.5" oninput="calculate()">
+                        </td>
+                        <td class="label-cell">一次請領總金額</td>
+                        <td class="highlight-yellow nowrap-cell" id="lumpSumAmount">0 元</td>
+                        <td class="label-cell">月領 A 式金額</td>
+                        <td class="val-text nowrap-cell" id="monthlyA">0 元</td>
+                        <td colspan="3" class="empty-cell nowrap-cell" id="qualificationNote"></td>
+                    </tr>
+                    <tr>
+                        <td colspan="3" class="label-cell">預計請領年齡 (歲)</td>
+                        <td class="input-cell">
+                            <input type="number" id="retireAge" placeholder="例:60" oninput="calculate()">
+                        </td>
+                        <td colspan="2" class="empty-cell"></td>
+                        <td class="label-cell">月領 B 式金額</td>
+                        <td class="highlight-yellow nowrap-cell" id="monthlyB">0 元</td>
+                        <td colspan="3" class="empty-cell"></td>
+                    </tr>
+                    <tr>
+                        <td colspan="3" class="label-cell">法定退休年齡 (歲)</td>
+                        <td class="input-cell">
+                            <select id="legalAge" onchange="calculate()">
+                                <option value="65" selected>65 歲 (51年次後)</option>
+                                <option value="64">64 歲 (50年次)</option>
+                                <option value="63">63 歲 (49年次)</option>
+                                <option value="62">62 歲 (48年次)</option>
+                                <option value="61">61 歲 (47年次)</option>
+                                <option value="60">60 歲 (46年次前)</option>
+                            </select>
+                        </td>
+                        <td colspan="2" class="empty-cell"></td>
+                        <td class="label-cell">最佳月領金額 (擇優)</td>
+                        <td class="val-text nowrap-cell" id="bestMonthly" style="color: var(--sage-primary); font-size: 13.5px; font-weight:700;">0 元</td>
+                        <td colspan="3" class="empty-cell"></td>
+                    </tr>
+
+                    <tr class="sub-header">
+                        <td rowspan="2">年度</td>
+                        <td rowspan="2">年齡</td>
+                        <td rowspan="2">西元</td>
+                        <td rowspan="2" class="border-navy-right">民國</td>
+                        <td rowspan="2">月領 A式<br>累計金額</td>
+                        <td rowspan="2" class="border-navy-right">月領 B式<br>累計金額</td>
+                        <td colspan="4">一次請領投資試算模型</td>
+                        <td rowspan="2">效益評估／領先狀態<br>(月領累計 vs 投資總額)</td>
+                    </tr>
+                    <tr class="sub-header">
+                        <td>投入本金比例</td>
+                        <td>預估殖利率</td>
+                        <td>收益再投入比</td>
+                        <td>期末總資產(本利和)</td>
+                    </tr>
+
+                    <tr>
+                        <td colspan="6" class="empty-cell border-navy-right" style="font-size: 11px; color:var(--sage-muted); padding-left: 10px; text-align: left;">
+                            ※ 提示：請在下方首列填寫開始西元或民國年，系統將自動同步並遞增推算30年。
+                        </td>
+                        <td class="input-cell nowrap-cell">
+                            <input type="number" id="principalRatio" placeholder="100" step="1" oninput="calculate()"> %
+                        </td>
+                        <td class="input-cell nowrap-cell">
+                            <input type="number" id="targetYield" placeholder="5" step="0.1" oninput="calculate()"> %
+                        </td>
+                        <td class="input-cell nowrap-cell">
+                            <input type="number" id="reinvestRatio" placeholder="100" step="1" oninput="calculate()"> %
+                        </td>
+                        <td colspan="2" class="empty-cell"></td>
+                    </tr>
+
+                    <tbody id="tableBody"></tbody>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="footer-action-area">
+            <div class="info-note">
+                💡 <strong>法規與試算說明：</strong><br>
+                1. <strong>年資條件：</strong> 勞保年資滿 15 年以上者，方可請領老年年金（月領）；未滿 15 年者僅得請領老年一次金。<br>
+                2. <strong>最高投保薪資：</strong> 目前勞保投保薪資上限級距為 45,800 元。月領老年年金採計「加保期間最高 60 個月」平均；一次請領採計「退保前 36 個月」平均。<br>
+                3. 詳細請領規定請參閱勞動部勞工保險局官方網站：<a href="https://www.bli.gov.tw/0006007.html" target="_blank" rel="noopener noreferrer">勞工保險局老年給付專區</a>。
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const STORAGE_KEY = "labor_oldage_pension_calc_data_v2_0";
+
+    // 圖表全域變數與切換狀態 (1: 黃金交叉走勢, 2: 年度現金流, 3: 重要年齡里程碑)
+    let myChart = null;
+    let currentViewMode = 1;
+
+    // 快取計算資料給圖表共用
+    let calculatedChartData = {
+        labels: [],
+        ages: [],
+        monthlySums: [],
+        investBalances: [],
+        annualMonthlyCashflows: [],
+        annualYields: [],
+        milestones: {
+            labels: [],
+            monthlySums: [],
+            initialPrincipals: [],
+            accumulatedGains: []
+        }
+    };
+
+    // 初始化動態 30 年表格結構
+    function initTableStructure() {
+        const tableBody = document.getElementById('tableBody');
+        tableBody.innerHTML = '';
+
+        for (let i = 0; i < 30; i++) {
+            const index = i + 1;
+            const row = document.createElement('tr');
+            row.setAttribute('id', `row-${i}`);
+
+            if (i === 0) {
+                row.innerHTML = `
+                    <td id="idx-${i}" class="mono nowrap-cell">第 ${index} 年</td>
+                    <td class="val-text nowrap-cell" id="age-${i}"></td>
+                    <td class="input-cell"><input type="number" id="startAD" placeholder="例:2026" oninput="handleYearSync('AD')"></td>
+                    <td class="input-cell border-navy-right"><input type="number" id="startROC" placeholder="例:115" oninput="handleYearSync('ROC')"></td>
+                    <td id="sumA-${i}" class="mono nowrap-cell"></td>
+                    <td class="border-navy-right mono nowrap-cell" id="sumB-${i}"></td>
+                    <td id="pInput-${i}" class="mono nowrap-cell"></td>
+                    <td id="yield-${i}" class="mono nowrap-cell"></td>
+                    <td id="reinvest-${i}" class="mono nowrap-cell"></td>
+                    <td class="val-text nowrap-cell" id="endBalance-${i}" style="font-weight:700;"></td>
+                    <td id="status-${i}" class="nowrap-cell"></td>
+                `;
+            } else {
+                row.innerHTML = `
+                    <td id="idx-${i}" class="mono nowrap-cell">第 ${index} 年</td>
+                    <td class="val-text nowrap-cell" id="age-${i}"></td>
+                    <td class="val-text nowrap-cell" id="ad-${i}"></td>
+                    <td class="val-text border-navy-right nowrap-cell" id="roc-${i}"></td>
+                    <td id="sumA-${i}" class="mono nowrap-cell"></td>
+                    <td class="border-navy-right mono nowrap-cell" id="sumB-${i}"></td>
+                    <td id="pInput-${i}" class="mono nowrap-cell"></td>
+                    <td id="yield-${i}" class="mono nowrap-cell"></td>
+                    <td id="reinvest-${i}" class="mono nowrap-cell"></td>
+                    <td class="val-text nowrap-cell" id="endBalance-${i}" style="font-weight:700;"></td>
+                    <td id="status-${i}" class="nowrap-cell"></td>
+                `;
+            }
+            tableBody.appendChild(row);
+        }
+    }
+
+    // 格式化千分位數字
+    function formatNumber(num) {
+        return Math.round(num).toLocaleString('zh-TW');
+    }
+
+    // 西元與民國即時雙向聯動機制
+    function handleYearSync(type) {
+        const adInput = document.getElementById('startAD');
+        const rocInput = document.getElementById('startROC');
+        if (!adInput || !rocInput) return;
+
+        if (type === 'AD') {
+            const ad = parseInt(adInput.value);
+            if (!isNaN(ad) && ad > 1911) {
+                rocInput.value = ad - 1911;
+            } else if (adInput.value === '') {
+                rocInput.value = '';
+            }
+        } else if (type === 'ROC') {
+            const roc = parseInt(rocInput.value);
+            if (!isNaN(roc)) {
+                adInput.value = roc + 1911;
+            } else if (rocInput.value === '') {
+                adInput.value = '';
+            }
+        }
+        calculate();
+    }
+
+    // LocalStorage 存取機制
+    function saveToLocalStorage() {
+        const formData = {
+            avgSalary60: document.getElementById('avgSalary60').value,
+            avgSalary36: document.getElementById('avgSalary36').value,
+            laborYears: document.getElementById('laborYears').value,
+            retireAge: document.getElementById('retireAge').value,
+            legalAge: document.getElementById('legalAge').value,
+            principalRatio: document.getElementById('principalRatio').value,
+            targetYield: document.getElementById('targetYield').value,
+            reinvestRatio: document.getElementById('reinvestRatio').value,
+            startAD: document.getElementById('startAD') ? document.getElementById('startAD').value : '',
+            startROC: document.getElementById('startROC') ? document.getElementById('startROC').value : ''
+        };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(formData));
+    }
+
+    function loadFromLocalStorage() {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (!saved) return false;
+
+        try {
+            const data = JSON.parse(saved);
+            if (data.avgSalary60 !== undefined) document.getElementById('avgSalary60').value = data.avgSalary60;
+            if (data.avgSalary36 !== undefined) document.getElementById('avgSalary36').value = data.avgSalary36;
+            if (data.laborYears !== undefined) document.getElementById('laborYears').value = data.laborYears;
+            if (data.retireAge !== undefined) document.getElementById('retireAge').value = data.retireAge;
+            if (data.legalAge !== undefined) document.getElementById('legalAge').value = data.legalAge;
+            if (data.principalRatio !== undefined) document.getElementById('principalRatio').value = data.principalRatio;
+            if (data.targetYield !== undefined) document.getElementById('targetYield').value = data.targetYield;
+            if (data.reinvestRatio !== undefined) document.getElementById('reinvestRatio').value = data.reinvestRatio;
+            if (data.startAD !== undefined && document.getElementById('startAD')) document.getElementById('startAD').value = data.startAD;
+            if (data.startROC !== undefined && document.getElementById('startROC')) document.getElementById('startROC').value = data.startROC;
+            return true;
+        } catch (e) {
+            console.error("載入 LocalStorage 失敗", e);
+        }
+        return false;
+    }
+
+    // 重設表單與清空快取
+    function resetForm(event) {
+        if (event && event.preventDefault) event.preventDefault();
+
+        if (confirm("確定要清空所有試算與輸入紀錄嗎？此操作無法復原。")) {
+            localStorage.removeItem(STORAGE_KEY);
+            const inputs = document.querySelectorAll('input');
+            inputs.forEach(input => {
+                if (input.type !== 'file') input.value = '';
+            });
+            document.getElementById('legalAge').value = '65';
+            calculate();
+            alert("已成功清空表單。");
+        }
+    }
+
+    // 匯出 JSON 備份檔
+    function exportData() {
+        const formData = {
+            avgSalary60: document.getElementById('avgSalary60').value,
+            avgSalary36: document.getElementById('avgSalary36').value,
+            laborYears: document.getElementById('laborYears').value,
+            retireAge: document.getElementById('retireAge').value,
+            legalAge: document.getElementById('legalAge').value,
+            principalRatio: document.getElementById('principalRatio').value,
+            targetYield: document.getElementById('targetYield').value,
+            reinvestRatio: document.getElementById('reinvestRatio').value,
+            startAD: document.getElementById('startAD') ? document.getElementById('startAD').value : '',
+            startROC: document.getElementById('startROC') ? document.getElementById('startROC').value : ''
+        };
+
+        const jsonStr = JSON.stringify(formData, null, 2);
+        const blob = new Blob([jsonStr], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const now = new Date();
+        const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `SYS02_勞保給付試算_${dateStr}.labor`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+
+    // 匯入 JSON 備份檔
+    function importData(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const data = JSON.parse(e.target.result);
+                if (data.avgSalary60 !== undefined) document.getElementById('avgSalary60').value = data.avgSalary60;
+                if (data.avgSalary36 !== undefined) document.getElementById('avgSalary36').value = data.avgSalary36;
+                if (data.laborYears !== undefined) document.getElementById('laborYears').value = data.laborYears;
+                if (data.retireAge !== undefined) document.getElementById('retireAge').value = data.retireAge;
+                if (data.legalAge !== undefined) document.getElementById('legalAge').value = data.legalAge;
+                if (data.principalRatio !== undefined) document.getElementById('principalRatio').value = data.principalRatio;
+                if (data.targetYield !== undefined) document.getElementById('targetYield').value = data.targetYield;
+                if (data.reinvestRatio !== undefined) document.getElementById('reinvestRatio').value = data.reinvestRatio;
+                if (data.startAD !== undefined && document.getElementById('startAD')) document.getElementById('startAD').value = data.startAD;
+                if (data.startROC !== undefined && document.getElementById('startROC')) document.getElementById('startROC').value = data.startROC;
+
+                calculate();
+                saveToLocalStorage();
+                alert('資料成功匯入！');
+            } catch (err) {
+                alert('匯入檔案格式不正確！');
+            }
+        };
+        reader.readAsText(file);
+        event.target.value = '';
+    }
+
+    // 切換圖表視角模式
+    function switchChartView(mode) {
+        currentViewMode = mode;
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        document.getElementById(`btnTab${mode}`).classList.add('active');
+
+        const titleEl = document.getElementById('currentChartTitle');
+        if (mode === 1) {
+            titleEl.innerHTML = `<i class="fa-solid fa-chart-line" style="color: var(--amber-accent);"></i> <span>方案一：資產累積走勢與黃金交叉評估（30年動態模擬）</span>`;
+        } else if (mode === 2) {
+            titleEl.innerHTML = `<i class="fa-solid fa-chart-column" style="color: var(--amber-accent);"></i> <span>方案二：年度實質被動收益／年金現金流對照（生活費動能）</span>`;
+        } else if (mode === 3) {
+            titleEl.innerHTML = `<i class="fa-solid fa-layer-group" style="color: var(--amber-accent);"></i> <span>方案三：關鍵年齡節點累積資產里程碑（本金與獲利結構）</span>`;
+        }
+        renderChart();
+    }
+
+    // 渲染圖表核心邏輯
+    function renderChart() {
+        const ctx = document.getElementById('comparisonChart').getContext('2d');
+        if (myChart) {
+            myChart.destroy();
+        }
+
+        const commonTooltip = {
+            backgroundColor: '#222e27',
+            titleFont: { family: 'Space Mono', size: 12 },
+            bodyFont: { family: 'Space Mono', size: 12 },
+            padding: 10,
+            callbacks: {
+                label: function(context) {
+                    let label = context.dataset.label || '';
+                    if (label) label += ': ';
+                    if (context.parsed.y !== null) {
+                        label += Math.round(context.parsed.y).toLocaleString('zh-TW') + ' 元';
+                    }
+                    return label;
+                }
+            }
+        };
+
+        if (currentViewMode === 1) {
+            // 方案一：黃金交叉折線圖
+            myChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: calculatedChartData.labels,
+                    datasets: [
+                        {
+                            label: '月領老年年金（累計總領）',
+                            data: calculatedChartData.monthlySums,
+                            borderColor: '#3b5245',
+                            backgroundColor: 'rgba(59, 82, 69, 0.12)',
+                            borderWidth: 2.5,
+                            fill: true,
+                            tension: 0.25,
+                            pointRadius: 2,
+                            pointHoverRadius: 6
+                        },
+                        {
+                            label: '一次請領（本利和滾存）',
+                            data: calculatedChartData.investBalances,
+                            borderColor: '#c86f32',
+                            backgroundColor: 'rgba(200, 111, 50, 0.08)',
+                            borderWidth: 2.5,
+                            fill: true,
+                            tension: 0.25,
+                            pointRadius: 2,
+                            pointHoverRadius: 6
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'top', labels: { font: { family: 'Inter', weight: 600 } } },
+                        tooltip: commonTooltip
+                    },
+                    scales: {
+                        x: { grid: { color: 'rgba(211, 204, 192, 0.4)' } },
+                        y: {
+                            grid: { color: 'rgba(211, 204, 192, 0.4)' },
+                            ticks: {
+                                callback: val => (val / 10000).toLocaleString() + '萬',
+                                font: { family: 'Space Mono' }
+                            }
+                        }
+                    }
+                }
+            });
+        } else if (currentViewMode === 2) {
+            // 方案二：年度現金流混合圖
+            myChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: calculatedChartData.labels,
+                    datasets: [
+                        {
+                            type: 'bar',
+                            label: '年度年金領取額 (月領x12)',
+                            data: calculatedChartData.annualMonthlyCashflows,
+                            backgroundColor: 'rgba(59, 82, 69, 0.85)',
+                            borderColor: '#3b5245',
+                            borderRadius: 4,
+                            order: 2
+                        },
+                        {
+                            type: 'bar',
+                            label: '年度一次請領投資收益',
+                            data: calculatedChartData.annualYields,
+                            backgroundColor: 'rgba(200, 111, 50, 0.85)',
+                            borderColor: '#c86f32',
+                            borderRadius: 4,
+                            order: 3
+                        },
+                        {
+                            type: 'line',
+                            label: '期末總資產折線 (右軸)',
+                            data: calculatedChartData.investBalances,
+                            borderColor: '#8c4e20',
+                            borderWidth: 2,
+                            borderDash: [4, 4],
+                            yAxisID: 'y1',
+                            fill: false,
+                            tension: 0.3,
+                            pointRadius: 2,
+                            order: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'top', labels: { font: { family: 'Inter', weight: 600 } } },
+                        tooltip: commonTooltip
+                    },
+                    scales: {
+                        x: { grid: { color: 'rgba(211, 204, 192, 0.4)' } },
+                        y: {
+                            title: { display: true, text: '年度現金流量 (元)', font: { size: 11, weight: 600 } },
+                            grid: { color: 'rgba(211, 204, 192, 0.4)' },
+                            ticks: { callback: val => (val / 10000).toLocaleString() + '萬', font: { family: 'Space Mono' } }
+                        },
+                        y1: {
+                            position: 'right',
+                            title: { display: true, text: '總資產額 (元)', font: { size: 11, weight: 600 } },
+                            grid: { drawOnChartArea: false },
+                            ticks: { callback: val => (val / 10000).toLocaleString() + '萬', font: { family: 'Space Mono' } }
+                        }
+                    }
+                }
+            });
+        } else if (currentViewMode === 3) {
+            // 方案三：重要年齡里程碑堆疊長條圖
+            myChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: calculatedChartData.milestones.labels,
+                    datasets: [
+                        {
+                            label: '月領年金累積總額',
+                            data: calculatedChartData.milestones.monthlySums,
+                            backgroundColor: '#3b5245',
+                            stack: 'Monthly',
+                            borderRadius: 4
+                        },
+                        {
+                            label: '一次請領投入本金',
+                            data: calculatedChartData.milestones.initialPrincipals,
+                            backgroundColor: '#c86f32',
+                            stack: 'Invest',
+                            borderRadius: 4
+                        },
+                        {
+                            label: '投資累計累積收益',
+                            data: calculatedChartData.milestones.accumulatedGains,
+                            backgroundColor: '#f3b586',
+                            stack: 'Invest',
+                            borderRadius: 4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'top', labels: { font: { family: 'Inter', weight: 600 } } },
+                        tooltip: commonTooltip
+                    },
+                    scales: {
+                        x: { grid: { color: 'rgba(211, 204, 192, 0.4)' } },
+                        y: {
+                            stacked: true,
+                            grid: { color: 'rgba(211, 204, 192, 0.4)' },
+                            ticks: { callback: val => (val / 10000).toLocaleString() + '萬', font: { family: 'Space Mono' } }
+                        }
+                    }
+                }
+            });
+        }
+    }
+
+    // 核心計算引擎
+    function calculate() {
+        const avg60 = parseFloat(document.getElementById('avgSalary60').value) || 0;
+        const avg36 = parseFloat(document.getElementById('avgSalary36').value) || 0;
+        const years = parseFloat(document.getElementById('laborYears').value) || 0;
+        const retireAge = parseFloat(document.getElementById('retireAge').value) || 0;
+        const legalAge = parseFloat(document.getElementById('legalAge').value) || 65;
+
+        // 投保薪資上限警示（45,800 元）
+        document.getElementById('hintCap60').style.display = avg60 > 45800 ? 'block' : 'none';
+        document.getElementById('hintCap36').style.display = avg36 > 45800 ? 'block' : 'none';
+
+        // 參數與比例
+        const principalRatioVal = document.getElementById('principalRatio').value;
+        const principalRatio = (principalRatioVal !== "" ? parseFloat(principalRatioVal) : 100) / 100;
+
+        const targetYieldVal = document.getElementById('targetYield').value;
+        const targetYield = (targetYieldVal !== "" ? parseFloat(targetYieldVal) : 0) / 100;
+
+        const reinvestRatioVal = document.getElementById('reinvestRatio').value;
+        const reinvestRatio = (reinvestRatioVal !== "" ? parseFloat(reinvestRatioVal) : 100) / 100;
+
+        // 1. 計算一次請領金額 (退保前36個月平均)
+        let lumpSum = 0;
+        let totalBase = 0;
+        let baseUnder60 = 0;
+
+        if (retireAge >= 50 && years > 0 && avg36 > 0) {
+            baseUnder60 = years <= 15 ? years : 15 + (years - 15) * 2;
+            if (baseUnder60 > 45) baseUnder60 = 45;
+
+            let extraUnits = 0;
+            if (retireAge > 60) {
+                let yearsAfter60 = Math.min(retireAge - 60, years);
+                extraUnits = Math.min(yearsAfter60, 5);
+            }
+            totalBase = Math.min(baseUnder60 + extraUnits, 50);
+
+            document.getElementById('baseUnitsUnder60').innerText = baseUnder60.toFixed(1) + " 基數";
+            document.getElementById('totalBaseUnits').innerText = totalBase.toFixed(1) + " 基數";
+
+            lumpSum = avg36 * totalBase;
+            document.getElementById('lumpSumAmount').innerText = formatNumber(lumpSum) + " 元";
+        } else {
+            document.getElementById('baseUnitsUnder60').innerText = "0.0 基數";
+            document.getElementById('totalBaseUnits').innerText = "0.0 基數";
+            document.getElementById('lumpSumAmount').innerText = "0 元";
+        }
+
+        // 2. 年資與資格檢查 (滿 15 年才能領年金)
+        const isQualifiedForPension = years >= 15;
+        const noteCell = document.getElementById('qualificationNote');
+        if (years > 0 && !isQualifiedForPension) {
+            noteCell.innerHTML = '<span class="text-red">⚠️ 年資未滿15年，依法僅能領一次金，無法月領。</span>';
+        } else {
+            noteCell.innerHTML = '';
+        }
+
+        // 3. 計算老年年金（月領）
+        let amountA = 0;
+        let amountB = 0;
+        let bestMonthly = 0;
+
+        if (isQualifiedForPension && retireAge >= 60 && avg60 > 0) {
+            const diffYears = retireAge - legalAge;
+            document.getElementById('yearsDiff').innerText = (diffYears > 0 ? "+" : "") + diffYears.toFixed(1) + " 年";
+
+            let rate = diffYears * 0.04;
+            if (rate > 0.20) rate = 0.20;
+            if (rate < -0.20) rate = -0.20;
+
+            const ratePercent = (rate * 100).toFixed(2) + "%";
+            document.getElementById('adjustRate').innerText = (rate > 0 ? "+" : "") + ratePercent;
+
+            amountA = Math.max(0, Math.round((avg60 * years * 0.00775 + 3000) * (1 + rate)));
+            amountB = Math.max(0, Math.round((avg60 * years * 0.0155) * (1 + rate)));
+            bestMonthly = Math.max(amountA, amountB);
+
+            document.getElementById('monthlyA').innerText = formatNumber(amountA) + " 元";
+            document.getElementById('monthlyB').innerText = formatNumber(amountB) + " 元";
+            document.getElementById('bestMonthly').innerText = formatNumber(bestMonthly) + " 元";
+
+            if (bestMonthly > 0 && lumpSum > 0) {
+                const months = lumpSum / bestMonthly;
+                const payYears = months / 12;
+                document.getElementById('paybackSummary').innerText = `${payYears.toFixed(1)} 年 (${months.toFixed(1)} 個月)`;
+            } else {
+                document.getElementById('paybackSummary').innerText = "0.00 年 (0.00 個月)";
+            }
+        } else {
+            document.getElementById('yearsDiff').innerText = "0.0 年";
+            document.getElementById('adjustRate').innerText = "0.00%";
+            document.getElementById('monthlyA').innerText = "0 元";
+            document.getElementById('monthlyB').innerText = "0 元";
+            document.getElementById('bestMonthly').innerText = "0 元";
+            document.getElementById('paybackSummary').innerText = "不適用 (未符合月領資格)";
+        }
+
+        // 4. 動態更新下半部 30 年表格及黃金交叉比對
+        const startADInput = document.getElementById('startAD');
+        const startROCInput = document.getElementById('startROC');
+        const startADVal = startADInput ? parseInt(startADInput.value) : NaN;
+        const startROCVal = startROCInput ? parseInt(startROCInput.value) : NaN;
+
+        let prevTotalBalance = 0;
+        let crossoverYear = null;
+        let crossoverAge = null;
+
+        // 清空重組圖表資料快取
+        calculatedChartData.labels = [];
+        calculatedChartData.ages = [];
+        calculatedChartData.monthlySums = [];
+        calculatedChartData.investBalances = [];
+        calculatedChartData.annualMonthlyCashflows = [];
+        calculatedChartData.annualYields = [];
+        calculatedChartData.milestones = { labels: [], monthlySums: [], initialPrincipals: [], accumulatedGains: [] };
+
+        const initialInvestPrincipal = lumpSum * principalRatio;
+        const milestoneCheckAges = [65, 70, 75, 80, 85];
+
+        for (let i = 0; i < 30; i++) {
+            const index = i + 1;
+            const currentAge = retireAge > 0 ? (retireAge + i) : '';
+            const rowEl = document.getElementById(`row-${i}`);
+
+            document.getElementById(`age-${i}`).innerText = currentAge ? `${currentAge} 歲` : '';
+
+            if (i > 0) {
+                document.getElementById(`ad-${i}`).innerText = !isNaN(startADVal) ? (startADVal + i) : '';
+                document.getElementById(`roc-${i}`).innerText = !isNaN(startROCVal) ? (startROCVal + i) : '';
+            }
+
+            const sumA = index * 12 * amountA;
+            const sumB = index * 12 * amountB;
+            const currentBestSum = Math.max(sumA, sumB);
+
+            document.getElementById(`sumA-${i}`).innerText = formatNumber(sumA) + " 元";
+            document.getElementById(`sumB-${i}`).innerText = formatNumber(sumB) + " 元";
+
+            // 投資模型遞迴計算
+            let principalInput = (i === 0) ? initialInvestPrincipal : prevTotalBalance;
+            const yieldAmount = principalInput * targetYield;
+            const reinvestAmount = yieldAmount * reinvestRatio;
+            const totalEndBalance = principalInput + reinvestAmount;
+            prevTotalBalance = totalEndBalance;
+
+            document.getElementById(`pInput-${i}`).innerText = formatNumber(principalInput) + " 元";
+            document.getElementById(`yield-${i}`).innerText = formatNumber(yieldAmount) + " 元";
+            document.getElementById(`reinvest-${i}`).innerText = formatNumber(reinvestAmount) + " 元";
+            document.getElementById(`endBalance-${i}`).innerText = formatNumber(totalEndBalance) + " 元";
+
+            // 收集圖表資料
+            const labelText = currentAge ? `${currentAge}歲(第${index}年)` : `第${index}年`;
+            calculatedChartData.labels.push(labelText);
+            calculatedChartData.ages.push(currentAge);
+            calculatedChartData.monthlySums.push(currentBestSum);
+            calculatedChartData.investBalances.push(totalEndBalance);
+            calculatedChartData.annualMonthlyCashflows.push(bestMonthly * 12);
+            calculatedChartData.annualYields.push(yieldAmount);
+
+            // 里程碑特定節點收集
+            if (currentAge && (milestoneCheckAges.includes(currentAge) || i === 0 || i === 29)) {
+                if (!calculatedChartData.milestones.labels.includes(`${currentAge}歲`)) {
+                    calculatedChartData.milestones.labels.push(`${currentAge}歲`);
+                    calculatedChartData.milestones.monthlySums.push(currentBestSum);
+                    calculatedChartData.milestones.initialPrincipals.push(initialInvestPrincipal);
+                    const gain = Math.max(0, totalEndBalance - initialInvestPrincipal);
+                    calculatedChartData.milestones.accumulatedGains.push(gain);
+                }
+            }
+
+            // 交叉分析判斷
+            const statusCell = document.getElementById(`status-${i}`);
+            rowEl.classList.remove('crossover-row');
+
+            if (lumpSum > 0 && bestMonthly > 0) {
+                if (currentBestSum >= totalEndBalance) {
+                    if (crossoverYear === null) {
+                        crossoverYear = index;
+                        crossoverAge = currentAge;
+                        rowEl.classList.add('crossover-row');
+                        statusCell.innerHTML = `<span class="crossover-badge">🌟 第 ${index} 年黃金交叉</span>`;
+                    } else {
+                        const diff = currentBestSum - totalEndBalance;
+                        statusCell.innerHTML = `<span class="status-win-month">月領多出 +${formatNumber(diff)}</span>`;
+                    }
+                } else {
+                    const diff = totalEndBalance - currentBestSum;
+                    statusCell.innerHTML = `<span class="status-win-invest">投資多出 +${formatNumber(diff)}</span>`;
+                }
+            } else {
+                statusCell.innerText = '-';
+            }
+        }
+
+        // 更新上方損益兩平結論
+        const crossSummary = document.getElementById('crossoverSummary');
+        if (crossoverYear !== null) {
+            crossSummary.innerText = `第 ${crossoverYear} 年超越 (約 ${crossoverAge} 歲)`;
+            crossSummary.style.color = '#3b5245';
+        } else if (lumpSum > 0 && bestMonthly > 0) {
+            crossSummary.innerText = targetYield > 0.04 ? "投資複利強勢 (30年內未被超越)" : "持續試算中";
+            crossSummary.style.color = '#c86f32';
+        } else {
+            crossSummary.innerText = "請輸入完整薪資與年齡";
+            crossSummary.style.color = '#5e7568';
+        }
+
+        // 自動儲存與同步繪製圖表
+        saveToLocalStorage();
+        renderChart();
+    }
+
+    window.onload = function() {
+        initTableStructure();
+        const currentYear = new Date().getFullYear();
+        const startAD = document.getElementById('startAD');
+        const startROC = document.getElementById('startROC');
+        if (startAD && !startAD.value) {
+            startAD.value = currentYear;
+            startROC.value = currentYear - 1911;
+        }
+
+        loadFromLocalStorage();
+        calculate();
+    };
+</script>
+
+</body>
+</html>
