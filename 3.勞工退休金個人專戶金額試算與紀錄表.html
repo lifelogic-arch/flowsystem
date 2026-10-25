@@ -1,0 +1,1671 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SYS_03 勞工退休金個人專戶金額試算與紀錄系統 - 生活型態財務邏輯</title>
+
+    <!-- 🌐 網頁圖示與社群卡片設定 -->
+    <link rel="icon" href="favicon.png" type="image/png">
+    <link rel="apple-touch-icon" href="favicon.png">
+
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google 字體：Inter、Noto Serif TC、Space Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Serif+TC:wght@500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    
+    <!-- Chart.js 核心與外部標籤外掛 -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+
+    <style>
+        :root {
+            --bg-canvas: #dfe5e1;       /* 啞光鼠尾草灰綠 */
+            --card-surface: #faf8f5;    /* 溫和手帳奶白 */
+            --header-deep: #222e27;     /* 結構深墨黑綠 */
+            --sage-primary: #3b5245;    /* 架構墨綠 */
+            --sage-muted: #5e7568;      /* 說明文字灰綠 */
+            --amber-accent: #c86f32;    /* 琥珀焦糖亮點色 */
+            --amber-bg: #fcf3eb;        /* 琥珀淡底 */
+            --border-soft: #d3ccc0;     /* 沉著細邊框 */
+            --input-bg: #e9edea;        /* 低反光輸入底 */
+            --text-title: #222e27;      /* 標題深墨黑 */
+            --text-body: #3c4b42;       /* 內文墨黑 */
+            --highlight-yellow: #f7efe4;/* 淺焙焦糖唯讀底 */
+            --highlight-green: #eef3ef; /* 實證淡綠底 */
+            --future-row-bg: #faf7f2;   /* 未來預估淡底 */
+            --text-red: #b8334a;        /* 警示與強調紅 */
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang TC", "Microsoft JhengHei", sans-serif;
+            background-color: var(--bg-canvas);
+            color: var(--text-body);
+            margin: 0;
+            padding: 0 0 40px 0;
+            background-image: 
+                linear-gradient(rgba(70, 95, 80, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(70, 95, 80, 0.05) 1px, transparent 1px);
+            background-size: 32px 32px;
+        }
+
+        .mono {
+            font-family: 'Space Mono', monospace;
+        }
+
+        /* 統一頂部導覽 Header */
+        .blueprint-header {
+            background-color: var(--header-deep);
+            color: #ffffff;
+            box-shadow: 0 4px 16px rgba(34, 46, 39, 0.15);
+            border-bottom: 1px solid #3c4a40;
+            position: sticky;
+            top: 0;
+            z-index: 40;
+            padding: 10px 20px;
+        }
+
+        .header-inner {
+            max-width: 1680px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .back-home {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 12px;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #d1ded6;
+            text-decoration: none;
+            font-size: 12px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+        .back-home:hover {
+            background: rgba(255, 255, 255, 0.18);
+            color: #ffffff;
+        }
+
+        .sys-badge {
+            font-family: 'Space Mono', monospace;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 3px 8px;
+            border-radius: 4px;
+            background: rgba(200, 111, 50, 0.2);
+            color: var(--amber-accent);
+            border: 1px solid rgba(200, 111, 50, 0.4);
+            letter-spacing: 1px;
+        }
+
+        .header-title-text {
+            font-size: 17px;
+            font-weight: 700;
+            margin: 0;
+            letter-spacing: 0.5px;
+            color: #ffffff;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        /* 試算列數與退休年齡控制項 */
+        .config-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.22);
+            padding: 3px 8px;
+            border-radius: 4px;
+            color: #e5ede8;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .config-pill input {
+            width: 46px;
+            height: 24px;
+            background: #ffffff;
+            border: 1px solid #c2cdc6;
+            border-radius: 3px;
+            text-align: center;
+            font-family: 'Space Mono', monospace;
+            font-weight: 700;
+            color: var(--text-title);
+            font-size: 12px;
+            outline: none;
+        }
+
+        .config-pill input:focus {
+            border-color: var(--amber-accent);
+        }
+
+        .btn-action {
+            background: rgba(255, 255, 255, 0.08);
+            color: #e5ede8;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            text-decoration: none;
+        }
+
+        .btn-action:hover {
+            background: #ffffff;
+            color: var(--header-deep);
+            border-color: #ffffff;
+        }
+
+        .btn-accent {
+            background: rgba(200, 111, 50, 0.25);
+            border-color: rgba(200, 111, 50, 0.45);
+            color: #f7dcd0;
+        }
+        .btn-accent:hover {
+            background: var(--amber-accent);
+            color: #ffffff;
+            border-color: var(--amber-accent);
+        }
+
+        .btn-danger {
+            background: rgba(184, 51, 74, 0.25);
+            border-color: rgba(184, 51, 74, 0.4);
+            color: #fca5a5;
+        }
+        .btn-danger:hover {
+            background: #b8334a;
+            color: #ffffff;
+            border-color: #b8334a;
+        }
+
+        /* 主容器 */
+        .container {
+            width: 100%;
+            max-width: 1680px;
+            margin: 20px auto 0;
+            padding: 0 16px;
+        }
+
+        .card-wrapper {
+            background: var(--card-surface);
+            border-radius: 8px;
+            box-shadow: 0 4px 16px rgba(34, 46, 39, 0.04);
+            border: 1px solid var(--border-soft);
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+
+        /* 視覺化儀表板專區 */
+        .dashboard-container {
+            padding: 16px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .kpi-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 12px;
+        }
+
+        .kpi-card {
+            background: #f2eee8;
+            border: 1px solid var(--border-soft);
+            border-radius: 6px;
+            padding: 12px 16px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .kpi-card.highlight {
+            background: var(--amber-bg);
+            border-color: rgba(200, 111, 50, 0.4);
+        }
+
+        .kpi-title {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--sage-muted);
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .kpi-val {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text-title);
+            font-family: 'Space Mono', monospace;
+        }
+
+        .kpi-sub {
+            font-size: 11px;
+            color: var(--sage-primary);
+            margin-top: 3px;
+        }
+
+        .charts-grid {
+            display: grid;
+            grid-template-columns: 1.85fr 1.15fr;
+            gap: 16px;
+        }
+
+        @media (max-width: 1024px) {
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .chart-box {
+            background: #ffffff;
+            border: 1px solid var(--border-soft);
+            border-radius: 6px;
+            padding: 14px 16px;
+            position: relative;
+        }
+
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            border-bottom: 1px dashed var(--border-soft);
+            padding-bottom: 8px;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .chart-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text-title);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .chart-controls {
+            display: flex;
+            gap: 4px;
+        }
+
+        .chart-btn {
+            background: var(--input-bg);
+            border: 1px solid var(--border-soft);
+            border-radius: 4px;
+            padding: 4px 10px;
+            font-size: 11.5px;
+            font-weight: 600;
+            cursor: pointer;
+            color: var(--text-body);
+            transition: all 0.2s;
+        }
+
+        .chart-btn.active {
+            background: var(--sage-primary);
+            color: #ffffff;
+            border-color: var(--sage-primary);
+        }
+
+        .chart-canvas-container {
+            position: relative;
+            height: 310px;
+            width: 100%;
+        }
+
+        /* 修正表頭穿透：移除頂部 padding，設置純色背景 */
+        .table-responsive {
+            padding: 0 20px 20px 20px;
+            overflow-x: auto;
+            max-height: 75vh;
+            background-color: var(--card-surface);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            border: 1px solid var(--border-soft);
+            border-top: none;
+            table-layout: fixed;
+            background: var(--card-surface);
+        }
+
+        thead {
+            position: sticky;
+            top: 0;
+            z-index: 25;
+        }
+
+        /* 表頭儲存格補齊上邊框與底色，防止滾動穿透 */
+        thead tr:first-child td {
+            border-top: 1px solid var(--border-soft);
+        }
+
+        thead td {
+            background-color: var(--card-surface);
+        }
+
+        th, td {
+            padding: 5px 4px;
+            font-size: 12px;
+            border-right: 1px solid var(--border-soft);
+            border-bottom: 1px solid var(--border-soft);
+            vertical-align: middle;
+            word-break: break-word;
+            box-sizing: border-box;
+        }
+
+        th:last-child, td:last-child {
+            border-right: none;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        .center-cell {
+            text-align: center;
+        }
+
+        .section-header td {
+            background-color: var(--header-deep) !important;
+            color: #ffffff;
+            font-weight: 700;
+            font-size: 13px;
+            text-align: center;
+            letter-spacing: 0.5px;
+        }
+
+        .sub-header td {
+            background-color: var(--sage-primary) !important;
+            color: #ffffff;
+            font-weight: 600;
+            font-size: 12px;
+            text-align: center;
+            letter-spacing: 0.3px;
+        }
+
+        .label-cell {
+            background-color: #f2eee8 !important;
+            font-weight: 600;
+            color: var(--text-title);
+            text-align: center;
+            font-size: 11.5px;
+            line-height: 1.35;
+        }
+
+        .num-cell {
+            text-align: right;
+            padding-right: 6px;
+            font-family: 'Space Mono', monospace;
+        }
+
+        .input-cell {
+            background-color: var(--input-bg) !important;
+            padding: 2px;
+            text-align: center;
+        }
+
+        .input-cell input {
+            width: 95%;
+            height: 26px;
+            border: 1px solid #c2cdc6;
+            border-radius: 4px;
+            background-color: #ffffff;
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--text-title);
+            outline: none;
+            box-sizing: border-box;
+            text-align: right;
+            padding-right: 4px;
+            font-family: 'Space Mono', monospace;
+            transition: all 0.2s ease;
+        }
+
+        .input-cell input.center-input {
+            text-align: center;
+            padding-right: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+
+        .input-cell input:focus {
+            border-color: var(--amber-accent);
+            box-shadow: 0 0 0 2px rgba(200, 111, 50, 0.2);
+            background-color: #ffffff;
+        }
+
+        .highlight-yellow {
+            background-color: var(--highlight-yellow) !important;
+            font-weight: 700;
+            color: #8c4e20;
+            font-family: 'Space Mono', monospace;
+        }
+
+        .highlight-green {
+            background-color: var(--highlight-green) !important;
+            font-weight: 700;
+            color: #28543d;
+            font-family: 'Space Mono', monospace;
+        }
+
+        .future-row {
+            background-color: var(--future-row-bg);
+        }
+
+        .future-flag {
+            color: #8b5c92; /* 套用煙燻紫藤識別色 */
+            font-weight: 700;
+            font-size: 11px;
+        }
+
+        .history-flag {
+            color: var(--sage-primary);
+            font-weight: 700;
+            font-size: 11px;
+        }
+
+        .text-red {
+            color: var(--text-red);
+            font-weight: 700;
+            font-family: 'Space Mono', monospace;
+        }
+
+        .val-text {
+            font-weight: 600;
+            color: var(--text-title);
+            font-family: 'Space Mono', monospace;
+        }
+
+        .calc-symbol {
+            font-weight: bold;
+            color: var(--sage-muted);
+            background-color: #f2eee8 !important;
+            text-align: center;
+            font-family: 'Space Mono', monospace;
+        }
+
+        .empty-cell {
+            background-color: var(--card-surface) !important;
+        }
+
+        .footer-action-area {
+            padding: 16px 20px 20px 20px;
+        }
+
+        .info-note {
+            font-size: 12.5px;
+            color: var(--sage-muted);
+            line-height: 1.6;
+            background-color: #f2eee8;
+            padding: 12px 16px;
+            border-radius: 6px;
+            border-left: 4px solid var(--sage-primary);
+            border: 1px solid var(--border-soft);
+            border-left-width: 4px;
+        }
+
+        .info-note a {
+            color: var(--amber-accent);
+            text-decoration: underline;
+            font-weight: 600;
+        }
+
+        @media print {
+            body { padding: 0; background-color: #ffffff !important; background-image: none !important; }
+            .container { box-shadow: none !important; border: none !important; width: 100% !important; max-width: 100% !important; padding: 0 !important; margin: 0 !important; }
+            .card-wrapper { box-shadow: none !important; border: none !important; margin-bottom: 10px !important; }
+            .blueprint-header { display: none !important; }
+            .chart-controls { display: none !important; }
+            .table-responsive { max-height: none !important; overflow: visible !important; padding: 0 !important; }
+            thead { position: static !important; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- 統一頂部導覽列 -->
+<header class="blueprint-header">
+    <div class="header-inner">
+        <div class="header-left">
+            <a href="index.html#modules-overview" class="back-home">
+                <span class="mono">←</span> 返回上一頁
+            </a>
+            <a href="index.html#hero-cover" class="back-home">
+                <i class="fa-solid fa-house text-xs"></i> 封面
+            </a>
+            <span style="color:#5e7568;" class="mono text-xs">/</span>
+            <span class="sys-badge">SYS_01</span>
+            <h1 class="header-title-text">勞工退休金個人專戶金額試算與紀錄系統</h1>
+        </div>
+        <div class="header-actions">
+            <!-- 自訂試算列數與退休年齡 -->
+            <div class="config-pill" title="設定試算年數與預計領取年齡">
+                <span>試算年數:</span>
+                <input type="number" id="cfgRowCount" min="1" max="60" value="41" onchange="handleRowCountChange(this.value)">
+                <span>年 (至</span>
+                <input type="number" id="cfgRetireAge" min="18" max="100" value="67" onchange="handleRetireAgeChange(this.value)">
+                <span>歲)</span>
+            </div>
+
+            <button type="button" class="btn-action btn-accent" onclick="fillDownData()">
+                <i class="fa-solid fa-angles-down"></i> 向下填滿
+            </button>
+            <button type="button" class="btn-action" onclick="exportData()">
+                <i class="fa-solid fa-file-export text-emerald-400"></i> 匯出.LABOR
+            </button>
+            <button type="button" class="btn-action" onclick="document.getElementById('importFileInput').click()">
+                <i class="fa-solid fa-file-import text-amber-400"></i> 匯入.LABOR
+            </button>
+            <button type="button" class="btn-action" onclick="window.print()">
+                <i class="fa-solid fa-print text-indigo-300"></i> 列印報告
+            </button>
+            <button type="button" class="btn-action btn-danger" onclick="resetForm(event)">
+                <i class="fa-solid fa-arrow-rotate-left"></i> 清空重來
+            </button>
+            <input type="file" id="importFileInput" style="display: none;" accept=".json,.labor,.txt" onchange="importData(event)">
+        </div>
+    </div>
+</header>
+
+<div class="container">
+    <!-- 視覺化儀表板卡片 -->
+    <div class="card-wrapper">
+        <div class="dashboard-container">
+            <!-- 指標摘要列 -->
+            <div class="kpi-row">
+                <div class="kpi-card highlight">
+                    <span class="kpi-title"><i class="fa-solid fa-vault"></i> 預估退休總資產 (終點)</span>
+                    <span class="kpi-val" id="kpiFinalTotal">0</span>
+                    <span class="kpi-sub" id="kpiFinalSub">複利終身累積資產</span>
+                </div>
+                <div class="kpi-card">
+                    <span class="kpi-title"><i class="fa-solid fa-building"></i> 雇主歷年累計提繳</span>
+                    <span class="kpi-val" id="kpiEmployerTotal">0</span>
+                    <span class="kpi-sub" id="kpiEmployerRatio">佔比 0%</span>
+                </div>
+                <div class="kpi-card">
+                    <span class="kpi-title"><i class="fa-solid fa-user-plus"></i> 個人自願提繳累計</span>
+                    <span class="kpi-val" id="kpiSelfTotal">0</span>
+                    <span class="kpi-sub" id="kpiSelfRatio">佔比 0%</span>
+                </div>
+                <div class="kpi-card">
+                    <span class="kpi-title"><i class="fa-solid fa-chart-line"></i> 投資收益累計總額</span>
+                    <span class="kpi-val" style="color: var(--amber-accent);" id="kpiGainTotal">0</span>
+                    <span class="kpi-sub" id="kpiGainRatio">佔比 0%</span>
+                </div>
+            </div>
+
+            <!-- 圖表並列區：左側走勢/年度對比切換，右側終點結構外顯環形圖 -->
+            <div class="charts-grid">
+                <!-- 左圖：資產趨勢與投入損益對比 -->
+                <div class="chart-box">
+                    <div class="chart-header">
+                        <div class="chart-title">
+                            <i class="fa-solid fa-chart-area text-emerald-700"></i>
+                            <span id="trendChartTitle">資產複利增長趨勢 (本金 vs 收益)</span>
+                        </div>
+                        <div class="chart-controls">
+                            <button type="button" class="chart-btn active" id="btnShowStacked" onclick="switchMainChart('stacked')">
+                                <i class="fa-solid fa-layer-group"></i> 累積資產走勢
+                            </button>
+                            <button type="button" class="chart-btn" id="btnShowAnnual" onclick="switchMainChart('annual')">
+                                <i class="fa-solid fa-chart-column"></i> 各年度提繳投入 vs 年度投資損益對比
+                            </button>
+                        </div>
+                    </div>
+                    <div class="chart-canvas-container">
+                        <canvas id="mainTrendsChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- 右圖：終點資產結構（外環外部顯示金額與比例，內環顯示相加總額） -->
+                <div class="chart-box">
+                    <div class="chart-header">
+                        <div class="chart-title">
+                            <i class="fa-solid fa-chart-pie text-amber-700"></i>
+                            <span id="doughnutChartTitle">終點資產結構</span>
+                        </div>
+                    </div>
+                    <div class="chart-canvas-container">
+                        <canvas id="compositionChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 表格試算區塊 -->
+    <div class="card-wrapper">
+        <div class="table-responsive">
+            <table>
+                <colgroup>
+                    <col style="width: 3.2%;">  <!-- 基數 -->
+                    <col style="width: 3.5%;">  <!-- age -->
+                    <col style="width: 4.5%;">  <!-- 西元 -->
+                    <col style="width: 4.5%;">  <!-- 民國 -->
+                    <col style="width: 6.5%;">  <!-- 月提繳工資 -->
+                    <col style="width: 5.5%;">  <!-- 個人自願提繳率 -->
+                    <col style="width: 6.5%;">  <!-- 個人自願提繳金額 -->
+                    <col style="width: 6.5%;">  <!-- 雇主提繳金額 -->
+                    <col style="width: 7.0%;">  <!-- 雇主提繳金額累計 -->
+                    <col style="width: 7.0%;">  <!-- 雇主提繳收益累計 -->
+                    <col style="width: 5.5%;">  <!-- 公告收益 -->
+                    <col style="width: 7.5%;">  <!-- 實際合計 -->
+                    <col style="width: 6.0%;">  <!-- 工作單位 -->
+                    <col style="width: 3.5%;">  <!-- 年資 -->
+                    <col style="width: 7.0%;">  <!-- 預估雇主提繳金額累計 -->
+                    <col style="width: 7.0%;">  <!-- 預估雇主提繳收益累計 -->
+                    <col style="width: 8.0%;">  <!-- 預估合計 -->
+                    <col style="width: 5.5%;">  <!-- 狀態/性質 -->
+                </colgroup>
+                <thead>
+                    <!-- Row 1: 表頭主分區 -->
+                    <tr class="section-header">
+                        <td colspan="4" class="label-cell">勞工退休金個人專戶金額試算</td>
+                        <td colspan="2" class="label-cell">歷史雇主提繳<br>金額加總</td>
+                        <td colspan="2" class="label-cell">歷史雇主提繳<br>收益加總</td>
+                        <td colspan="2" class="label-cell">平均公告收益率<br>(已發生年度)</td>
+                        <td colspan="2" class="label-cell">預估當年度<br>損益試算日期</td>
+                        <td colspan="2" class="label-cell">預估當年度本金</td>
+                        <td class="calc-symbol">*</td>
+                        <td class="label-cell">預估當年度<br>累計損益率</td>
+                        <td class="calc-symbol">=</td>
+                        <td class="label-cell">預估損益/合計</td>
+                    </tr>
+                    
+                    <!-- Row 2: 頂部第一列明細數值 -->
+                    <tr style="background: var(--card-surface);">
+                        <td colspan="4" rowspan="2" class="empty-cell" style="text-align: center; color: var(--sage-muted); font-size: 11.5px; padding: 4px;">
+                            📌 提示：填寫第 1 列之起算西元、工資，再點擊「向下填滿」可快速試算！
+                        </td>
+                        <td colspan="2" rowspan="2" class="val-text num-cell" id="topSumEmployerAmt">0</td>
+                        <td colspan="2" rowspan="2" class="val-text num-cell" id="topSumEmployerGain">0</td>
+                        <td colspan="2" rowspan="2" class="text-red center-cell" style="font-size: 13.5px;" id="topAvgYield">0.0000%</td>
+                        
+                        <!-- 預估當年度損益試算日期 -->
+                        <td colspan="2" class="input-cell">
+                            <input type="text" class="center-input" id="topCalcDate" placeholder="YYYY/MM/DD" oninput="calculate()">
+                        </td>
+                        <!-- 預估當年度本金 (M3) -->
+                        <td colspan="2" class="input-cell">
+                            <input type="number" id="topPrincipalM3" placeholder="0" oninput="calculate()">
+                        </td>
+                        <td class="calc-symbol">*</td>
+                        <!-- 預估當年度累計損益率 (P3) -->
+                        <td class="input-cell">
+                            <input type="number" id="topGainP3" placeholder="0%" step="0.0001" oninput="calculate()">
+                        </td>
+                        <td class="calc-symbol">=</td>
+                        <!-- R3 = M3 * (P3 / 100) -->
+                        <td class="val-text num-cell" id="topR3Val">0</td>
+                    </tr>
+
+                    <!-- Row 3: 頂部第二列右半部合計加總 -->
+                    <tr style="background: var(--card-surface);">
+                        <td colspan="2" class="empty-cell"></td>
+                        <!-- M4 = M3 -->
+                        <td colspan="2" class="val-text num-cell" id="topM4Val">0</td>
+                        <td class="calc-symbol">+</td>
+                        <!-- P4 = R3 -->
+                        <td class="val-text num-cell" id="topP4Val">0</td>
+                        <td class="calc-symbol">=</td>
+                        <!-- R4 = M4 + P4 -->
+                        <td class="highlight-yellow num-cell" id="topR4Val">0</td>
+                    </tr>
+
+                    <!-- Row 4: 明細欄位表頭 -->
+                    <tr class="sub-header">
+                        <td>基數</td>
+                        <td>年齡</td>
+                        <td>西元</td>
+                        <td>民國</td>
+                        <td>月提繳<br>工資</td>
+                        <td>自願<br>提繳率</td>
+                        <td>個人自願<br>提繳年額</td>
+                        <td>雇主提繳<br>月額 (6%)</td>
+                        <td>雇主提繳<br>金額累計</td>
+                        <td>雇主提繳<br>收益累計</td>
+                        <td>公告<br>收益率</td>
+                        <td>實際<br>合計</td>
+                        <td>工作單位</td>
+                        <td>年資</td>
+                        <td>預估雇主<br>提繳金額累計</td>
+                        <td>預估雇主<br>提繳收益累計</td>
+                        <td>預估<br>合計 (複利)</td>
+                        <td>屬性說明</td>
+                    </tr>
+                </thead>
+                <tbody id="tableBody"></tbody>
+            </table>
+        </div>
+
+        <div class="footer-action-area">
+            <div class="info-note">
+                💡 <strong>使用說明與計算邏輯：</strong><br>
+                1. <strong>自訂退休年齡與列數：</strong>可直接在頂部導覽設定「試算年數」或「預計退休年齡」，系統自動展開/縮減計算表，所有複利與終點資產結構即刻重算。<br>
+                2. <strong>實際 vs 預估：</strong>若該年度有輸入「雇主提繳金額累計」或「雇主提繳收益累計」，視為已發生之歷史年度，以實際數據合計；若為空白，則啟動<strong>年複利試算</strong>（以上一期結餘 × 平均公告收益率 + 當年新提繳本金）。<br>
+                3. <strong>自動法定 6%：</strong>若「雇主提繳月額」為空，系統自動依「月提繳工資 × 6%」計算。<br>
+                4. 官方查詢與相關法規可參見勞動部勞工保險局個人專戶專區：<a href="https://www.bli.gov.tw/0012942.html" target="_blank" rel="noopener noreferrer">https://www.bli.gov.tw/0012942.html</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentRowCount = 41;
+    const STORAGE_KEY = "labor_pension_calc_data_v2_0";
+
+    let mainChartInstance = null;
+    let doughnutChartInstance = null;
+    let currentMainChartMode = 'stacked';
+
+    // 註冊 ChartDataLabels 外掛
+    if (typeof ChartDataLabels !== 'undefined') {
+        Chart.register(ChartDataLabels);
+    }
+
+    // 自訂環形圖中央文字外掛 (顯示相加總額)
+    const centerTextPlugin = {
+        id: 'centerTextPlugin',
+        afterDraw(chart) {
+            if (chart.config.type !== 'doughnut') return;
+            const { ctx, chartArea: { width, height, left, top } } = chart;
+            ctx.save();
+            
+            const total = chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
+            let totalFormatted = '$0';
+            if (total >= 100000000) {
+                totalFormatted = (total / 100000000).toFixed(2) + ' 億';
+            } else if (total >= 10000) {
+                totalFormatted = Math.round(total / 10000).toLocaleString() + ' 萬';
+            } else {
+                totalFormatted = '$' + Math.round(total).toLocaleString();
+            }
+            
+            const centerX = left + width / 2;
+            const centerY = top + height / 2;
+
+            ctx.font = '600 11px "Inter", "PingFang TC", sans-serif';
+            ctx.fillStyle = '#5e7568';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('預估退休總額', centerX, centerY - 11);
+
+            ctx.font = '700 16px "Space Mono", monospace';
+            ctx.fillStyle = '#222e27';
+            ctx.fillText(totalFormatted, centerX, centerY + 11);
+
+            ctx.restore();
+        }
+    };
+    Chart.register(centerTextPlugin);
+
+    /* 依據 currentRowCount 動態建立或重建表格結構，並保留現有已輸入值 */
+    function renderTableRows(newCount) {
+        const tableBody = document.getElementById('tableBody');
+        const existingData = [];
+
+        // 備份現有表格輸入值
+        for (let i = 0; i < currentRowCount; i++) {
+            const rowElem = document.getElementById(`row-${i}`);
+            if (rowElem) {
+                existingData.push({
+                    age: (i === 0) ? (document.getElementById('age-0')?.value || '') : (document.getElementById(`age-${i}`)?.innerText || ''),
+                    ad: (i === 0) ? (document.getElementById('ad-0')?.value || '') : (document.getElementById(`ad-${i}`)?.innerText || ''),
+                    roc: (i === 0) ? (document.getElementById('roc-0')?.value || '') : (document.getElementById(`roc-${i}`)?.innerText || ''),
+                    wage: document.getElementById(`wage-${i}`)?.value || '',
+                    selfRate: document.getElementById(`selfRate-${i}`)?.value || '',
+                    empAmt: document.getElementById(`empAmt-${i}`)?.value || '',
+                    empAmtCum: document.getElementById(`empAmtCum-${i}`)?.value || '',
+                    empGainCum: document.getElementById(`empGainCum-${i}`)?.value || '',
+                    yield: document.getElementById(`yield-${i}`)?.value || '',
+                    company: document.getElementById(`company-${i}`)?.value || ''
+                });
+            }
+        }
+
+        currentRowCount = newCount;
+        document.getElementById('cfgRowCount').value = newCount;
+        tableBody.innerHTML = '';
+
+        for (let i = 0; i < currentRowCount; i++) {
+            const index = i + 1;
+            const row = document.createElement('tr');
+            row.setAttribute('id', `row-${i}`);
+
+            if (i === 0) {
+                row.innerHTML = `
+                    <td class="center-cell mono">${index}</td>
+                    <td class="input-cell"><input type="number" id="age-0" placeholder="27" oninput="syncRetireAgeHeader(); calculate();"></td>
+                    <td class="input-cell"><input type="number" id="ad-0" placeholder="2026" oninput="syncYearFromAD(0); calculate();"></td>
+                    <td class="input-cell"><input type="number" id="roc-0" placeholder="115" oninput="syncYearFromROC(0); calculate();"></td>
+                    <td class="input-cell"><input type="number" id="wage-0" placeholder="0" oninput="autoFillEmployerAmt(0); calculate();"></td>
+                    <td class="input-cell"><input type="number" id="selfRate-0" placeholder="0%" step="0.01" max="6" oninput="calculate()"></td>
+                    <td class="val-text num-cell" id="selfAmt-0">0</td>
+                    <td class="input-cell"><input type="number" id="empAmt-0" placeholder="自動6%" oninput="calculate()"></td>
+                    <td class="input-cell"><input type="number" id="empAmtCum-0" placeholder="0" oninput="calculate()"></td>
+                    <td class="input-cell"><input type="number" id="empGainCum-0" placeholder="0" oninput="calculate()"></td>
+                    <td class="input-cell"><input type="number" id="yield-0" placeholder="0%" step="0.0001" oninput="calculate()"></td>
+                    <td class="highlight-green num-cell" id="realTotal-0">0</td>
+                    <td class="input-cell"><input type="text" class="center-input" id="company-0" placeholder="" oninput="calculate()"></td>
+                    <td class="center-cell mono" id="seniority-0">${index}</td>
+                    <td class="val-text num-cell" id="estEmpAmtCum-0">-</td>
+                    <td class="val-text num-cell" id="estEmpGainCum-0">-</td>
+                    <td class="val-text num-cell" id="estTotal-0">-</td>
+                    <td class="center-cell" id="rowStatus-0">-</td>
+                `;
+            } else {
+                row.innerHTML = `
+                    <td class="center-cell mono">${index}</td>
+                    <td class="val-text center-cell" id="age-${i}"></td>
+                    <td class="val-text center-cell" id="ad-${i}"></td>
+                    <td class="val-text center-cell" id="roc-${i}"></td>
+                    <td class="input-cell"><input type="number" id="wage-${i}" placeholder="" oninput="autoFillEmployerAmt(${i}); calculate();"></td>
+                    <td class="input-cell"><input type="number" id="selfRate-${i}" placeholder="" step="0.01" max="6" oninput="calculate()"></td>
+                    <td class="val-text num-cell" id="selfAmt-${i}">0</td>
+                    <td class="input-cell"><input type="number" id="empAmt-${i}" placeholder="" oninput="calculate()"></td>
+                    <td class="input-cell"><input type="number" id="empAmtCum-${i}" placeholder="" oninput="calculate()"></td>
+                    <td class="input-cell"><input type="number" id="empGainCum-${i}" placeholder="" oninput="calculate()"></td>
+                    <td class="input-cell"><input type="number" id="yield-${i}" placeholder="" step="0.0001" oninput="calculate()"></td>
+                    <td class="highlight-green num-cell" id="realTotal-${i}">0</td>
+                    <td class="input-cell"><input type="text" class="center-input" id="company-${i}" oninput="calculate()"></td>
+                    <td class="center-cell mono" id="seniority-${i}">${index}</td>
+                    <td class="val-text num-cell" id="estEmpAmtCum-${i}">0</td>
+                    <td class="val-text num-cell" id="estEmpGainCum-${i}">0</td>
+                    <td class="val-text num-cell" id="estTotal-${i}">0</td>
+                    <td class="center-cell" id="rowStatus-${i}">-</td>
+                `;
+            }
+            tableBody.appendChild(row);
+        }
+
+        // 回填原有資料
+        existingData.forEach((row, i) => {
+            if (i < currentRowCount) fillRowData(row, i);
+        });
+
+        syncRetireAgeHeader();
+    }
+
+    /* 年齡與列數雙向同步 */
+    function syncRetireAgeHeader() {
+        const baseAge = parseInt(document.getElementById('age-0')?.value) || 27;
+        const targetRetireAge = baseAge + currentRowCount - 1;
+        document.getElementById('cfgRetireAge').value = targetRetireAge;
+        document.getElementById('kpiFinalSub').innerText = `預計 ${targetRetireAge} 歲請領資產`;
+        document.getElementById('doughnutChartTitle').innerText = `終點資產結構 (${targetRetireAge} 歲)`;
+    }
+
+    function handleRowCountChange(val) {
+        let count = parseInt(val);
+        if (isNaN(count) || count < 1) count = 1;
+        if (count > 60) count = 60;
+        renderTableRows(count);
+        calculate();
+        saveToLocalStorage(); // 強制即時存盤
+    }
+
+    function handleRetireAgeChange(retireAgeVal) {
+        const baseAge = parseInt(document.getElementById('age-0')?.value) || 27;
+        let targetAge = parseInt(retireAgeVal);
+        if (isNaN(targetAge) || targetAge <= baseAge) {
+            targetAge = baseAge + 1;
+        }
+        let neededCount = targetAge - baseAge + 1;
+        if (neededCount > 60) neededCount = 60;
+        if (neededCount < 1) neededCount = 1;
+        renderTableRows(neededCount);
+        calculate();
+        saveToLocalStorage(); // 強制即時存盤
+    }
+
+    /* 雙向西元/民國年份自動換算 */
+    function syncYearFromAD(i) {
+        if (i === 0) {
+            const ad = parseInt(document.getElementById('ad-0').value);
+            if (!isNaN(ad) && ad > 1911) {
+                document.getElementById('roc-0').value = ad - 1911;
+            }
+        }
+    }
+
+    function syncYearFromROC(i) {
+        if (i === 0) {
+            const roc = parseInt(document.getElementById('roc-0').value);
+            if (!isNaN(roc)) {
+                document.getElementById('ad-0').value = roc + 1911;
+            }
+        }
+    }
+
+    /* 雇主 6% 自動推算 */
+    function autoFillEmployerAmt(i) {
+        const wage = parseFloat(document.getElementById(`wage-${i}`).value);
+        const empAmtInput = document.getElementById(`empAmt-${i}`);
+        if (!isNaN(wage) && wage > 0 && empAmtInput.value === "") {
+            empAmtInput.value = Math.round(wage * 0.06);
+        }
+    }
+
+    /* 一鍵向下快速填滿薪資與自提率 */
+    function fillDownData() {
+        const baseWage = document.getElementById('wage-0').value;
+        const baseSelfRate = document.getElementById('selfRate-0').value;
+        const baseCompany = document.getElementById('company-0').value;
+
+        if (!baseWage && !baseSelfRate) {
+            alert('請先於第 1 列輸入「月提繳工資」或「個人自願提繳率」！');
+            return;
+        }
+
+        if (confirm(`是否要將第 1 列的工資、自提率向下填滿至所有 ${currentRowCount} 列？`)) {
+            for (let i = 1; i < currentRowCount; i++) {
+                const wageInput = document.getElementById(`wage-${i}`);
+                const selfRateInput = document.getElementById(`selfRate-${i}`);
+                const companyInput = document.getElementById(`company-${i}`);
+                const empAmtInput = document.getElementById(`empAmt-${i}`);
+
+                if (!wageInput.value && baseWage) wageInput.value = baseWage;
+                if (!selfRateInput.value && baseSelfRate) selfRateInput.value = baseSelfRate;
+                if (!companyInput.value && baseCompany) companyInput.value = baseCompany;
+                
+                if (!empAmtInput.value && wageInput.value) {
+                    empAmtInput.value = Math.round(parseFloat(wageInput.value) * 0.06);
+                }
+            }
+            calculate();
+            saveToLocalStorage(); // 強制即時存入快取
+            alert('已成功快速填滿並保存！');
+        }
+    }
+
+    function formatNumber(num) {
+        if (isNaN(num)) return "0";
+        return Math.round(num).toLocaleString('zh-TW');
+    }
+
+    /* 主試算核心 + 圖表資料彙總 */
+    function calculate() {
+        const baseAge = parseInt(document.getElementById('age-0')?.value);
+        const baseAD = parseInt(document.getElementById('ad-0')?.value);
+        const baseROC = parseInt(document.getElementById('roc-0')?.value);
+
+        for (let i = 1; i < currentRowCount; i++) {
+            const ageEl = document.getElementById(`age-${i}`);
+            const adEl = document.getElementById(`ad-${i}`);
+            const rocEl = document.getElementById(`roc-${i}`);
+            if (ageEl) ageEl.innerText = !isNaN(baseAge) ? (baseAge + i) : '';
+            if (adEl) adEl.innerText = !isNaN(baseAD) ? (baseAD + i) : '';
+            if (rocEl) rocEl.innerText = !isNaN(baseROC) ? (baseROC + i) : '';
+        }
+
+        syncRetireAgeHeader();
+
+        let yieldSum = 0;
+        let yieldCount = 0;
+
+        for (let i = 0; i < currentRowCount; i++) {
+            const yInput = document.getElementById(`yield-${i}`);
+            if (yInput && yInput.value !== "" && !isNaN(parseFloat(yInput.value))) {
+                yieldSum += parseFloat(yInput.value) / 100;
+                yieldCount++;
+            }
+        }
+
+        const avgYield = yieldCount > 0 ? (yieldSum / yieldCount) : 0.03;
+        document.getElementById('topAvgYield').innerText = (avgYield * 100).toFixed(4) + "%";
+
+        let historicalEmpAmtSum = 0;
+        let historicalEmpGainSum = 0;
+        let prevAccumulatedTotal = 0;
+
+        const chartData = {
+            simpleLabels: [],
+            detailedLabels: [],
+            cumulativePrincipal: [],
+            cumulativeGain: [],
+            annualPrincipal: [],
+            annualGain: [],
+            isEstimated: [] // 記錄該年度收益是否為預估值
+        };
+
+        let cumulativePrincipalCounter = 0;
+        let totalSelfContributionAccum = 0;
+        let totalEmployerContributionAccum = 0;
+
+        for (let i = 0; i < currentRowCount; i++) {
+            const rowElem = document.getElementById(`row-${i}`);
+            if (!rowElem) continue;
+
+            const wage = parseFloat(document.getElementById(`wage-${i}`)?.value) || 0;
+            const selfRate = (parseFloat(document.getElementById(`selfRate-${i}`)?.value) || 0) / 100;
+            
+            let empAmt = parseFloat(document.getElementById(`empAmt-${i}`)?.value);
+            if (isNaN(empAmt)) {
+                empAmt = (wage > 0) ? Math.round(wage * 0.06) : 0;
+            }
+
+            const empAmtCumInput = document.getElementById(`empAmtCum-${i}`)?.value || "";
+            const empGainCumInput = document.getElementById(`empGainCum-${i}`)?.value || "";
+
+            const hasHistoricalData = (empAmtCumInput !== "" || empGainCumInput !== "");
+            const empAmtCum = parseFloat(empAmtCumInput) || 0;
+            const empGainCum = parseFloat(empGainCumInput) || 0;
+
+            const selfAmtYear = Math.round(wage * selfRate * 12);
+            const selfAmtElem = document.getElementById(`selfAmt-${i}`);
+            if (selfAmtElem) selfAmtElem.innerText = formatNumber(selfAmtYear);
+
+            const realTotal = empAmtCum + empGainCum + selfAmtYear;
+            const realTotalElem = document.getElementById(`realTotal-${i}`);
+            if (realTotalElem) realTotalElem.innerText = hasHistoricalData ? formatNumber(realTotal) : "-";
+
+            const annualTotalContribution = (empAmt * 12) + selfAmtYear;
+            totalSelfContributionAccum += selfAmtYear;
+            totalEmployerContributionAccum += (empAmt * 12);
+
+            let estEmpAmtCum = 0;
+            let estEmpGainCum = 0;
+            let currentTotal = 0;
+            let currentYearGain = 0;
+
+            if (hasHistoricalData) {
+                historicalEmpAmtSum += (empAmt * 12);
+                historicalEmpGainSum += empGainCum;
+
+                estEmpAmtCum = empAmtCum;
+                estEmpGainCum = empGainCum;
+                currentTotal = realTotal;
+                prevAccumulatedTotal = currentTotal;
+                currentYearGain = empGainCum;
+
+                const rowStatusEl = document.getElementById(`rowStatus-${i}`);
+                if (rowStatusEl) rowStatusEl.innerHTML = `<span class="history-flag">歷史實證</span>`;
+                rowElem.classList.remove('future-row');
+                chartData.isEstimated.push(false);
+            } else {
+                currentYearGain = Math.round(prevAccumulatedTotal * avgYield);
+                estEmpGainCum = currentYearGain;
+                estEmpAmtCum = prevAccumulatedTotal + annualTotalContribution;
+                currentTotal = estEmpAmtCum + currentYearGain;
+                prevAccumulatedTotal = currentTotal;
+
+                const rowStatusEl = document.getElementById(`rowStatus-${i}`);
+                if (rowStatusEl) rowStatusEl.innerHTML = `<span class="future-flag">預估複利</span>`;
+                rowElem.classList.add('future-row');
+                chartData.isEstimated.push(true);
+            }
+
+            const estEmpAmtCumEl = document.getElementById(`estEmpAmtCum-${i}`);
+            const estEmpGainCumEl = document.getElementById(`estEmpGainCum-${i}`);
+            const estTotalEl = document.getElementById(`estTotal-${i}`);
+            if (estEmpAmtCumEl) estEmpAmtCumEl.innerText = formatNumber(estEmpAmtCum);
+            if (estEmpGainCumEl) estEmpGainCumEl.innerText = formatNumber(estEmpGainCum);
+            if (estTotalEl) estTotalEl.innerText = formatNumber(currentTotal);
+
+            const curAge = (i === 0) ? (baseAge || 27) : (baseAge ? baseAge + i : i + 1);
+            const curAD = (i === 0) ? (baseAD || '') : (baseAD ? baseAD + i : '');
+            const curROC = (i === 0) ? (baseROC || '') : (baseROC ? baseROC + i : '');
+
+            chartData.simpleLabels.push(`${curAge}歲`);
+            if (curAD && curROC) {
+                chartData.detailedLabels.push([`${curAge}歲`, `${curAD} (民${curROC})`]);
+            } else if (curAD) {
+                chartData.detailedLabels.push([`${curAge}歲`, `${curAD}年`]);
+            } else {
+                chartData.detailedLabels.push(`${curAge}歲`);
+            }
+
+            cumulativePrincipalCounter += annualTotalContribution;
+            chartData.cumulativePrincipal.push(cumulativePrincipalCounter);
+
+            const cumGain = Math.max(0, currentTotal - cumulativePrincipalCounter);
+            chartData.cumulativeGain.push(cumGain);
+
+            chartData.annualPrincipal.push(annualTotalContribution);
+            chartData.annualGain.push(currentYearGain);
+        }
+
+        document.getElementById('topSumEmployerAmt').innerText = formatNumber(historicalEmpAmtSum);
+        document.getElementById('topSumEmployerGain').innerText = formatNumber(historicalEmpGainSum);
+
+        const M3 = parseFloat(document.getElementById('topPrincipalM3').value) || 0;
+        const P3_rate = (parseFloat(document.getElementById('topGainP3').value) || 0) / 100;
+
+        const R3 = Math.round(M3 * P3_rate);
+        document.getElementById('topR3Val').innerText = formatNumber(R3);
+
+        const M4 = M3;
+        document.getElementById('topM4Val').innerText = formatNumber(M4);
+
+        const P4 = R3;
+        document.getElementById('topP4Val').innerText = formatNumber(P4);
+
+        const R4 = M4 + P4;
+        document.getElementById('topR4Val').innerText = formatNumber(R4);
+
+        updateDashboard(chartData, totalEmployerContributionAccum, totalSelfContributionAccum);
+
+        saveToLocalStorage();
+    }
+
+    /* 更新儀表板 KPI 與渲染圖表 */
+    function updateDashboard(chartData, totalEmployer, totalSelf) {
+        const lastIdx = currentRowCount - 1;
+        const finalPrincipal = chartData.cumulativePrincipal[lastIdx] || 0;
+        const finalGain = chartData.cumulativeGain[lastIdx] || 0;
+        const finalTotal = finalPrincipal + finalGain;
+
+        document.getElementById('kpiFinalTotal').innerText = '$' + formatNumber(finalTotal);
+        document.getElementById('kpiEmployerTotal').innerText = '$' + formatNumber(totalEmployer);
+        document.getElementById('kpiSelfTotal').innerText = '$' + formatNumber(totalSelf);
+        document.getElementById('kpiGainTotal').innerText = '$' + formatNumber(finalGain);
+
+        if (finalTotal > 0) {
+            document.getElementById('kpiEmployerRatio').innerText = `佔比 ${(totalEmployer / finalTotal * 100).toFixed(1)}%`;
+            document.getElementById('kpiSelfRatio').innerText = `佔比 ${(totalSelf / finalTotal * 100).toFixed(1)}%`;
+            document.getElementById('kpiGainRatio').innerText = `佔比 ${(finalGain / finalTotal * 100).toFixed(1)}%`;
+        }
+
+        renderMainChart(chartData);
+        renderDoughnutChart(totalEmployer, totalSelf, finalGain);
+    }
+
+    /* 切換累積走勢或年度投入損益對比 */
+    function switchMainChart(mode) {
+        currentMainChartMode = mode;
+        const btnStacked = document.getElementById('btnShowStacked');
+        const btnAnnual = document.getElementById('btnShowAnnual');
+        const titleElem = document.getElementById('trendChartTitle');
+
+        if (mode === 'stacked') {
+            btnStacked.classList.add('active');
+            btnAnnual.classList.remove('active');
+            titleElem.innerText = "資產複利增長趨勢 (本金 vs 收益)";
+        } else {
+            btnAnnual.classList.add('active');
+            btnStacked.classList.remove('active');
+            titleElem.innerText = "各年度提繳投入 vs 年度投資損益對比";
+        }
+        calculate();
+    }
+
+    function renderMainChart(chartData) {
+        const canvas = document.getElementById('mainTrendsChart');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        if (mainChartInstance) {
+            mainChartInstance.destroy();
+        }
+
+        if (currentMainChartMode === 'stacked') {
+            mainChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: chartData.simpleLabels,
+                    datasets: [
+                        {
+                            label: '累計投入本金 (雇主+自提)',
+                            data: chartData.cumulativePrincipal,
+                            backgroundColor: 'rgba(59, 82, 69, 0.45)',
+                            borderColor: '#3b5245',
+                            borderWidth: 1.5,
+                            fill: true,
+                            tension: 0.25,
+                            pointRadius: 0
+                        },
+                        {
+                            label: '複利累積投資收益',
+                            data: chartData.cumulativeGain,
+                            backgroundColor: 'rgba(200, 111, 50, 0.55)',
+                            borderColor: '#c86f32',
+                            borderWidth: 1.5,
+                            fill: true,
+                            tension: 0.25,
+                            pointRadius: 0
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        datalabels: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `${context.dataset.label}: NT$ ${formatNumber(context.raw)}`;
+                                }
+                            }
+                        },
+                        legend: { position: 'top', labels: { boxWidth: 12, font: { family: 'Inter', size: 11 } } }
+                    },
+                    scales: {
+                        x: { stacked: true, grid: { display: false } },
+                        y: {
+                            stacked: true,
+                            ticks: {
+                                callback: function(val) { return (val / 10000).toLocaleString() + '萬'; },
+                                font: { family: 'Space Mono', size: 10 }
+                            }
+                        }
+                    }
+                }
+            });
+        } else {
+            // 採用方案 B：煙燻紫藤色 (Dusty Amethyst) 作為預估值顏色
+            const gainBackgroundColors = chartData.isEstimated.map(isEst => 
+                isEst ? 'rgba(139, 92, 146, 0.85)' : 'rgba(200, 111, 50, 0.82)'
+            );
+            const gainBorderColors = chartData.isEstimated.map(isEst => 
+                isEst ? '#6d3b75' : '#8c4e20'
+            );
+
+            mainChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: chartData.detailedLabels,
+                    datasets: [
+                        {
+                            label: '當年度提繳金額 (本金)',
+                            data: chartData.annualPrincipal,
+                            backgroundColor: 'rgba(59, 82, 69, 0.78)',
+                            borderColor: '#3b5245',
+                            borderWidth: 1
+                        },
+                        {
+                            label: '當年度投資收益 (實證/預估)',
+                            data: chartData.annualGain,
+                            backgroundColor: gainBackgroundColors,
+                            borderColor: gainBorderColors,
+                            borderWidth: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        datalabels: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                title: function(items) {
+                                    const rawLabel = items[0].label;
+                                    return Array.isArray(rawLabel) ? rawLabel.join(' - ') : rawLabel;
+                                },
+                                label: function(context) {
+                                    if (context.datasetIndex === 1) {
+                                        const isEst = chartData.isEstimated[context.dataIndex];
+                                        const statusText = isEst ? '[預估複利]' : '[歷史實證]';
+                                        return `當年度投資收益 ${statusText}: NT$ ${formatNumber(context.raw)}`;
+                                    }
+                                    return `${context.dataset.label}: NT$ ${formatNumber(context.raw)}`;
+                                }
+                            }
+                        },
+                        legend: { 
+                            position: 'top', 
+                            labels: { 
+                                boxWidth: 12, 
+                                font: { family: 'Inter', size: 11 },
+                                generateLabels: function(chart) {
+                                    // 自訂圖例標籤，明確展示實證與預估之色塊
+                                    return [
+                                        {
+                                            text: '當年度提繳金額 (本金)',
+                                            fillStyle: 'rgba(59, 82, 69, 0.78)',
+                                            strokeStyle: '#3b5245',
+                                            lineWidth: 1,
+                                            hidden: false,
+                                            datasetIndex: 0
+                                        },
+                                        {
+                                            text: '投資收益 [歷史實證]',
+                                            fillStyle: 'rgba(200, 111, 50, 0.82)',
+                                            strokeStyle: '#8c4e20',
+                                            lineWidth: 1,
+                                            hidden: false
+                                        },
+                                        {
+                                            text: '投資收益 [預估複利]',
+                                            fillStyle: 'rgba(139, 92, 146, 0.85)',
+                                            strokeStyle: '#6d3b75',
+                                            lineWidth: 1,
+                                            hidden: false
+                                        }
+                                    ];
+                                }
+                            } 
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { display: false },
+                            ticks: {
+                                autoSkip: true,
+                                maxTicksLimit: 14,
+                                font: { size: 10.5, family: 'Inter, monospace' }
+                            }
+                        },
+                        y: {
+                            ticks: {
+                                callback: function(val) { return (val / 10000).toLocaleString() + '萬'; },
+                                font: { family: 'Space Mono', size: 10 }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    }
+
+    /* 終點資產結構環形圓餅圖：外環「外面」顯示金額與佔比，勿蓋到外環 */
+    function renderDoughnutChart(employerTotal, selfTotal, gainTotal) {
+        const canvas = document.getElementById('compositionChart');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        if (doughnutChartInstance) {
+            doughnutChartInstance.destroy();
+        }
+
+        const total = employerTotal + selfTotal + gainTotal;
+
+        doughnutChartInstance = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['雇主提繳累計', '個人自提累計', '投資收益累計'],
+                datasets: [{
+                    data: [employerTotal, selfTotal, gainTotal],
+                    backgroundColor: [
+                        '#3b5245', // 架構墨綠
+                        '#5e7568', // 說明灰綠
+                        '#c86f32'  // 琥珀焦糖
+                    ],
+                    borderWidth: 2,
+                    borderColor: '#ffffff',
+                    hoverOffset: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                layout: {
+                    padding: { top: 28, bottom: 24, left: 52, right: 52 }
+                },
+                cutout: '66%',
+                radius: '82%',
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: { boxWidth: 10, font: { family: 'Inter', size: 11 }, padding: 8 }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const pct = total > 0 ? (context.raw / total * 100).toFixed(1) : 0;
+                                return ` ${context.label}: NT$ ${formatNumber(context.raw)} (${pct}%)`;
+                            }
+                        }
+                    },
+                    datalabels: {
+                        display: function(context) {
+                            return context.dataset.data[context.dataIndex] > 0;
+                        },
+                        anchor: 'end',
+                        align: 'end',
+                        offset: 8,
+                        color: '#222e27',
+                        font: {
+                            family: 'Space Mono, monospace',
+                            weight: 'bold',
+                            size: 10.5
+                        },
+                        formatter: function(value, context) {
+                            const pct = total > 0 ? (value / total * 100).toFixed(1) : 0;
+                            const amountWan = (value >= 10000) 
+                                ? (value / 10000).toFixed(0) + '萬' 
+                                : Math.round(value).toLocaleString();
+                            return `${amountWan}\n(${pct}%)`;
+                        },
+                        textAlign: 'center',
+                        backgroundColor: 'rgba(255, 255, 255, 0.92)',
+                        borderRadius: 4,
+                        padding: { top: 3, bottom: 3, left: 6, right: 6 },
+                        borderWidth: 1,
+                        borderColor: '#d3ccc0'
+                    }
+                }
+            }
+        });
+    }
+
+    /* 增強型 LocalStorage 存取：保證完整結構落盤 */
+    function saveToLocalStorage() {
+        const formData = {
+            rowCount: currentRowCount,
+            calcDate: document.getElementById('topCalcDate')?.value || '',
+            principalM3: document.getElementById('topPrincipalM3')?.value || '',
+            gainP3: document.getElementById('topGainP3')?.value || '',
+            rows: []
+        };
+
+        for (let i = 0; i < currentRowCount; i++) {
+            formData.rows.push({
+                age: (i === 0) ? (document.getElementById(`age-0`)?.value || '') : (document.getElementById(`age-${i}`)?.innerText || ''),
+                ad: (i === 0) ? (document.getElementById(`ad-0`)?.value || '') : (document.getElementById(`ad-${i}`)?.innerText || ''),
+                roc: (i === 0) ? (document.getElementById(`roc-0`)?.value || '') : (document.getElementById(`roc-${i}`)?.innerText || ''),
+                wage: document.getElementById(`wage-${i}`)?.value || '',
+                selfRate: document.getElementById(`selfRate-${i}`)?.value || '',
+                empAmt: document.getElementById(`empAmt-${i}`)?.value || '',
+                empAmtCum: document.getElementById(`empAmtCum-${i}`)?.value || '',
+                empGainCum: document.getElementById(`empGainCum-${i}`)?.value || '',
+                yield: document.getElementById(`yield-${i}`)?.value || '',
+                company: document.getElementById(`company-${i}`)?.value || ''
+            });
+        }
+
+        try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(formData));
+        } catch (e) {
+            console.error("寫入 LocalStorage 快取失敗", e);
+        }
+    }
+
+    function loadFromLocalStorage() {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (!saved) return false;
+        try {
+            const data = JSON.parse(saved);
+            if (data.rows && Array.isArray(data.rows) && data.rows.length > 0) {
+                const targetCount = data.rowCount || data.rows.length || 41;
+                renderTableRows(targetCount);
+
+                if (data.calcDate !== undefined) document.getElementById('topCalcDate').value = data.calcDate;
+                if (data.principalM3 !== undefined) document.getElementById('topPrincipalM3').value = data.principalM3;
+                if (data.gainP3 !== undefined) document.getElementById('topGainP3').value = data.gainP3;
+
+                data.rows.forEach((row, i) => {
+                    if (i < currentRowCount) fillRowData(row, i);
+                });
+                return true;
+            }
+        } catch (e) {
+            console.error("讀取 LocalStorage 快取失敗", e);
+        }
+        return false;
+    }
+
+    function resetForm(event) {
+        if (event && event.preventDefault) event.preventDefault();
+        if (confirm("確定要清空所有試算與輸入紀錄嗎？此操作無法復原。")) {
+            localStorage.removeItem(STORAGE_KEY);
+            renderTableRows(41);
+            const inputs = document.querySelectorAll('input');
+            inputs.forEach(input => {
+                if (input.type !== 'file' && input.id !== 'cfgRowCount' && input.id !== 'cfgRetireAge') {
+                    input.value = '';
+                }
+            });
+            calculate();
+            alert("已成功清空表單與快取紀錄。");
+        }
+    }
+
+    function exportData() {
+        const formData = {
+            rowCount: currentRowCount,
+            calcDate: document.getElementById('topCalcDate')?.value || '',
+            principalM3: document.getElementById('topPrincipalM3')?.value || '',
+            gainP3: document.getElementById('topGainP3')?.value || '',
+            rows: []
+        };
+
+        for (let i = 0; i < currentRowCount; i++) {
+            formData.rows.push({
+                age: (i === 0) ? document.getElementById(`age-0`).value : document.getElementById(`age-${i}`).innerText,
+                ad: (i === 0) ? document.getElementById(`ad-0`).value : document.getElementById(`ad-${i}`).innerText,
+                roc: (i === 0) ? document.getElementById(`roc-0`).value : document.getElementById(`roc-${i}`).innerText,
+                wage: document.getElementById(`wage-${i}`).value,
+                selfRate: document.getElementById(`selfRate-${i}`).value,
+                empAmt: document.getElementById(`empAmt-${i}`).value,
+                empAmtCum: document.getElementById(`empAmtCum-${i}`).value,
+                empGainCum: document.getElementById(`empGainCum-${i}`).value,
+                yield: document.getElementById(`yield-${i}`).value,
+                company: document.getElementById(`company-${i}`).value
+            });
+        }
+
+        const jsonStr = JSON.stringify(formData, null, 2);
+        const blob = new Blob([jsonStr], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        
+        const now = new Date();
+        const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `SYS03_勞退專戶試算_${dateStr}.labor`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+
+    function importData(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const data = JSON.parse(e.target.result);
+                
+                if (data.rows && Array.isArray(data.rows)) {
+                    const targetCount = data.rowCount || data.rows.length || 41;
+                    renderTableRows(targetCount);
+
+                    if (data.calcDate !== undefined) document.getElementById('topCalcDate').value = data.calcDate;
+                    if (data.principalM3 !== undefined) document.getElementById('topPrincipalM3').value = data.principalM3;
+                    if (data.gainP3 !== undefined) document.getElementById('topGainP3').value = data.gainP3;
+
+                    data.rows.forEach((row, i) => {
+                        if (i < currentRowCount) fillRowData(row, i);
+                    });
+                } else if (Array.isArray(data)) {
+                    renderTableRows(data.length);
+                    data.forEach((row, i) => {
+                        if (i < currentRowCount) fillRowData(row, i);
+                    });
+                }
+                
+                calculate();
+                saveToLocalStorage();
+                alert('勞退試算資料成功匯入！已自動保存。');
+            } catch (err) {
+                alert('匯入檔案格式不正確！');
+            }
+        };
+        reader.readAsText(file);
+        event.target.value = '';
+    }
+
+    function fillRowData(row, i) {
+        if (i === 0) {
+            if (row.age !== undefined) document.getElementById(`age-0`).value = row.age;
+            if (row.ad !== undefined) document.getElementById(`ad-0`).value = row.ad;
+            if (row.roc !== undefined) document.getElementById(`roc-0`).value = row.roc;
+        }
+        if (row.wage !== undefined && document.getElementById(`wage-${i}`)) document.getElementById(`wage-${i}`).value = row.wage;
+        if (row.selfRate !== undefined && document.getElementById(`selfRate-${i}`)) document.getElementById(`selfRate-${i}`).value = row.selfRate;
+        if (row.empAmt !== undefined && document.getElementById(`empAmt-${i}`)) document.getElementById(`empAmt-${i}`).value = row.empAmt;
+        if (row.empAmtCum !== undefined && document.getElementById(`empAmtCum-${i}`)) document.getElementById(`empAmtCum-${i}`).value = row.empAmtCum;
+        if (row.empGainCum !== undefined && document.getElementById(`empGainCum-${i}`)) document.getElementById(`empGainCum-${i}`).value = row.empGainCum;
+        if (row.yield !== undefined && document.getElementById(`yield-${i}`)) document.getElementById(`yield-${i}`).value = row.yield;
+        if (row.company !== undefined && document.getElementById(`company-${i}`)) document.getElementById(`company-${i}`).value = row.company;
+    }
+
+    // 頁面初始化：確保無論有無歷史快取，都必然觸發 calculate() 進行試算與圖表繪製
+    window.onload = function() {
+        const hasLoaded = loadFromLocalStorage();
+        if (!hasLoaded) {
+            renderTableRows(41);
+        }
+        calculate();
+    };
+
+    // 增強生命週期安全儲存：覆蓋分頁切換、背景隱藏、跳轉與關閉等多重情境
+    document.addEventListener('visibilitychange', function() {
+        if (document.visibilityState === 'hidden') {
+            saveToLocalStorage();
+        }
+    });
+
+    window.addEventListener('pagehide', function() {
+        saveToLocalStorage();
+    });
+
+    window.addEventListener('beforeunload', function() {
+        saveToLocalStorage();
+    });
+</script>
+
+</body>
+</html>

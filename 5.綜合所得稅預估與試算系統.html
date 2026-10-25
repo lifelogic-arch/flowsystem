@@ -1,0 +1,2246 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SYS_05 綜合所得稅預估與試算系統 - 生活型態財務邏輯</title>
+
+    <!-- 🌐 網頁圖示與社群卡片設定 -->
+    <link rel="icon" href="favicon.png" type="image/png">
+    <link rel="apple-touch-icon" href="favicon.png">
+
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google 字體：Inter、Noto Serif TC、Space Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Serif+TC:wght@500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    
+    <!-- Chart.js 視覺化圖表庫 -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        :root {
+            --bg-canvas: #dfe5e1;       /* 啞光鼠尾草灰綠 */
+            --card-surface: #faf8f5;    /* 溫和手帳奶白 */
+            --header-deep: #222e27;     /* 結構深墨黑綠 */
+            --sage-primary: #3b5245;    /* 架構墨綠 */
+            --sage-muted: #5e7568;      /* 說明文字灰綠 */
+            --amber-accent: #c86f32;    /* 琥珀焦糖亮點色 */
+            --amber-bg: #fcf3eb;        /* 琥珀淡底 */
+            --border-soft: #d3ccc0;     /* 沉著細邊框 */
+            --input-bg: #e9edea;        /* 低反光輸入底 */
+            --text-title: #222e27;      /* 標題深墨黑 */
+            --text-body: #3c4b42;       /* 內文墨黑 */
+            --highlight-yellow: #f7efe4;/* 淺焙焦糖唯讀底 */
+            --green-net: #deeee3;       /* 退稅淡綠底 */
+            --green-text: #21613e;      /* 退稅文字綠 */
+            --red-text: #b8334a;        /* 補稅強調紅 */
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang TC", "Microsoft JhengHei", sans-serif;
+            background-color: var(--bg-canvas);
+            color: var(--text-body);
+            margin: 0;
+            padding: 0 0 40px 0;
+            background-image: 
+                linear-gradient(rgba(70, 95, 80, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(70, 95, 80, 0.05) 1px, transparent 1px);
+            background-size: 32px 32px;
+        }
+
+        .mono { font-family: 'Space Mono', monospace; }
+
+        /* 統一頂部導覽 Header */
+        .blueprint-header {
+            background-color: var(--header-deep);
+            color: #ffffff;
+            box-shadow: 0 4px 16px rgba(34, 46, 39, 0.15);
+            border-bottom: 1px solid #3c4a40;
+            position: sticky;
+            top: 0;
+            z-index: 40;
+            padding: 12px 20px;
+        }
+
+        .header-inner {
+            max-width: 1720px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .back-home {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 12px;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #d1ded6;
+            text-decoration: none;
+            font-size: 12px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+        .back-home:hover {
+            background: rgba(255, 255, 255, 0.18);
+            color: #ffffff;
+        }
+
+        .sys-badge {
+            font-family: 'Space Mono', monospace;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 3px 8px;
+            border-radius: 4px;
+            background: rgba(200, 111, 50, 0.2);
+            color: var(--amber-accent);
+            border: 1px solid rgba(200, 111, 50, 0.4);
+            letter-spacing: 1px;
+        }
+
+        .header-title-text {
+            font-size: 18px;
+            font-weight: 700;
+            margin: 0;
+            letter-spacing: 0.5px;
+            color: #ffffff;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .btn-action {
+            background: rgba(255, 255, 255, 0.08);
+            color: #e5ede8;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            text-decoration: none;
+        }
+
+        .btn-action:hover {
+            background: #ffffff;
+            color: var(--header-deep);
+            border-color: #ffffff;
+        }
+
+        .btn-config {
+            background: rgba(200, 111, 50, 0.25);
+            border-color: rgba(200, 111, 50, 0.45);
+            color: #f7dcd0;
+        }
+        .btn-config:hover {
+            background: var(--amber-accent);
+            color: #ffffff;
+            border-color: var(--amber-accent);
+        }
+
+        .btn-lock {
+            background: rgba(94, 117, 104, 0.3);
+            border-color: rgba(94, 117, 104, 0.5);
+            color: #e5ede8;
+        }
+        .btn-lock.locked {
+            background: rgba(184, 51, 74, 0.35);
+            border-color: rgba(184, 51, 74, 0.6);
+            color: #fca5a5;
+        }
+
+        .btn-danger {
+            background: rgba(184, 51, 74, 0.25);
+            border-color: rgba(184, 51, 74, 0.4);
+            color: #fca5a5;
+        }
+        .btn-danger:hover {
+            background: #b8334a;
+            color: #ffffff;
+            border-color: #b8334a;
+        }
+        .btn-danger:disabled {
+            background: rgba(150, 150, 150, 0.2);
+            border-color: rgba(150, 150, 150, 0.3);
+            color: #888;
+            cursor: not-allowed;
+        }
+
+        /* 主容器 */
+        .main-container {
+            max-width: 1720px;
+            margin: 16px auto 0;
+            padding: 0 14px;
+        }
+
+        /* 控制面板卡片 */
+        .control-card {
+            background: var(--card-surface);
+            padding: 12px 18px;
+            border-radius: 8px;
+            border: 1px solid var(--border-soft);
+            box-shadow: 0 2px 8px rgba(34, 46, 39, 0.03);
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            flex-wrap: wrap;
+            font-size: 12.5px;
+        }
+
+        .control-item { display: flex; align-items: center; gap: 6px; font-weight: 600; color: var(--text-title); }
+        .control-card select, .control-card input {
+            padding: 5px 8px; border: 1px solid var(--border-soft); border-radius: 4px;
+            font-size: 12.5px; font-weight: 700; color: var(--text-title); outline: none; background: var(--input-bg);
+            font-family: 'Space Mono', monospace;
+            transition: all 0.2s ease;
+        }
+        .control-card select:focus, .control-card input:focus {
+            border-color: var(--amber-accent);
+            box-shadow: 0 0 0 2px rgba(200, 111, 50, 0.2);
+            background: #ffffff;
+        }
+        .bg-yellow-select { background-color: var(--amber-bg) !important; color: #8c4e20 !important; border-color: #e3d4c1 !important; }
+
+        .btn-add-item {
+            background: #ffffff;
+            border: 1px solid var(--sage-primary);
+            color: var(--sage-primary);
+            font-weight: 600;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            transition: all 0.2s;
+        }
+        .btn-add-item:hover {
+            background: var(--sage-primary);
+            color: #ffffff;
+        }
+
+        .chart-toggle-btn {
+            background: #ffffff;
+            border: 1px solid var(--border-soft);
+            color: var(--sage-primary);
+            font-weight: 600;
+            padding: 5px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-left: auto;
+            font-size: 12px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s;
+        }
+        .chart-toggle-btn:hover {
+            border-color: var(--sage-primary);
+            background: var(--input-bg);
+        }
+
+        .charts-section {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            margin-bottom: 16px;
+        }
+
+        .chart-card {
+            background: var(--card-surface);
+            border: 1px solid var(--border-soft);
+            border-radius: 8px;
+            padding: 14px 18px;
+            box-shadow: 0 2px 8px rgba(34, 46, 39, 0.03);
+        }
+        .chart-card-title {
+            font-size: 13.5px;
+            font-weight: 700;
+            color: var(--text-title);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .chart-card-title span.subtitle {
+            font-size: 11px;
+            color: var(--sage-muted);
+            font-weight: normal;
+        }
+
+        .chart-ctrl-select {
+            padding: 3px 6px;
+            border: 1px solid var(--border-soft);
+            border-radius: 4px;
+            background: var(--amber-bg);
+            color: #8c4e20;
+            font-size: 11.5px;
+            font-weight: 700;
+            font-family: 'Space Mono', monospace;
+            outline: none;
+            cursor: pointer;
+        }
+        .chart-ctrl-select:focus { border-color: var(--amber-accent); }
+
+        .charts-row-dual {
+            display: grid;
+            grid-template-columns: 1.25fr 1fr;
+            gap: 14px;
+        }
+        @media (max-width: 1024px) {
+            .charts-row-dual { grid-template-columns: 1fr; }
+        }
+
+        .chart-wrapper-main { position: relative; height: 290px; width: 100%; }
+        .chart-wrapper-sub { position: relative; height: 300px; width: 100%; }
+
+        /* 表格區 */
+        .table-container {
+            overflow-x: auto; background: var(--card-surface); border-radius: 8px;
+            border: 1px solid var(--border-soft); box-shadow: 0 2px 8px rgba(34, 46, 39, 0.03); margin-bottom: 16px;
+        }
+
+        table { 
+            border-collapse: separate; 
+            border-spacing: 0;
+            width: 100%; 
+            table-layout: fixed; 
+            text-align: center; 
+            font-size: 12px; 
+            background: var(--card-surface);
+        }
+        
+        th, td { 
+            border-right: 1px solid var(--border-soft); 
+            border-bottom: 1px solid var(--border-soft); 
+            padding: 9px 4px; 
+            word-wrap: break-word; 
+            overflow: hidden; 
+            line-height: 1.3;
+            white-space: nowrap;
+        }
+        th:first-child, td:first-child { border-left: 1px solid var(--border-soft); }
+        tr:first-child th { border-top: 1px solid var(--border-soft); }
+
+        table th.col-sticky,
+        table td.col-sticky {
+            position: sticky;
+            left: 0;
+            z-index: 10;
+            background-color: #f2eee8;
+            border-right: 2px solid var(--border-soft);
+            white-space: normal;
+        }
+        table thead tr:first-child th.col-sticky {
+            z-index: 25;
+            background-color: var(--header-deep);
+            color: #ffffff;
+        }
+
+        .sticky-year-btn {
+            cursor: pointer;
+            transition: all 0.15s ease;
+            border-radius: 4px;
+            padding: 2px;
+        }
+        .sticky-year-btn:hover {
+            background-color: #e4ddcf;
+            color: var(--amber-accent);
+        }
+
+        th {
+            font-size: 11px;
+            font-weight: 600;
+            white-space: normal;
+            background: #f2eee8;
+            color: var(--text-title);
+        }
+
+        .sec-hdr { 
+            background-color: var(--header-deep); 
+            color: #ffffff; 
+            font-weight: 700; 
+            font-size: 12px;
+            padding: 8px 4px;
+            letter-spacing: 0.5px;
+        }
+
+        tbody tr:hover td { background-color: #f4efe6 !important; }
+        tbody tr:hover td.blue-cell { background-color: #dceae1 !important; }
+
+        .num-text {
+            font-size: 12.5px;
+            font-weight: 600;
+            font-family: 'Space Mono', monospace;
+        }
+
+        .blue-cell { 
+            background-color: #f2f7f4; 
+            cursor: pointer; 
+            color: var(--sage-primary); 
+            font-weight: 700; 
+            font-size: 12.5px; 
+            font-family: 'Space Mono', monospace; 
+            transition: all 0.15s ease;
+        }
+        .blue-cell:hover { background-color: #dceae1; }
+        .blue-cell.locked-cell { cursor: not-allowed; opacity: 0.85; }
+
+        .cell-yellow { background-color: var(--highlight-yellow); font-weight: bold; font-size: 12.5px; color: #8c4e20; font-family: 'Space Mono', monospace; }
+        .cell-tax-due { color: var(--red-text); font-weight: bold; font-size: 12.5px; font-family: 'Space Mono', monospace; }
+        .cell-tax-refund { color: var(--green-text); font-weight: bold; font-size: 12.5px; background-color: var(--green-net); font-family: 'Space Mono', monospace; }
+
+        .btn-action-group {
+            display: flex;
+            flex-direction: row;
+            justify-content: center;
+            align-items: center;
+            gap: 2px;
+            padding: 0 !important;
+        }
+        .btn-action-group button {
+            font-size: 10.5px;
+            font-weight: 600;
+            padding: 3px 5px;
+            border: 1px solid var(--border-soft);
+            border-radius: 4px;
+            background: #ffffff;
+            color: var(--text-title);
+            cursor: pointer;
+            transition: all 0.15s;
+            white-space: nowrap;
+        }
+        .btn-action-group button:hover {
+            background: var(--input-bg);
+            border-color: var(--amber-accent);
+        }
+
+        .dyn-th {
+            cursor: pointer;
+            background: #e6ece9;
+            transition: background 0.15s;
+        }
+        .dyn-th:hover { background: #d7e4dc; }
+
+        /* 夫妻 5 軌試算面板 */
+        .marry-optimization-panel {
+            background: var(--card-surface); border: 1.5px solid var(--sage-primary); border-radius: 8px; padding: 16px; margin-bottom: 16px;
+            box-shadow: 0 2px 8px rgba(34, 46, 39, 0.03);
+        }
+        .marry-opt-title { font-size: 13.5px; font-weight: bold; color: var(--text-title); margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+        .opt-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; }
+        .opt-card { border: 1px solid var(--border-soft); border-radius: 6px; padding: 10px; text-align: center; background: #f2eee8; }
+        .opt-card.best { border: 1.5px solid var(--sage-primary); background: #eef3ef; }
+        .opt-card .title { font-size: 11.5px; color: var(--sage-muted); margin-bottom: 4px; }
+        .opt-card .amount { font-size: 14.5px; font-weight: bold; color: var(--text-title); font-family: 'Space Mono', monospace; }
+        .opt-card.best .amount { color: var(--green-text); }
+        .badge-best { background: var(--sage-primary); color: white; font-size: 10px; padding: 2px 6px; border-radius: 4px; margin-left: 4px; }
+
+        /* 特扣額參考卡 */
+        .info-card {
+            background: var(--card-surface); border: 1px solid var(--border-soft); border-radius: 8px; padding: 14px 18px; margin-bottom: 16px; font-size: 12px; line-height: 1.6; color: var(--sage-muted);
+            border-left: 4px solid var(--sage-primary);
+        }
+        .info-card-title { font-weight: bold; color: var(--text-title); margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+
+        /* Modal 編輯彈窗 */
+        .modal { display: none; position: fixed; z-index: 1000; left:0; top:0; width:100%; height:100%; background:rgba(34,46,39,0.65); backdrop-filter:blur(2px); justify-content:center; align-items:center; }
+        .modal-content { background: var(--card-surface); padding: 22px; border-radius: 8px; width: 420px; max-height: 85vh; overflow-y: auto; box-shadow: 0 10px 30px rgba(0,0,0,0.2); border: 1px solid var(--border-soft); }
+        .modal-header { display: flex; justify-content: space-between; font-weight: bold; margin-bottom: 12px; border-bottom: 1px solid var(--border-soft); padding-bottom: 8px; font-size: 14px; color: var(--text-title); }
+        .close-btn { cursor: pointer; font-size: 20px; color: var(--sage-muted); }
+        .close-btn:hover { color: var(--text-title); }
+        .form-group { margin-bottom: 10px; text-align: left; }
+        .form-group label { display: block; font-size: 11.5px; font-weight: bold; color: var(--text-title); margin-bottom: 4px; }
+        .form-input { width: 100%; padding: 7px; border: 1px solid var(--border-soft); border-radius: 4px; font-size: 12.5px; box-sizing: border-box; background: var(--input-bg); color: var(--text-title); font-family: 'Space Mono', monospace; }
+        .form-input:focus { border-color: var(--amber-accent); background: #ffffff; outline: none; }
+        .btn-save { width: 100%; padding: 9px; background: var(--sage-primary); color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; margin-top: 10px; font-size: 12.5px; transition: all 0.2s; }
+        .btn-save:hover { background: var(--header-deep); }
+
+        @media print {
+            .blueprint-header, .control-card, .btn-action-group, .info-card, .charts-section, .chart-toggle-btn { display: none !important; }
+            body { background: white !important; background-image: none !important; padding: 0 !important; }
+            .table-container { border: none !important; box-shadow: none !important; overflow: visible !important; }
+            table { min-width: 100% !important; font-size: 9px !important; }
+            th, td { padding: 4px 2px !important; }
+            table th.col-sticky, table td.col-sticky { position: static !important; box-shadow: none !important; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 統一頂部導覽 Header -->
+    <header class="blueprint-header">
+        <div class="header-inner">
+            <div class="header-left">
+                <a href="index.html#modules-overview" class="back-home">
+                    <span class="mono">←</span> 返回上一頁
+                </a>
+                <a href="index.html#hero-cover" class="back-home">
+                    <i class="fa-solid fa-house text-xs"></i> 封面
+                </a>
+                <span style="color:#5e7568;" class="mono text-xs">/</span>
+                <span class="sys-badge">SYS_01</span>
+                <h1 class="header-title-text">綜合所得稅預估與試算系統</h1>
+            </div>
+            <div class="header-actions">
+                <button class="btn-action btn-config" onclick="openTaxConfigModal()">
+                    <i class="fa-solid fa-sliders"></i> 設定稅率級距
+                </button>
+                <button class="btn-action" onclick="exportData()">
+                    <i class="fa-solid fa-file-export text-emerald-400"></i> 匯出.TAX備份
+                </button>
+                <button class="btn-action" onclick="triggerImport()">
+                    <i class="fa-solid fa-file-import text-amber-400"></i> 匯入.TAX備份
+                </button>
+                <input type="file" id="fileInput" accept=".tax,.json" style="display:none;" onchange="importData(event)">
+                <button class="btn-action" onclick="window.print()">
+                    <i class="fa-solid fa-print text-indigo-300"></i> 列印/PDF
+                </button>
+                <button class="btn-action btn-lock" id="lockBtn" onclick="toggleLock()">
+                    <i class="fa-solid fa-lock-open"></i> 資料已解鎖
+                </button>
+                <button class="btn-action btn-danger" id="resetBtn" onclick="resetAllData()">
+                    <i class="fa-solid fa-arrow-rotate-left"></i> 清空重來
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <div class="main-container">
+        <!-- 視角與控制列 -->
+        <div class="control-card">
+            <div class="control-item">
+                <label>初始西元：</label>
+                <input type="number" id="startYear" value="2026" style="width: 75px;" onchange="updateStartYear(this.value)">
+            </div>
+            <div class="control-item">
+                <label>初始年齡：</label>
+                <input type="number" id="startAge" value="30" min="0" max="120" style="width: 55px;" onchange="saveToLocalStorage(); renderAll();">
+                <span>歲</span>
+            </div>
+            <div class="control-item">
+                <label>🎯 檢視起始年度：</label>
+                <select id="viewStartYearSelect" class="bg-yellow-select" onchange="saveToLocalStorage(); renderAll();"></select>
+            </div>
+            <div class="control-item">
+                <label>顯示範疇：</label>
+                <select id="viewRangeSelect" onchange="saveToLocalStorage(); renderAll();">
+                    <option value="1">當年度檢視 (1 年)</option>
+                    <option value="5">近 5 個年度</option>
+                    <option value="10" selected>近 10 個年度</option>
+                    <option value="20">近 20 個年度</option>
+                    <option value="60">全部 60 個年度</option>
+                </select>
+            </div>
+            <div class="control-item">
+                <label>婚姻狀態：</label>
+                <select id="maritalStatus" onchange="saveToLocalStorage(); renderAll();">
+                    <option value="single" selected>單身申報</option>
+                    <option value="married">夫妻合併申報 (5 軌試算)</option>
+                </select>
+            </div>
+            <div class="control-item">
+                <label>通膨長線調升：</label>
+                <select id="inflationMode" onchange="toggleCpiInput(); saveToLocalStorage(); renderAll();">
+                    <option value="off">關閉 (固定級距)</option>
+                    <option value="on" selected>開啟自訂 CPI</option>
+                </select>
+                <div id="cpiInputGroup" style="display:none; align-items:center; gap:2px;">
+                    <input type="number" id="customCpi" value="1.5" step="0.1" style="width: 55px;" onchange="saveToLocalStorage(); renderAll();">
+                    <span>%</span>
+                </div>
+            </div>
+            <button class="btn-add-item" onclick="promptAddNewIncomeColumn()">
+                <i class="fa-solid fa-plus"></i> 新增所得項目
+            </button>
+            <button class="chart-toggle-btn" onclick="toggleChartsVisibility()">
+                <i class="fa-solid fa-chart-line"></i> <span id="chartToggleText">收合圖表儀表板</span>
+            </button>
+        </div>
+
+        <!-- 📊 綜合視覺化儀表板區塊 -->
+        <div id="chartsContainer" class="charts-section">
+            <div class="chart-card">
+                <div class="chart-card-title">
+                    <span>📈 長期所得結構與稅負/實質有效稅率走勢</span>
+                    <span class="subtitle">涵蓋檢視範圍年度之所得總額、預估實質稅負（支援退稅向下呈現）與實質稅率曲線</span>
+                </div>
+                <div class="chart-wrapper-main">
+                    <canvas id="trendChart"></canvas>
+                </div>
+            </div>
+
+            <div class="charts-row-dual">
+                <div class="chart-card">
+                    <div class="chart-card-title">
+                        <div>
+                            <span id="waterfallTitle">💧 課稅扣除與稅額扣抵歷程階梯</span>
+                            <div class="subtitle">直觀展示收入經免稅、各項扣除額、稅率算定及股利扣抵之完整逐階浮動歷程</div>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:6px;">
+                            <label style="font-size:11px; font-weight:600; color:var(--text-title);">分析年度：</label>
+                            <select id="waterfallYearSelect" class="chart-ctrl-select" onchange="saveToLocalStorage(); renderWaterfallChartOnly();"></select>
+                        </div>
+                    </div>
+                    <div class="chart-wrapper-sub">
+                        <canvas id="waterfallChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="chart-card">
+                    <div class="chart-card-title">
+                        <div>
+                            <span id="optChartTitle">⚖️ 決策分析與稅負比對</span>
+                            <div class="subtitle" id="optChartSubtitle">夫妻 5 軌試算條形比較 / 股利節稅比較</div>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:6px;">
+                            <label style="font-size:11px; font-weight:600; color:var(--text-title);">分析年度：</label>
+                            <select id="modeCompareYearSelect" class="chart-ctrl-select" onchange="saveToLocalStorage(); renderModeCompareChartOnly();"></select>
+                        </div>
+                    </div>
+                    <div class="chart-wrapper-sub">
+                        <canvas id="modeCompareChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 主表格 -->
+        <div class="table-container">
+            <table id="taxMainTable">
+                <colgroup id="tableColgroup"></colgroup>
+                <thead id="tableHead"></thead>
+                <tbody id="taxTableBody"></tbody>
+            </table>
+        </div>
+
+        <!-- 夫妻申報 5 軌試算面板 -->
+        <div id="marryPanel" class="marry-optimization-panel">
+            <div class="marry-opt-title">
+                <span id="marryPanelHeader">👫 檢視年度夫妻申報 5 軌最佳化比較</span>
+                <span id="bestRecommendText" style="color: var(--green-text); font-size: 12.5px;"></span>
+            </div>
+            <div class="opt-grid" id="optGrid"></div>
+        </div>
+
+        <!-- 特扣額與填寫防呆參考卡 -->
+        <div class="info-card">
+            <div class="info-card-title">💡 常用特別扣除額與動態所得項目操作指引：</div>
+            <div style="display: flex; gap: 16px; flex-wrap: wrap;">
+                <div>• <b>➕ 自訂所得項目</b>：點擊上方「新增所得項目」即可增列（如租賃所得 51、海外所得等），點擊表頭 ✏️ 可改名、或調整歸屬（本人/配偶）、或刪除欄位。</div>
+                <div>• <b>🏠 房屋租金支出特別扣除額</b>：每戶每年上限 18 萬元（排富適用）。</div>
+                <div>• <b>👶 幼兒學前特扣額</b>：6 歲以下首胎 15 萬元、第 2 胎以上每人 22.5 萬元（無排富）。</div>
+                <div>• <b>♿ 身心障礙特扣額</b>：每人 21.8 萬元；<b>👵 長照特別扣除額</b>：每人 12 萬元。</div>
+                <div>• <b>📈 股利二擇一比對</b>：系統自動比對「合併計稅 (8.5%抵減，上限8萬)」與「分開計稅 (單一稅率28%)」何者最佳。</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 單一數據編輯彈窗 Modal -->
+    <div id="inputModal" class="modal">
+        <div class="modal-content" style="width:340px;">
+            <div class="modal-header">
+                <span id="modalTitle">修改數值</span>
+                <span class="close-btn" onclick="closeModal('inputModal')">&times;</span>
+            </div>
+            <div class="form-group">
+                <label id="modalFieldLabel"></label>
+                <input type="number" id="modalInputValue" class="form-input">
+            </div>
+            <button class="btn-save" onclick="saveModalValue()">儲存更新 (Enter)</button>
+        </div>
+    </div>
+
+    <!-- 自訂欄位管理 Modal -->
+    <div id="columnModal" class="modal">
+        <div class="modal-content" style="width:360px;">
+            <div class="modal-header">
+                <span id="colModalTitle">自訂所得項目設定</span>
+                <span class="close-btn" onclick="closeModal('columnModal')">&times;</span>
+            </div>
+            <div class="form-group">
+                <label>項目名稱：</label>
+                <input type="text" id="colModalName" class="form-input" placeholder="例如：租賃所得(51)">
+            </div>
+            <div class="form-group">
+                <label>所得歸屬（影響夫妻申報模式 4、5 分開計算）：</label>
+                <select id="colModalOwner" class="form-input">
+                    <option value="primary">本人所得</option>
+                    <option value="spouse">配偶所得</option>
+                </select>
+            </div>
+            <button class="btn-save" onclick="saveColumnConfig()">儲存設定</button>
+            <button id="colModalDeleteBtn" class="btn-save" style="background:#b8334a; margin-top:8px;" onclick="deleteCurrentColumn()">刪除此項目</button>
+        </div>
+    </div>
+
+    <!-- ⚙️ 獨立稅率級距與參數維護 Modal -->
+    <div id="configModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span id="configModalTitle">⚙️ 稅務級距與扣除額設定</span>
+                <span class="close-btn" onclick="closeModal('configModal')">&times;</span>
+            </div>
+            
+            <div class="form-group">
+                <label>基本生活費 (個人)：</label>
+                <input type="number" id="cfgBasicLiving" class="form-input">
+            </div>
+            <div class="form-group">
+                <label>一般免稅額：</label>
+                <input type="number" id="cfgExemption" class="form-input">
+            </div>
+            <div class="form-group">
+                <label>標準扣除額 (單身)：</label>
+                <input type="number" id="cfgStdSingle" class="form-input">
+            </div>
+            <div class="form-group">
+                <label>標準扣除額 (夫妻)：</label>
+                <input type="number" id="cfgStdMarried" class="form-input">
+            </div>
+            <div class="form-group">
+                <label>薪資特別扣除額上限：</label>
+                <input type="number" id="cfgSalCap" class="form-input">
+            </div>
+
+            <hr style="border:0; border-top:1px solid var(--border-soft); margin:12px 0;">
+            <div style="font-weight:bold; font-size:12.5px; margin-bottom:8px; color:var(--text-title);">課稅級距上限設定</div>
+
+            <div class="form-group">
+                <label>5% 級距上限 (公告為 610,000)：</label>
+                <input type="number" id="cfgBracket1" class="form-input">
+            </div>
+            <div class="form-group">
+                <label>12% 級距上限 (公告為 1,380,000)：</label>
+                <input type="number" id="cfgBracket2" class="form-input">
+            </div>
+            <div class="form-group">
+                <label>20% 級距上限 (公告為 2,770,000)：</label>
+                <input type="number" id="cfgBracket3" class="form-input">
+            </div>
+            <div class="form-group">
+                <label>30% 級距上限 (公告為 5,190,000)：</label>
+                <input type="number" id="cfgBracket4" class="form-input">
+            </div>
+
+            <div class="form-group" style="margin-top: 10px;">
+                <label style="color:var(--red-text);">套用範圍設定：</label>
+                <select id="cfgApplyScope" class="form-input" style="font-weight:bold;">
+                    <option value="future" selected>僅套用到當前年度及未來所有年份 (保護歷史)</option>
+                    <option value="current">僅套用到當前檢視年度</option>
+                    <option value="all">套用到全部 60 個年度</option>
+                </select>
+            </div>
+
+            <button class="btn-save" onclick="saveTaxConfig()">儲存最新稅制設定</button>
+        </div>
+    </div>
+
+    <script>
+        const TOTAL_YEARS = 60;
+        const STORAGE_KEY = 'TAX_ESTIMATE_SYSTEM_DATA_V2';
+        let baseStartYear = 2026;
+        let isLocked = false;
+        let taxDataStore = {};
+
+        // 動態所得欄位定義
+        let dynamicIncomeCols = [
+            { id: 'col_other1', name: '自訂所得 A', owner: 'primary' },
+            { id: 'col_other2', name: '自訂所得 B', owner: 'primary' }
+        ];
+
+        let trendChartInstance = null;
+        let waterfallChartInstance = null;
+        let modeCompareChartInstance = null;
+        let showCharts = true;
+
+        function getDefaultTaxParams() {
+            return {
+                basicLiving: 216000,
+                exemption: 101000,
+                stdSingle: 136000,
+                stdMarried: 272000,
+                salCap: 227000,
+                b1: 610000,
+                b2: 1380000,
+                b3: 2770000,
+                b4: 5190000
+            };
+        }
+
+        function createDefaultYearData(yearIndex) {
+            return {
+                taxParams: getDefaultTaxParams(),
+                dependents: 0,
+                otherDeduction: 0,
+                salary: 0,
+                interest: 0,
+                dividend: 0,
+                spouse_salary: 0,
+                spouse_interest: 0,
+                spouse_dividend: 0,
+                withheld: 0,
+                customIncomes: {}
+            };
+        }
+
+        function toggleChartsVisibility() {
+            showCharts = !showCharts;
+            const container = document.getElementById('chartsContainer');
+            const toggleText = document.getElementById('chartToggleText');
+            if (showCharts) {
+                container.style.display = 'flex';
+                toggleText.innerText = '收合圖表儀表板';
+                renderAll();
+            } else {
+                container.style.display = 'none';
+                toggleText.innerText = '展開圖表儀表板';
+            }
+            saveToLocalStorage();
+        }
+
+        function saveToLocalStorage() {
+            try {
+                const payload = {
+                    version: "3.2-DynamicCols",
+                    baseStartYear: parseInt(baseStartYear) || 2026,
+                    startAge: parseInt(document.getElementById('startAge').value) || 30,
+                    maritalStatus: document.getElementById('maritalStatus').value,
+                    inflationMode: document.getElementById('inflationMode').value,
+                    customCpi: parseFloat(document.getElementById('customCpi').value) || 1.5,
+                    viewStartYear: parseInt(document.getElementById('viewStartYearSelect')?.value) || baseStartYear,
+                    viewRange: parseInt(document.getElementById('viewRangeSelect')?.value) || 10,
+                    waterfallYear: parseInt(document.getElementById('waterfallYearSelect')?.value) || baseStartYear,
+                    modeCompareYear: parseInt(document.getElementById('modeCompareYearSelect')?.value) || baseStartYear,
+                    showCharts: showCharts,
+                    dynamicIncomeCols: dynamicIncomeCols,
+                    store: taxDataStore
+                };
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+            } catch (e) {
+                if (e.name === 'QuotaExceededError') {
+                    alert('⚠️ 瀏覽器儲存空間已滿，請定期匯出 .TAX 備份檔！');
+                } else {
+                    console.error("寫入 localStorage 失敗:", e);
+                }
+            }
+        }
+
+        function loadFromLocalStorage() {
+            try {
+                const savedData = localStorage.getItem(STORAGE_KEY);
+                if (!savedData) return false;
+
+                const parsed = JSON.parse(savedData);
+                if (!parsed || !parsed.store || !parsed.baseStartYear) return false;
+
+                baseStartYear = parseInt(parsed.baseStartYear) || 2026;
+                document.getElementById('startYear').value = baseStartYear;
+                document.getElementById('startAge').value = (parsed.startAge !== undefined) ? parseInt(parsed.startAge) : 30;
+                if (parsed.maritalStatus) document.getElementById('maritalStatus').value = parsed.maritalStatus;
+                if (parsed.inflationMode) document.getElementById('inflationMode').value = parsed.inflationMode;
+                if (parsed.customCpi) document.getElementById('customCpi').value = parsed.customCpi;
+
+                if (parsed.showCharts !== undefined) {
+                    showCharts = parsed.showCharts;
+                    const container = document.getElementById('chartsContainer');
+                    const toggleText = document.getElementById('chartToggleText');
+                    container.style.display = showCharts ? 'flex' : 'none';
+                    toggleText.innerText = showCharts ? '收合圖表儀表板' : '展開圖表儀表板';
+                }
+
+                if (parsed.dynamicIncomeCols && Array.isArray(parsed.dynamicIncomeCols)) {
+                    dynamicIncomeCols = parsed.dynamicIncomeCols;
+                } else if (parsed.customFieldNames) {
+                    dynamicIncomeCols = [
+                        { id: 'col_other1', name: parsed.customFieldNames.otherIncome1Name || '自訂 A', owner: 'primary' },
+                        { id: 'col_other2', name: parsed.customFieldNames.otherIncome2Name || '自訂 B', owner: 'primary' }
+                    ];
+                }
+
+                taxDataStore = parsed.store;
+
+                for (let yr = baseStartYear; yr < baseStartYear + TOTAL_YEARS; yr++) {
+                    if (!taxDataStore[yr]) {
+                        taxDataStore[yr] = createDefaultYearData(yr - baseStartYear);
+                    } else {
+                        if (!taxDataStore[yr].customIncomes) taxDataStore[yr].customIncomes = {};
+                        if (taxDataStore[yr].otherIncome1 !== undefined) {
+                            taxDataStore[yr].customIncomes['col_other1'] = taxDataStore[yr].otherIncome1;
+                            delete taxDataStore[yr].otherIncome1;
+                        }
+                        if (taxDataStore[yr].otherIncome2 !== undefined) {
+                            taxDataStore[yr].customIncomes['col_other2'] = taxDataStore[yr].otherIncome2;
+                            delete taxDataStore[yr].otherIncome2;
+                        }
+                    }
+                }
+
+                updateViewSelectOptions(parsed.viewStartYear, parsed.waterfallYear, parsed.modeCompareYear);
+                if (parsed.viewRange) {
+                    document.getElementById('viewRangeSelect').value = parsed.viewRange;
+                }
+                return true;
+            } catch (e) {
+                console.error("讀取 localStorage 失敗，已重置:", e);
+                return false;
+            }
+        }
+
+        function initDataStore() {
+            if (loadFromLocalStorage()) {
+                toggleCpiInput();
+                return;
+            }
+
+            taxDataStore = {};
+            for (let i = 0; i < TOTAL_YEARS; i++) {
+                let yr = baseStartYear + i;
+                taxDataStore[yr] = createDefaultYearData(i);
+            }
+            updateViewSelectOptions();
+        }
+
+        function toggleCpiInput() {
+            const mode = document.getElementById('inflationMode').value;
+            document.getElementById('cpiInputGroup').style.display = (mode === 'on') ? 'inline-flex' : 'none';
+        }
+
+        function calcProgressiveTaxDynamic(netIncome, params) {
+            if (netIncome <= 0) return { tax: 0, rate: "0%", diff: 0 };
+
+            const r1 = 0.05, r2 = 0.12, r3 = 0.20, r4 = 0.30, r5 = 0.40;
+            const b1 = params.b1, b2 = params.b2, b3 = params.b3, b4 = params.b4;
+
+            const d1 = 0;
+            const d2 = Math.round(b1 * (r2 - r1));
+            const d3 = Math.round(d2 + b2 * (r3 - r2));
+            const d4 = Math.round(d3 + b3 * (r4 - r3));
+            const d5 = Math.round(d4 + b4 * (r5 - r4));
+
+            if (netIncome <= b1) return { tax: Math.round(netIncome * r1), rate: "5%", diff: d1 };
+            if (netIncome <= b2) return { tax: Math.round(netIncome * r2 - d2), rate: "12%", diff: d2 };
+            if (netIncome <= b3) return { tax: Math.round(netIncome * r3 - d3), rate: "20%", diff: d3 };
+            if (netIncome <= b4) return { tax: Math.round(netIncome * r4 - d4), rate: "30%", diff: d4 };
+            return { tax: Math.round(netIncome * r5 - d5), rate: "40%", diff: d5 };
+        }
+
+        function updateViewSelectOptions(presetViewStartYear, presetWaterfallYear, presetModeCompareYear) {
+            const select = document.getElementById('viewStartYearSelect');
+            const currentVal = parseInt(presetViewStartYear) || (select ? parseInt(select.value) : null) || baseStartYear;
+            const startAge = parseInt(document.getElementById('startAge').value) || 0;
+
+            let optionsHtml = '';
+            for (let i = 0; i < TOTAL_YEARS; i++) {
+                let yr = baseStartYear + i;
+                optionsHtml += `<option value="${yr}">${yr} 年 (第 ${i + 1} 年)</option>`;
+            }
+            select.innerHTML = optionsHtml;
+            if (currentVal >= baseStartYear && currentVal < baseStartYear + TOTAL_YEARS) {
+                select.value = currentVal;
+            } else {
+                select.value = baseStartYear;
+            }
+
+            updateChartYearSelect('waterfallYearSelect', presetWaterfallYear || currentVal, startAge);
+            updateChartYearSelect('modeCompareYearSelect', presetModeCompareYear || currentVal, startAge);
+        }
+
+        function updateChartYearSelect(selectId, targetYear, startAge) {
+            const sel = document.getElementById(selectId);
+            if (!sel) return;
+            const prevVal = parseInt(targetYear) || parseInt(sel.value) || baseStartYear;
+            let html = '';
+            for (let i = 0; i < TOTAL_YEARS; i++) {
+                let yr = baseStartYear + i;
+                let age = startAge + i;
+                html += `<option value="${yr}">${yr} 年 (${age}歲 / ${yr - 1911}年)</option>`;
+            }
+            sel.innerHTML = html;
+            if (prevVal >= baseStartYear && prevVal < baseStartYear + TOTAL_YEARS) {
+                sel.value = prevVal;
+            } else {
+                sel.value = baseStartYear;
+            }
+        }
+
+        function updateStartYear(newVal) {
+            const parsed = parseInt(newVal);
+            if (parsed && parsed > 1900 && parsed < 2100) {
+                const diff = parsed - baseStartYear;
+                baseStartYear = parsed;
+                let newStore = {};
+                Object.keys(taxDataStore).forEach(oldYr => {
+                    newStore[parseInt(oldYr) + diff] = taxDataStore[oldYr];
+                });
+                taxDataStore = newStore;
+                updateViewSelectOptions();
+                saveToLocalStorage();
+                renderAll();
+            }
+        }
+
+        function getParamsForYear(yr) {
+            const d = taxDataStore[yr] || createDefaultYearData(yr - baseStartYear);
+            let currentParams = JSON.parse(JSON.stringify(d.taxParams || getDefaultTaxParams()));
+            const inflationOn = document.getElementById('inflationMode').value === 'on';
+            const userCpi = parseFloat(document.getElementById('customCpi').value) || 1.5;
+
+            if (inflationOn) {
+                const yearDiff = yr - baseStartYear;
+                const inflFactor = Math.pow(1 + (userCpi / 100), yearDiff);
+                currentParams.basicLiving = Math.round((currentParams.basicLiving * inflFactor) / 1000) * 1000;
+                currentParams.exemption = Math.round((currentParams.exemption * inflFactor) / 1000) * 1000;
+                currentParams.stdSingle = Math.round((currentParams.stdSingle * inflFactor) / 1000) * 1000;
+                currentParams.stdMarried = Math.round((currentParams.stdMarried * inflFactor) / 1000) * 1000;
+                currentParams.b1 = Math.round((currentParams.b1 * inflFactor) / 10000) * 10000;
+                currentParams.b2 = Math.round((currentParams.b2 * inflFactor) / 10000) * 10000;
+                currentParams.b3 = Math.round((currentParams.b3 * inflFactor) / 10000) * 10000;
+                currentParams.b4 = Math.round((currentParams.b4 * inflFactor) / 10000) * 10000;
+            }
+            return { d, currentParams };
+        }
+
+        function calculateYearTax(d, currentParams, isMarried) {
+            const deps = d.dependents || 0;
+            const otherDed = d.otherDeduction || 0;
+            const totalPeople = (isMarried ? 2 : 1) + deps;
+
+            const salDeductionCap = currentParams.salCap;
+            const stdDeduction = isMarried ? currentParams.stdMarried : currentParams.stdSingle;
+
+            const salDeductionP = Math.round(Math.min(d.salary || 0, salDeductionCap));
+            const salDeductionS = isMarried ? Math.round(Math.min(d.spouse_salary || 0, salDeductionCap)) : 0;
+            
+            const netSalP = Math.max(0, (d.salary || 0) - salDeductionP);
+            const netSalS = isMarried ? Math.max(0, (d.spouse_salary || 0) - salDeductionS) : 0;
+
+            const totInterest = (d.interest || 0) + (isMarried ? (d.spouse_interest || 0) : 0);
+            const totDividend = (d.dividend || 0) + (isMarried ? (d.spouse_dividend || 0) : 0);
+
+            let customTotPrimary = 0;
+            let customTotSpouse = 0;
+            dynamicIncomeCols.forEach(col => {
+                const val = (d.customIncomes && d.customIncomes[col.id]) ? d.customIncomes[col.id] : 0;
+                if (col.owner === 'spouse') {
+                    customTotSpouse += val;
+                } else {
+                    customTotPrimary += val;
+                }
+            });
+            const customTot = customTotPrimary + (isMarried ? customTotSpouse : 0);
+
+            const grossIncome = (d.salary || 0) + (isMarried ? (d.spouse_salary || 0) : 0) + totInterest + totDividend + customTot;
+            const totalIncomeA = netSalP + netSalS + totInterest + totDividend + customTot;
+            const exemptionTotal = currentParams.exemption * totalPeople;
+            const savingsDeduction = Math.min(totInterest, 270000);
+
+            const basicLivingTotal = currentParams.basicLiving * totalPeople;
+            const compareBaseA = exemptionTotal + stdDeduction + savingsDeduction + otherDed;
+            const basicLivingDiffA = Math.max(0, basicLivingTotal - compareBaseA);
+
+            const netTaxableA = Math.max(0, totalIncomeA - exemptionTotal - stdDeduction - savingsDeduction - basicLivingDiffA - otherDed);
+            const taxCalcA = calcProgressiveTaxDynamic(netTaxableA, currentParams);
+            
+            const divCreditA = Math.round(Math.min(totDividend * 0.085, 80000));
+            const netDueA = Math.round(taxCalcA.tax - (d.withheld || 0) - divCreditA);
+
+            let useSeparateDiv = false;
+            let finalTaxCalc = taxCalcA;
+            let finalTotalIncome = totalIncomeA;
+            let finalNetTaxable = netTaxableA;
+            let finalDivCredit = divCreditA;
+            let finalNetDue = netDueA;
+            let baseGrossTax = taxCalcA.tax;
+
+            if (totDividend > 0) {
+                const totalIncomeB = netSalP + netSalS + totInterest + customTot;
+                const compareBaseB = exemptionTotal + stdDeduction + savingsDeduction + otherDed;
+                const basicLivingDiffB = Math.max(0, basicLivingTotal - compareBaseB);
+                const netTaxableB = Math.max(0, totalIncomeB - exemptionTotal - stdDeduction - savingsDeduction - basicLivingDiffB - otherDed);
+                const taxCalcB = calcProgressiveTaxDynamic(netTaxableB, currentParams);
+                const divTax28 = Math.round(totDividend * 0.28);
+                const netDueB = Math.round((taxCalcB.tax + divTax28) - (d.withheld || 0));
+
+                if (netDueB < netDueA) {
+                    useSeparateDiv = true;
+                    finalTotalIncome = totalIncomeA;
+                    finalNetTaxable = netTaxableB;
+                    baseGrossTax = taxCalcB.tax;
+                    finalTaxCalc = {
+                        tax: taxCalcB.tax + divTax28,
+                        rate: taxCalcB.rate + "+28%",
+                        diff: taxCalcB.diff
+                    };
+                    finalDivCredit = -divTax28;
+                    finalNetDue = netDueB;
+                }
+            }
+
+            return {
+                grossIncome: Math.round(grossIncome),
+                salDeductionTotal: Math.round(salDeductionP + salDeductionS),
+                exemptionTotal: Math.round(exemptionTotal),
+                stdDeduction: Math.round(stdDeduction),
+                savingsDeduction: Math.round(savingsDeduction),
+                basicLivingDiff: Math.round(basicLivingDiffA),
+                otherDed: Math.round(otherDed),
+                totalIncome: Math.round(finalTotalIncome),
+                netTaxableIncome: Math.round(finalNetTaxable),
+                baseGrossTax: Math.round(baseGrossTax),
+                taxCalc: finalTaxCalc,
+                divCredit: finalDivCredit,
+                netPayableOrRefund: finalNetDue,
+                useSeparateDiv: useSeparateDiv,
+                withheld: Math.round(d.withheld || 0),
+                totDividend: totDividend,
+                customTotPrimary: customTotPrimary,
+                customTotSpouse: customTotSpouse
+            };
+        }
+
+        function renderTableStructure() {
+            const isMarried = document.getElementById('maritalStatus').value === 'married';
+            const colgroup = document.getElementById('tableColgroup');
+            const thead = document.getElementById('tableHead');
+
+            let colHtml = `
+                <col style="width: 82px;">
+                <col style="width: 72px;">
+                <col style="width: 66px;">
+                <col style="width: 44px;">
+                <col style="width: 78px;">
+                <col style="width: 66px;">
+                <col style="width: 72px;">
+            `;
+
+            dynamicIncomeCols.forEach(() => {
+                colHtml += `<col style="width: 76px;">`;
+            });
+
+            colHtml += `
+                <col style="width: 72px;">
+                <col style="width: 66px;">
+                <col style="width: 66px;">
+                <col style="width: 80px;">
+                <col style="width: 70px;">
+                <col style="width: 82px;">
+                <col style="width: 82px;">
+                <col style="width: 50px;">
+                <col style="width: 66px;">
+                <col style="width: 72px;">
+                <col style="width: 66px;">
+                <col style="width: 82px;">
+                <col style="width: 102px;">
+                <col style="width: 76px;">
+            `;
+            colgroup.innerHTML = colHtml;
+
+            const incomeColSpan = 6 + dynamicIncomeCols.length;
+
+            let theadHtml = `
+                <tr>
+                    <th rowspan="2" class="col-sticky">年齡 | 西元<br>(民國)</th>
+                    <th colspan="3" class="sec-hdr">免稅與扶養基礎</th>
+                    <th colspan="${incomeColSpan}" class="sec-hdr">所得項目 (淡綠色可點選輸入)</th>
+                    <th colspan="4" class="sec-hdr">扣除額與試算淨額</th>
+                    <th colspan="3" class="sec-hdr">稅率級距計算</th>
+                    <th colspan="3" class="sec-hdr">扣抵與實際納稅/退稅額</th>
+                    <th rowspan="2">操作</th>
+                </tr>
+                <tr>
+                    <th>基本<br>生活</th>
+                    <th>免稅額</th>
+                    <th>扶養</th>
+                    <th>薪資(50)</th>
+                    <th>利息(5A)</th>
+                    <th>股利(54C)</th>
+            `;
+
+            dynamicIncomeCols.forEach(col => {
+                const ownerBadge = col.owner === 'spouse' ? '<span style="color:#b8334a; font-size:9.5px;">[配]</span>' : '';
+                theadHtml += `
+                    <th class="dyn-th" onclick="openColumnSettings('${col.id}')" title="點擊設定欄位名稱、歸屬或刪除">
+                        ✏️ ${escapeHtml(col.name)} ${ownerBadge}
+                    </th>
+                `;
+            });
+
+            theadHtml += `
+                    <th>配偶薪資</th>
+                    <th>配偶利息</th>
+                    <th>配偶股利</th>
+                    <th>薪資特扣</th>
+                    <th>其他特扣</th>
+                    <th>所得總額</th>
+                    <th>所得淨額</th>
+                    <th>稅率</th>
+                    <th>累進差</th>
+                    <th>應納稅額</th>
+                    <th>薪扣繳</th>
+                    <th>股利扣/抵</th>
+                    <th>預估<br>應繳/退稅</th>
+                </tr>
+            `;
+            thead.innerHTML = theadHtml;
+        }
+
+        function escapeHtml(str) {
+            return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+
+        function selectChartTargetYear(yr) {
+            const wSel = document.getElementById('waterfallYearSelect');
+            const mSel = document.getElementById('modeCompareYearSelect');
+            if (wSel) wSel.value = yr;
+            if (mSel) mSel.value = yr;
+            saveToLocalStorage();
+            renderWaterfallChartOnly();
+            renderModeCompareChartOnly();
+        }
+
+        function renderAll() {
+            renderTableStructure();
+
+            const viewStartYear = parseInt(document.getElementById('viewStartYearSelect').value) || baseStartYear;
+            const viewRange = parseInt(document.getElementById('viewRangeSelect').value) || 10;
+            const isMarried = document.getElementById('maritalStatus').value === 'married';
+            const startAge = parseInt(document.getElementById('startAge').value) || 0;
+
+            const tbody = document.getElementById('taxTableBody');
+            const rowsBuffer = [];
+
+            let firstRowData = null;
+            let firstRowYear = viewStartYear;
+            let firstRowParams = null;
+            const rangeCalculations = [];
+
+            for (let yr = viewStartYear; yr < Math.min(viewStartYear + viewRange, baseStartYear + TOTAL_YEARS); yr++) {
+                const { d, currentParams } = getParamsForYear(yr);
+                const currentAge = startAge + (yr - baseStartYear);
+                const rocYear = yr - 1911;
+                const deps = d.dependents || 0;
+                const otherDed = d.otherDeduction || 0;
+
+                const calcRes = calculateYearTax(d, currentParams, isMarried);
+
+                if (!firstRowData) {
+                    firstRowData = d;
+                    firstRowParams = currentParams;
+                }
+
+                rangeCalculations.push({
+                    year: yr,
+                    age: currentAge,
+                    data: d,
+                    calc: calcRes
+                });
+
+                const salDedStr = calcRes.salDeductionTotal > 0 ? `-$${calcRes.salDeductionTotal.toLocaleString()}` : `$0`;
+                let taxDisplayTd = calcRes.netPayableOrRefund < 0
+                    ? `<td class="cell-tax-refund mono">-$${Math.abs(calcRes.netPayableOrRefund).toLocaleString()}</td>`
+                    : `<td class="cell-tax-due mono">$${calcRes.netPayableOrRefund.toLocaleString()}</td>`;
+
+                const divCreditDisplay = calcRes.useSeparateDiv 
+                    ? `<span style="color:var(--amber-accent); font-size:11.5px; font-weight:700;">28%單一</span>` 
+                    : `$${Math.round(calcRes.divCredit).toLocaleString()}`;
+
+                const lockClass = isLocked ? 'locked-cell' : '';
+
+                let dynCellsHtml = '';
+                dynamicIncomeCols.forEach(col => {
+                    const val = (d.customIncomes && d.customIncomes[col.id]) ? d.customIncomes[col.id] : 0;
+                    dynCellsHtml += `<td class="blue-cell ${lockClass}" onclick="openModal('${yr}','custom_${col.id}','${escapeHtml(col.name)}')">$${Math.round(val).toLocaleString()}</td>`;
+                });
+
+                rowsBuffer.push(`
+                    <tr>
+                        <td class="col-sticky mono sticky-year-btn" title="點擊設定此年為診斷圖分析年度" onclick="selectChartTargetYear(${yr})" style="font-weight:bold; font-size:11.5px; line-height:1.25;">
+                            <div>${currentAge}歲|${yr}</div>
+                            <div style="font-size:10.5px; color:var(--sage-muted); font-weight:normal; margin-top:2px;">(${rocYear}年)</div>
+                        </td>
+                        <td class="blue-cell ${lockClass}" onclick="openConfigForYear('${yr}')">$${currentParams.basicLiving.toLocaleString()}</td>
+                        <td class="blue-cell ${lockClass}" onclick="openConfigForYear('${yr}')">$${currentParams.exemption.toLocaleString()}</td>
+                        <td class="blue-cell ${lockClass} num-text" onclick="openModal('${yr}','dependents','扶養人數')">${deps}人</td>
+
+                        <td class="blue-cell ${lockClass}" onclick="openModal('${yr}','salary','本人薪資所得')">$${Math.round(d.salary || 0).toLocaleString()}</td>
+                        <td class="blue-cell ${lockClass}" onclick="openModal('${yr}','interest','本人利息所得')">$${Math.round(d.interest || 0).toLocaleString()}</td>
+                        <td class="blue-cell ${lockClass}" onclick="openModal('${yr}','dividend','本人股利憑單')">$${Math.round(d.dividend || 0).toLocaleString()}</td>
+
+                        ${dynCellsHtml}
+
+                        <td class="blue-cell ${lockClass}" style="${!isMarried?'opacity:0.3;pointer-events:none;':''}" onclick="openModal('${yr}','spouse_salary','配偶薪資所得')">$${Math.round(d.spouse_salary || 0).toLocaleString()}</td>
+                        <td class="blue-cell ${lockClass}" style="${!isMarried?'opacity:0.3;pointer-events:none;':''}" onclick="openModal('${yr}','spouse_interest','配偶利息所得')">$${Math.round(d.spouse_interest || 0).toLocaleString()}</td>
+                        <td class="blue-cell ${lockClass}" style="${!isMarried?'opacity:0.3;pointer-events:none;':''}" onclick="openModal('${yr}','spouse_dividend','配偶股利憑單')">$${Math.round(d.spouse_dividend || 0).toLocaleString()}</td>
+
+                        <td class="num-text mono">${salDedStr}</td>
+                        <td class="blue-cell ${lockClass}" onclick="openModal('${yr}','otherDeduction','其他特扣額 (身障/幼兒/長照/租金)')">$${Math.round(otherDed).toLocaleString()}</td>
+                        <td class="cell-yellow mono">$${calcRes.totalIncome.toLocaleString()}</td>
+                        <td class="cell-yellow mono">$${calcRes.netTaxableIncome.toLocaleString()}</td>
+
+                        <td class="num-text mono">${calcRes.taxCalc.rate}</td>
+                        <td class="num-text mono">$${calcRes.taxCalc.diff.toLocaleString()}</td>
+                        <td class="num-text mono">$${calcRes.taxCalc.tax.toLocaleString()}</td>
+
+                        <td class="blue-cell ${lockClass}" onclick="openModal('${yr}','withheld','薪資扣繳稅額')">$${Math.round(d.withheld || 0).toLocaleString()}</td>
+                        <td class="num-text mono">${divCreditDisplay}</td>
+                        ${taxDisplayTd}
+                        <td style="padding: 2px;">
+                            <div class="btn-action-group">
+                                <button onclick="openConfigForYear('${yr}')" ${isLocked?'disabled':''}>⚙️級距</button>
+                                <button onclick="copyToFuture('${yr}')" ${isLocked?'disabled':''}>複製</button>
+                            </div>
+                        </td>
+                    </tr>
+                `);
+            }
+
+            tbody.innerHTML = rowsBuffer.join('');
+
+            const marryPanel = document.getElementById('marryPanel');
+            if (!isMarried || !firstRowData) {
+                marryPanel.style.display = 'none';
+            } else {
+                marryPanel.style.display = 'block';
+                const firstRowAge = startAge + (firstRowYear - baseStartYear);
+                const firstRowRoc = firstRowYear - 1911;
+                document.getElementById('marryPanelHeader').innerText = `👫 ${firstRowYear} 年度 (${firstRowRoc} 年 / ${firstRowAge} 歲) 夫妻申報 5 軌最佳化比較`;
+                runMarried5Modes(firstRowData, firstRowParams || firstRowData.taxParams || getDefaultTaxParams());
+            }
+
+            if (showCharts) {
+                renderTrendChart(rangeCalculations);
+                renderWaterfallChartOnly();
+                renderModeCompareChartOnly();
+            }
+        }
+
+        /* 📈 長線走勢複合雙軸圖 (支援退稅/負數向下穿透) */
+        function renderTrendChart(rangeCalculations) {
+            if (!rangeCalculations || rangeCalculations.length === 0) return;
+
+            const labels = rangeCalculations.map(item => `${item.year}(${item.age}歲)`);
+            const totalIncomes = rangeCalculations.map(item => item.calc.totalIncome);
+            const netTaxable = rangeCalculations.map(item => item.calc.netTaxableIncome);
+            
+            // 保留真實正負數 (負數為退稅)
+            const taxPayable = rangeCalculations.map(item => item.calc.netPayableOrRefund);
+            
+            // 實質稅負柱狀圖色彩：應繳稅為深紅，退稅為深綠
+            const taxBarColors = taxPayable.map(v => v < 0 ? 'rgba(33, 97, 62, 0.85)' : 'rgba(184, 51, 74, 0.85)');
+
+            // 實質有效稅率：如實計算淨稅負與所得之比率 (若退稅則呈現負實質稅率)
+            const effectiveRates = rangeCalculations.map(item => {
+                if (item.calc.totalIncome <= 0) return 0;
+                return parseFloat(((item.calc.netPayableOrRefund / item.calc.totalIncome) * 100).toFixed(1));
+            });
+
+            if (trendChartInstance) trendChartInstance.destroy();
+            const ctxTrend = document.getElementById('trendChart').getContext('2d');
+            trendChartInstance = new Chart(ctxTrend, {
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            type: 'line',
+                            label: '實質有效稅率 (%)',
+                            data: effectiveRates,
+                            yAxisID: 'y1',
+                            borderColor: '#c86f32',
+                            backgroundColor: '#c86f32',
+                            borderWidth: 2.5,
+                            tension: 0.25,
+                            pointRadius: 3,
+                            pointHoverRadius: 6
+                        },
+                        {
+                            type: 'bar',
+                            label: '所得總額',
+                            data: totalIncomes,
+                            yAxisID: 'y',
+                            backgroundColor: 'rgba(59, 82, 69, 0.75)',
+                            borderRadius: 4
+                        },
+                        {
+                            type: 'bar',
+                            label: '所得淨額 (課稅底數)',
+                            data: netTaxable,
+                            yAxisID: 'y',
+                            backgroundColor: 'rgba(94, 117, 104, 0.45)',
+                            borderRadius: 4
+                        },
+                        {
+                            type: 'bar',
+                            label: '預估應納/退稅額',
+                            data: taxPayable,
+                            yAxisID: 'y',
+                            backgroundColor: taxBarColors,
+                            borderRadius: 4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: { position: 'top', labels: { boxWidth: 12, font: { family: 'Inter', size: 11 } } },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    if (context.dataset.yAxisID === 'y1') {
+                                        const rVal = context.raw;
+                                        return rVal < 0 
+                                            ? `實質退稅率: ${Math.abs(rVal)}%` 
+                                            : `實質有效稅率: ${rVal}%`;
+                                    }
+                                    const val = context.raw;
+                                    if (context.dataset.label.includes('應納/退稅額')) {
+                                        return val < 0 
+                                            ? `預估退稅額: -$${Math.abs(Math.round(val)).toLocaleString()} 元` 
+                                            : `預估應繳稅額: $${Math.round(val).toLocaleString()} 元`;
+                                    }
+                                    return `${context.dataset.label}: $${Math.round(val).toLocaleString()} 元`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: { grid: { display: false }, ticks: { font: { family: 'Space Mono', size: 10 } } },
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            ticks: {
+                                font: { family: 'Space Mono', size: 10 },
+                                callback: val => {
+                                    const prefix = val < 0 ? '-$' : '$';
+                                    const abs = Math.abs(val);
+                                    if (abs >= 1000000) return prefix + (abs / 1000000).toFixed(1) + 'M';
+                                    if (abs >= 1000) return prefix + (abs / 1000).toFixed(0) + 'k';
+                                    return prefix + abs;
+                                }
+                            },
+                            grid: {
+                                color: ctx => (ctx.tick && ctx.tick.value === 0) ? '#222e27' : 'rgba(211, 204, 192, 0.4)',
+                                lineWidth: ctx => (ctx.tick && ctx.tick.value === 0) ? 1.8 : 1
+                            }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            ticks: {
+                                font: { family: 'Space Mono', size: 10 },
+                                callback: val => val + '%'
+                            },
+                            grid: { drawOnChartArea: false }
+                        }
+                    }
+                }
+            });
+        }
+
+        /* 💧 升級版真實浮動階梯瀑布圖 (整合「股利扣/抵」與「扣繳稅額」雙階段歷程) */
+        function renderWaterfallChartOnly() {
+            if (!showCharts) return;
+            const targetYr = parseInt(document.getElementById('waterfallYearSelect').value) || baseStartYear;
+            const isMarried = document.getElementById('maritalStatus').value === 'married';
+            const { d, currentParams } = getParamsForYear(targetYr);
+            const wf = calculateYearTax(d, currentParams, isMarried);
+
+            document.getElementById('waterfallTitle').innerText = `💧 ${targetYr} 年度 課稅扣除與稅額扣抵歷程階梯`;
+
+            const wfLabels = [
+                '所得毛額',
+                '薪資特扣',
+                '免稅額',
+                '標準扣除',
+                '儲蓄/其他扣額',
+                '所得淨額',
+                '應納稅額'
+            ];
+
+            let curr = wf.grossIncome;
+            const step1 = [0, curr];
+
+            const next1 = Math.max(0, curr - wf.salDeductionTotal);
+            const step2 = [curr, next1];
+            curr = next1;
+
+            const next2 = Math.max(0, curr - wf.exemptionTotal);
+            const step3 = [curr, next2];
+            curr = next2;
+
+            const next3 = Math.max(0, curr - wf.stdDeduction);
+            const step4 = [curr, next3];
+            curr = next3;
+
+            const otherDeds = wf.savingsDeduction + wf.basicLivingDiff + wf.otherDed;
+            const next4 = Math.max(0, curr - otherDeds);
+            const step5 = [curr, next4];
+            curr = next4;
+
+            const step6 = [0, wf.netTaxableIncome];
+            let taxCurr = wf.baseGrossTax;
+            const step7 = [0, taxCurr];
+
+            const wfFloatingData = [step1, step2, step3, step4, step5, step6, step7];
+            const wfColors = [
+                'rgba(59, 82, 69, 0.85)',
+                'rgba(184, 51, 74, 0.65)',
+                'rgba(184, 51, 74, 0.65)',
+                'rgba(184, 51, 74, 0.65)',
+                'rgba(184, 51, 74, 0.65)',
+                'rgba(200, 111, 50, 0.85)',
+                'rgba(59, 82, 69, 0.75)'
+            ];
+
+            if (wf.useSeparateDiv) {
+                const divTax28 = Math.round(wf.totDividend * 0.28);
+                wfLabels.push('股利28%外加');
+                wfFloatingData.push([taxCurr, taxCurr + divTax28]);
+                wfColors.push('rgba(200, 111, 50, 0.85)');
+                taxCurr += divTax28;
+            } else if (wf.divCredit > 0) {
+                const nextTax = taxCurr - wf.divCredit;
+                wfLabels.push('股利抵減(8.5%)');
+                wfFloatingData.push([taxCurr, nextTax]);
+                wfColors.push('rgba(33, 97, 62, 0.75)');
+                taxCurr = nextTax;
+            }
+
+            if (wf.withheld > 0) {
+                const nextTax = taxCurr - wf.withheld;
+                wfLabels.push('薪資扣繳抵減');
+                wfFloatingData.push([taxCurr, nextTax]);
+                wfColors.push('rgba(94, 117, 104, 0.75)');
+                taxCurr = nextTax;
+            }
+
+            wfLabels.push('預估應繳/退稅');
+            wfFloatingData.push([0, wf.netPayableOrRefund]);
+            wfColors.push(wf.netPayableOrRefund < 0 ? 'rgba(33, 97, 62, 0.9)' : 'rgba(184, 51, 74, 0.85)');
+
+            if (waterfallChartInstance) waterfallChartInstance.destroy();
+            const ctxWaterfall = document.getElementById('waterfallChart').getContext('2d');
+            waterfallChartInstance = new Chart(ctxWaterfall, {
+                type: 'bar',
+                data: {
+                    labels: wfLabels,
+                    datasets: [{
+                        label: '階段金額',
+                        data: wfFloatingData,
+                        backgroundColor: wfColors,
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: ctx => {
+                                    const v = ctx.raw;
+                                    if (Array.isArray(v)) {
+                                        const diff = Math.abs(v[1] - v[0]);
+                                        return `差額/數額: $${diff.toLocaleString()} 元 (底: $${v[0].toLocaleString()} → 頂: $${v[1].toLocaleString()})`;
+                                    }
+                                    return `金額: $${v.toLocaleString()} 元`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: { ticks: { font: { family: 'Inter', size: 9.5 } }, grid: { display: false } },
+                        y: {
+                            ticks: {
+                                font: { family: 'Space Mono', size: 10 },
+                                callback: val => '$' + (Math.abs(val) >= 1000000 ? (val / 1000000).toFixed(1) + 'M' : (val / 1000).toFixed(0) + 'k')
+                            },
+                            grid: { color: 'rgba(211, 204, 192, 0.4)' }
+                        }
+                    }
+                }
+            });
+        }
+
+        /* ⚖️ 夫妻 5 軌 / 單身動態所得結構甜甜圈圖 */
+        function renderModeCompareChartOnly() {
+            if (!showCharts) return;
+            const targetYr = parseInt(document.getElementById('modeCompareYearSelect').value) || baseStartYear;
+            const isMarried = document.getElementById('maritalStatus').value === 'married';
+            const { d, currentParams } = getParamsForYear(targetYr);
+            const wf = calculateYearTax(d, currentParams, isMarried);
+
+            if (modeCompareChartInstance) modeCompareChartInstance.destroy();
+            const ctxOpt = document.getElementById('modeCompareChart').getContext('2d');
+
+            if (isMarried) {
+                document.getElementById('optChartTitle').innerText = `⚖️ ${targetYr} 年度 夫妻 5 軌試算應繳/退稅額對比`;
+                document.getElementById('optChartSubtitle').innerText = '條形愈短愈省稅，最省模式標亮綠色';
+
+                const marriedModes = runMarried5Modes(d, currentParams);
+                const minAmt = Math.min(...marriedModes.map(m => m.amount));
+                const barLabels = marriedModes.map(m => m.name.replace(/模式 \d: /, ''));
+                const barData = marriedModes.map(m => m.amount);
+                const barColors = barData.map(v => v === minAmt ? 'rgba(33, 97, 62, 0.9)' : 'rgba(94, 117, 104, 0.55)');
+
+                modeCompareChartInstance = new Chart(ctxOpt, {
+                    type: 'bar',
+                    data: {
+                        labels: barLabels,
+                        datasets: [{
+                            label: '預估應納/退稅額',
+                            data: barData,
+                            backgroundColor: barColors,
+                            borderRadius: 4
+                        }]
+                    },
+                    options: {
+                        indexAxis: 'y',
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: ctx => `應繳/退: $${Math.round(ctx.raw).toLocaleString()} 元`
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                ticks: {
+                                    font: { family: 'Space Mono', size: 10 },
+                                    callback: val => '$' + (val / 1000).toFixed(0) + 'k'
+                                },
+                                grid: { color: 'rgba(211, 204, 192, 0.4)' }
+                            },
+                            y: { ticks: { font: { family: 'Inter', size: 10.5 } }, grid: { display: false } }
+                        }
+                    }
+                });
+            } else {
+                document.getElementById('optChartTitle').innerText = `🍩 ${targetYr} 年度 所得結構佔比`;
+                document.getElementById('optChartSubtitle').innerText = wf.useSeparateDiv ? '股利已啟用 28% 分開計稅' : '股利併入綜合所得享 8.5% 抵減';
+
+                const donutLabels = ['薪資(50)', '股利(54C)', '利息(5A)'];
+                const donutData = [Math.round(d.salary || 0), Math.round(d.dividend || 0), Math.round(d.interest || 0)];
+                const donutColors = ['rgba(59, 82, 69, 0.85)', 'rgba(200, 111, 50, 0.85)', 'rgba(94, 117, 104, 0.75)'];
+
+                const colorPalette = [
+                    'rgba(164, 178, 169, 0.85)',
+                    'rgba(112, 138, 126, 0.85)',
+                    'rgba(217, 140, 89, 0.85)',
+                    'rgba(133, 101, 76, 0.85)'
+                ];
+
+                dynamicIncomeCols.forEach((col, idx) => {
+                    const val = (d.customIncomes && d.customIncomes[col.id]) ? d.customIncomes[col.id] : 0;
+                    donutLabels.push(col.name);
+                    donutData.push(Math.round(val));
+                    donutColors.push(colorPalette[idx % colorPalette.length]);
+                });
+
+                const totalIncomeSum = donutData.reduce((acc, curr) => acc + curr, 0);
+
+                const pureLateralCalloutAndCenterPlugin = {
+                    id: 'pureLateralCalloutAndCenterPlugin',
+                    afterDraw(chart) {
+                        const { ctx, chartArea } = chart;
+                        if (!chartArea) return;
+
+                        const meta = chart.getDatasetMeta(0);
+                        if (!meta || !meta.data || meta.data.length === 0) return;
+
+                        const centerX = (chartArea.left + chartArea.right) / 2;
+                        const centerY = (chartArea.top + chartArea.bottom) / 2;
+                        const outerRadius = meta.data[0].outerRadius;
+
+                        ctx.save();
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.font = '500 11px Inter, sans-serif';
+                        ctx.fillStyle = '#5e7568';
+                        ctx.fillText('所得總額', centerX, centerY - 11);
+
+                        ctx.font = '700 13px "Space Mono", monospace';
+                        ctx.fillStyle = '#222e27';
+                        const displayTotalText = totalIncomeSum > 0 ? `$${totalIncomeSum.toLocaleString()}` : '$0';
+                        ctx.fillText(displayTotalText, centerX, centerY + 11);
+
+                        const items = [];
+                        meta.data.forEach((element, index) => {
+                            const value = donutData[index];
+                            if (value <= 0) return;
+
+                            const { startAngle, endAngle } = element;
+                            const midAngle = (startAngle + endAngle) / 2;
+                            const x0 = centerX + Math.cos(midAngle) * outerRadius;
+                            const y0 = centerY + Math.sin(midAngle) * outerRadius;
+                            const isLeft = Math.cos(midAngle) < 0;
+
+                            items.push({
+                                index,
+                                label: donutLabels[index],
+                                value,
+                                midAngle,
+                                x0,
+                                y0,
+                                isLeft,
+                                targetY: y0
+                            });
+                        });
+
+                        ['left', 'right'].forEach(side => {
+                            const sideItems = items.filter(it => (side === 'left' ? it.isLeft : !it.isLeft));
+                            sideItems.sort((a, b) => a.targetY - b.targetY);
+
+                            const minDist = 28;
+                            for (let i = 1; i < sideItems.length; i++) {
+                                if (sideItems[i].targetY - sideItems[i - 1].targetY < minDist) {
+                                    sideItems[i].targetY = sideItems[i - 1].targetY + minDist;
+                                }
+                            }
+                        });
+
+                        items.forEach(item => {
+                            const { label, value, x0, y0, isLeft, targetY } = item;
+                            const x1 = isLeft ? (centerX - outerRadius - 35) : (centerX + outerRadius + 35);
+                            const y1 = targetY;
+                            const x2 = isLeft ? (x1 - 20) : (x1 + 20);
+                            const y2 = y1;
+
+                            ctx.beginPath();
+                            ctx.moveTo(x0, y0);
+                            ctx.lineTo(x1, y1);
+                            ctx.lineTo(x2, y2);
+                            ctx.strokeStyle = '#8f9b94';
+                            ctx.lineWidth = 1.3;
+                            ctx.stroke();
+
+                            ctx.beginPath();
+                            ctx.arc(x0, y0, 2.5, 0, 2 * Math.PI);
+                            ctx.fillStyle = '#3b5245';
+                            ctx.fill();
+
+                            ctx.font = '600 10.5px Inter, "PingFang TC", sans-serif';
+                            ctx.fillStyle = '#222e27';
+                            ctx.textAlign = isLeft ? 'right' : 'left';
+                            ctx.textBaseline = 'bottom';
+
+                            const textGap = isLeft ? -5 : 5;
+                            ctx.fillText(label, x2 + textGap, y2 - 1);
+
+                            ctx.font = '700 11.5px "Space Mono", monospace';
+                            ctx.fillStyle = '#3b5245';
+                            ctx.textBaseline = 'top';
+                            ctx.fillText(`$${value.toLocaleString()}`, x2 + textGap, y2 + 2);
+                        });
+
+                        ctx.restore();
+                    }
+                };
+
+                modeCompareChartInstance = new Chart(ctxOpt, {
+                    type: 'doughnut',
+                    data: {
+                        labels: donutLabels,
+                        datasets: [{
+                            data: donutData,
+                            backgroundColor: donutColors,
+                            borderColor: '#faf8f5',
+                            borderWidth: 2,
+                            hoverOffset: 3
+                        }]
+                    },
+                    plugins: [pureLateralCalloutAndCenterPlugin],
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        layout: {
+                            padding: { top: 16, bottom: 16, left: 95, right: 95 }
+                        },
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: ctx => {
+                                        const val = ctx.raw || 0;
+                                        const pct = totalIncomeSum > 0 ? ((val / totalIncomeSum) * 100).toFixed(1) : '0.0';
+                                        return ` ${ctx.label}: $${val.toLocaleString()} 元 (${pct}%)`;
+                                    }
+                                }
+                            }
+                        },
+                        cutout: '62%'
+                    }
+                });
+            }
+        }
+
+        /* 夫妻 5 軌試算 */
+        function runMarried5Modes(d, params) {
+            const deps = d.dependents || 0;
+            const otherDed = d.otherDeduction || 0;
+            const totalPeople = 2 + deps;
+            const salDeductionCap = params.salCap;
+            const stdDeduction = params.stdMarried;
+
+            const pSal = Math.max(0, (d.salary || 0) - Math.min(d.salary || 0, salDeductionCap));
+            const sSal = Math.max(0, (d.spouse_salary || 0) - Math.min(d.spouse_salary || 0, salDeductionCap));
+            const totInt = (d.interest || 0) + (d.spouse_interest || 0);
+            const totDiv = (d.dividend || 0) + (d.spouse_dividend || 0);
+
+            let customP = 0, customS = 0;
+            dynamicIncomeCols.forEach(col => {
+                const val = (d.customIncomes && d.customIncomes[col.id]) ? d.customIncomes[col.id] : 0;
+                if (col.owner === 'spouse') customS += val;
+                else customP += val;
+            });
+            const totOther = customP + customS;
+
+            const savingsDed = Math.min(totInt, 270000);
+            const divCredit = Math.round(Math.min(totDiv * 0.085, 80000));
+
+            const exTot1 = params.exemption * totalPeople;
+            const bDiff1 = Math.max(0, (params.basicLiving * totalPeople) - (exTot1 + stdDeduction + savingsDed + otherDed));
+            const net1 = Math.max(0, (pSal + sSal + totInt + totDiv + totOther) - exTot1 - stdDeduction - savingsDed - bDiff1 - otherDed);
+            const tax1 = Math.round(calcProgressiveTaxDynamic(net1, params).tax - (d.withheld || 0) - divCredit);
+
+            const taxPSal = calcProgressiveTaxDynamic(pSal, params).tax;
+            const net2Rem = Math.max(0, (sSal + totInt + totDiv + totOther) - exTot1 - stdDeduction - savingsDed - bDiff1 - otherDed);
+            const tax2 = Math.round((taxPSal + calcProgressiveTaxDynamic(net2Rem, params).tax) - (d.withheld || 0) - divCredit);
+
+            const taxSSal = calcProgressiveTaxDynamic(sSal, params).tax;
+            const net3Rem = Math.max(0, (pSal + totInt + totDiv + totOther) - exTot1 - stdDeduction - savingsDed - bDiff1 - otherDed);
+            const tax3 = Math.round((taxSSal + calcProgressiveTaxDynamic(net3Rem, params).tax) - (d.withheld || 0) - divCredit);
+
+            const netPAll = Math.max(0, (pSal + (d.interest || 0) + (d.dividend || 0) + customP) - params.exemption);
+            const taxPAll = calcProgressiveTaxDynamic(netPAll, params).tax;
+            const exTot4Rem = params.exemption * (1 + deps);
+            const bDiff4 = Math.max(0, (params.basicLiving * (1 + deps)) - (exTot4Rem + stdDeduction + Math.min(d.spouse_interest || 0, 270000) + otherDed));
+            const net4Rem = Math.max(0, (sSal + (d.spouse_interest || 0) + (d.spouse_dividend || 0) + customS) - exTot4Rem - stdDeduction - Math.min(d.spouse_interest || 0, 270000) - bDiff4 - otherDed);
+            const tax4 = Math.round((taxPAll + calcProgressiveTaxDynamic(net4Rem, params).tax) - (d.withheld || 0) - divCredit);
+
+            const netSAll = Math.max(0, (sSal + (d.spouse_interest || 0) + (d.spouse_dividend || 0) + customS) - params.exemption);
+            const taxSAll = calcProgressiveTaxDynamic(netSAll, params).tax;
+            const exTot5Rem = params.exemption * (1 + deps);
+            const bDiff5 = Math.max(0, (params.basicLiving * (1 + deps)) - (exTot5Rem + stdDeduction + Math.min(d.interest || 0, 270000) + otherDed));
+            const net5Rem = Math.max(0, (pSal + (d.interest || 0) + (d.dividend || 0) + customP) - exTot5Rem - stdDeduction - Math.min(d.interest || 0, 270000) - bDiff5 - otherDed);
+            const tax5 = Math.round((taxSAll + calcProgressiveTaxDynamic(net5Rem, params).tax) - (d.withheld || 0) - divCredit);
+
+            const modes = [
+                { name: "模式 1: 全額所得合併", amount: tax1 },
+                { name: "模式 2: 本人薪資分開", amount: tax2 },
+                { name: "模式 3: 配偶薪資分開", amount: tax3 },
+                { name: "模式 4: 本人全所得分開", amount: tax4 },
+                { name: "模式 5: 配偶全所得分開", amount: tax5 }
+            ];
+
+            let minObj = modes.reduce((min, cur) => cur.amount < min.amount ? cur : min, modes[0]);
+
+            const grid = document.getElementById('optGrid');
+            grid.innerHTML = '';
+            modes.forEach(m => {
+                const isBest = m.name === minObj.name;
+                const txt = m.amount < 0 ? `預估退稅 -$${Math.abs(m.amount).toLocaleString()}` : `$${m.amount.toLocaleString()}`;
+                grid.innerHTML += `
+                    <div class="opt-card ${isBest ? 'best' : ''}">
+                        <div class="title">${m.name} ${isBest ? '<span class="badge-best">最佳</span>' : ''}</div>
+                        <div class="amount" style="${m.amount < 0 ? 'color:var(--green-text);':''}">${txt}</div>
+                    </div>
+                `;
+            });
+
+            const diff = tax1 - minObj.amount;
+            document.getElementById('bestRecommendText').innerText = diff > 0 
+                ? `🎯 建議採用【${minObj.name}】，可比完全合併省下/多退 $${diff.toLocaleString()} 元！`
+                : `🎯 各模式稅額相近，建議採用【${minObj.name}】。`;
+
+            return modes;
+        }
+
+        function copyToFuture(fromYrStr) {
+            if (isLocked) return;
+            const fromYr = parseInt(fromYrStr);
+            const srcData = taxDataStore[fromYr];
+            if (!srcData) return;
+            if (confirm(`確定要把 ${fromYr} 年的數據與稅率參數，複製帶入後續所有年份嗎？`)) {
+                for (let yr = fromYr + 1; yr < baseStartYear + TOTAL_YEARS; yr++) {
+                    taxDataStore[yr] = JSON.parse(JSON.stringify(srcData));
+                }
+                saveToLocalStorage();
+                renderAll();
+            }
+        }
+
+        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+
+        let activeFieldInfo = null;
+        function openModal(yearStr, fieldKey, fieldLabel) {
+            if (isLocked) return alert("目前資料處於保護鎖定狀態，請先點擊右上角『🔓 資料已解鎖』！");
+            activeFieldInfo = { yearStr, fieldKey };
+            const d = taxDataStore[yearStr];
+            document.getElementById('modalTitle').innerText = `編輯 ${yearStr} 年數據`;
+            document.getElementById('modalFieldLabel').innerText = fieldLabel;
+            
+            const inp = document.getElementById('modalInputValue');
+            if (fieldKey.startsWith('custom_')) {
+                const colId = fieldKey.replace('custom_', '');
+                inp.value = (d.customIncomes && d.customIncomes[colId]) ? d.customIncomes[colId] : 0;
+            } else {
+                inp.value = d[fieldKey] || 0;
+            }
+            
+            document.getElementById('inputModal').style.display = 'flex';
+            setTimeout(() => { inp.focus(); inp.select(); }, 50);
+        }
+
+        function saveModalValue() {
+            if (!activeFieldInfo) return;
+            let val = parseFloat(document.getElementById('modalInputValue').value) || 0;
+            if (val < 0) val = 0;
+            val = Math.round(val);
+
+            const yr = activeFieldInfo.yearStr;
+            const fKey = activeFieldInfo.fieldKey;
+
+            if (fKey.startsWith('custom_')) {
+                const colId = fKey.replace('custom_', '');
+                if (!taxDataStore[yr].customIncomes) taxDataStore[yr].customIncomes = {};
+                taxDataStore[yr].customIncomes[colId] = val;
+            } else {
+                taxDataStore[yr][fKey] = val;
+            }
+
+            closeModal('inputModal');
+            saveToLocalStorage();
+            renderAll();
+        }
+
+        function promptAddNewIncomeColumn() {
+            if (isLocked) return alert("目前資料已鎖定，無法新增項目！");
+            const newName = prompt("請輸入新增的所得項目名稱 (例如：租賃所得(51)、海外所得)：");
+            if (!newName || newName.trim() === '') return;
+
+            const colId = 'col_' + Date.now();
+            dynamicIncomeCols.push({
+                id: colId,
+                name: newName.trim(),
+                owner: 'primary'
+            });
+
+            for (let yr = baseStartYear; yr < baseStartYear + TOTAL_YEARS; yr++) {
+                if (taxDataStore[yr]) {
+                    if (!taxDataStore[yr].customIncomes) taxDataStore[yr].customIncomes = {};
+                    taxDataStore[yr].customIncomes[colId] = 0;
+                }
+            }
+
+            saveToLocalStorage();
+            renderAll();
+        }
+
+        let activeColId = null;
+        function openColumnSettings(colId) {
+            if (isLocked) return alert("目前資料已鎖定，無法編輯欄位！");
+            const col = dynamicIncomeCols.find(c => c.id === colId);
+            if (!col) return;
+
+            activeColId = colId;
+            document.getElementById('colModalName').value = col.name;
+            document.getElementById('colModalOwner').value = col.owner || 'primary';
+            document.getElementById('columnModal').style.display = 'flex';
+        }
+
+        function saveColumnConfig() {
+            if (!activeColId) return;
+            const newName = document.getElementById('colModalName').value.trim();
+            if (!newName) return alert("項目名稱不能為空！");
+
+            const col = dynamicIncomeCols.find(c => c.id === activeColId);
+            if (col) {
+                col.name = newName;
+                col.owner = document.getElementById('colModalOwner').value;
+            }
+            closeModal('columnModal');
+            saveToLocalStorage();
+            renderAll();
+        }
+
+        function deleteCurrentColumn() {
+            if (!activeColId) return;
+            if (confirm(`確定要刪除「${document.getElementById('colModalName').value}」此欄位嗎？所有年度的該筆數據將一併清除。`)) {
+                dynamicIncomeCols = dynamicIncomeCols.filter(c => c.id !== activeColId);
+                for (let yr = baseStartYear; yr < baseStartYear + TOTAL_YEARS; yr++) {
+                    if (taxDataStore[yr] && taxDataStore[yr].customIncomes) {
+                        delete taxDataStore[yr].customIncomes[activeColId];
+                    }
+                }
+                closeModal('columnModal');
+                saveToLocalStorage();
+                renderAll();
+            }
+        }
+
+        let currentTargetYearForConfig = null;
+        function openTaxConfigModal() {
+            const selectedYr = document.getElementById('viewStartYearSelect').value || baseStartYear;
+            openConfigForYear(selectedYr);
+        }
+
+        function openConfigForYear(yearStr) {
+            if (isLocked) return alert("目前資料處於保護鎖定狀態，請先解鎖！");
+            currentTargetYearForConfig = parseInt(yearStr);
+            const params = taxDataStore[currentTargetYearForConfig].taxParams || getDefaultTaxParams();
+
+            document.getElementById('configModalTitle').innerText = `⚙️ 設定 ${currentTargetYearForConfig} 年稅務級距與扣除額`;
+            document.getElementById('cfgBasicLiving').value = params.basicLiving;
+            document.getElementById('cfgExemption').value = params.exemption;
+            document.getElementById('cfgStdSingle').value = params.stdSingle;
+            document.getElementById('cfgStdMarried').value = params.stdMarried;
+            document.getElementById('cfgSalCap').value = params.salCap;
+            document.getElementById('cfgBracket1').value = params.b1;
+            document.getElementById('cfgBracket2').value = params.b2;
+            document.getElementById('cfgBracket3').value = params.b3;
+            document.getElementById('cfgBracket4').value = params.b4;
+
+            document.getElementById('configModal').style.display = 'flex';
+        }
+
+        function saveTaxConfig() {
+            if (!currentTargetYearForConfig) return;
+
+            const updatedParams = {
+                basicLiving: parseFloat(document.getElementById('cfgBasicLiving').value) || 0,
+                exemption: parseFloat(document.getElementById('cfgExemption').value) || 0,
+                stdSingle: parseFloat(document.getElementById('cfgStdSingle').value) || 0,
+                stdMarried: parseFloat(document.getElementById('cfgStdMarried').value) || 0,
+                salCap: parseFloat(document.getElementById('cfgSalCap').value) || 0,
+                b1: parseFloat(document.getElementById('cfgBracket1').value) || 0,
+                b2: parseFloat(document.getElementById('cfgBracket2').value) || 0,
+                b3: parseFloat(document.getElementById('cfgBracket3').value) || 0,
+                b4: parseFloat(document.getElementById('cfgBracket4').value) || 0
+            };
+
+            const scope = document.getElementById('cfgApplyScope').value;
+
+            if (scope === 'current') {
+                taxDataStore[currentTargetYearForConfig].taxParams = updatedParams;
+            } else if (scope === 'future') {
+                for (let yr = currentTargetYearForConfig; yr < baseStartYear + TOTAL_YEARS; yr++) {
+                    if (taxDataStore[yr]) taxDataStore[yr].taxParams = JSON.parse(JSON.stringify(updatedParams));
+                }
+            } else if (scope === 'all') {
+                for (let yr = baseStartYear; yr < baseStartYear + TOTAL_YEARS; yr++) {
+                    if (taxDataStore[yr]) taxDataStore[yr].taxParams = JSON.parse(JSON.stringify(updatedParams));
+                }
+            }
+
+            closeModal('configModal');
+            saveToLocalStorage();
+            renderAll();
+        }
+
+        function toggleLock() {
+            isLocked = !isLocked;
+            const lockBtn = document.getElementById('lockBtn');
+            const resetBtn = document.getElementById('resetBtn');
+            if (isLocked) {
+                lockBtn.innerHTML = '<i class="fa-solid fa-lock"></i> 資料已鎖定';
+                lockBtn.classList.add('locked');
+                resetBtn.disabled = true;
+            } else {
+                lockBtn.innerHTML = '<i class="fa-solid fa-lock-open"></i> 資料已解鎖';
+                lockBtn.classList.remove('locked');
+                resetBtn.disabled = false;
+            }
+            renderAll();
+        }
+
+        function resetAllData() {
+            if (isLocked) return;
+            if (confirm("⚠️ 確定要清空所有 60 年的資料重來嗎？此操作無法撤銷。")) {
+                localStorage.removeItem(STORAGE_KEY);
+                baseStartYear = 2026;
+                document.getElementById('startYear').value = baseStartYear;
+                document.getElementById('startAge').value = 30;
+                document.getElementById('maritalStatus').value = 'single';
+                document.getElementById('inflationMode').value = 'on';
+                document.getElementById('customCpi').value = 1.5;
+                dynamicIncomeCols = [
+                    { id: 'col_other1', name: '自訂所得 A', owner: 'primary' },
+                    { id: 'col_other2', name: '自訂所得 B', owner: 'primary' }
+                ];
+                showCharts = true;
+                
+                taxDataStore = {};
+                for (let i = 0; i < TOTAL_YEARS; i++) {
+                    let yr = baseStartYear + i;
+                    taxDataStore[yr] = createDefaultYearData(i);
+                }
+                toggleCpiInput();
+                updateViewSelectOptions();
+                document.getElementById('viewRangeSelect').value = '10';
+                saveToLocalStorage();
+                renderAll();
+            }
+        }
+
+        function exportData() {
+            const exportPayload = {
+                version: "3.2-DynamicCols",
+                baseStartYear: parseInt(baseStartYear) || 2026,
+                startAge: parseInt(document.getElementById('startAge').value) || 30,
+                maritalStatus: document.getElementById('maritalStatus').value,
+                inflationMode: document.getElementById('inflationMode').value,
+                customCpi: parseFloat(document.getElementById('customCpi').value) || 1.5,
+                viewStartYear: parseInt(document.getElementById('viewStartYearSelect').value) || baseStartYear,
+                viewRange: parseInt(document.getElementById('viewRangeSelect').value) || 10,
+                waterfallYear: parseInt(document.getElementById('waterfallYearSelect').value) || baseStartYear,
+                modeCompareYear: parseInt(document.getElementById('modeCompareYearSelect').value) || baseStartYear,
+                showCharts: showCharts,
+                dynamicIncomeCols: dynamicIncomeCols,
+                store: taxDataStore
+            };
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportPayload, null, 2));
+            const dlAnchor = document.createElement('a');
+            dlAnchor.setAttribute("href", dataStr);
+            dlAnchor.setAttribute("download", `SYS05_綜所稅預估備份_${baseStartYear}.tax`);
+            document.body.appendChild(dlAnchor);
+            dlAnchor.click();
+            dlAnchor.remove();
+        }
+
+        function triggerImport() {
+            if (isLocked) return alert("目前資料處於保護鎖定狀態，請先解鎖後再進行匯入！");
+            document.getElementById('fileInput').click();
+        }
+
+        function importData(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const parsed = JSON.parse(e.target.result);
+                    if (!parsed || !parsed.store || !parsed.baseStartYear || typeof parsed.store !== 'object') {
+                        return alert("檔案格式不相符，請選擇有效的 .TAX 備份檔。");
+                    }
+
+                    baseStartYear = parseInt(parsed.baseStartYear) || 2026;
+                    document.getElementById('startYear').value = baseStartYear;
+                    document.getElementById('startAge').value = (parsed.startAge !== undefined) ? parseInt(parsed.startAge) : 30;
+                    if (parsed.maritalStatus) document.getElementById('maritalStatus').value = parsed.maritalStatus;
+                    if (parsed.inflationMode) document.getElementById('inflationMode').value = parsed.inflationMode;
+                    if (parsed.customCpi) document.getElementById('customCpi').value = parsed.customCpi;
+
+                    if (parsed.showCharts !== undefined) {
+                        showCharts = parsed.showCharts;
+                        const container = document.getElementById('chartsContainer');
+                        const toggleText = document.getElementById('chartToggleText');
+                        container.style.display = showCharts ? 'flex' : 'none';
+                        toggleText.innerText = showCharts ? '收合圖表儀表板' : '展開圖表儀表板';
+                    }
+
+                    if (parsed.dynamicIncomeCols && Array.isArray(parsed.dynamicIncomeCols)) {
+                        dynamicIncomeCols = parsed.dynamicIncomeCols;
+                    } else if (parsed.customFieldNames) {
+                        dynamicIncomeCols = [
+                            { id: 'col_other1', name: parsed.customFieldNames.otherIncome1Name || '自訂 A', owner: 'primary' },
+                            { id: 'col_other2', name: parsed.customFieldNames.otherIncome2Name || '自訂 B', owner: 'primary' }
+                        ];
+                    }
+
+                    taxDataStore = parsed.store;
+
+                    for (let yr = baseStartYear; yr < baseStartYear + TOTAL_YEARS; yr++) {
+                        if (!taxDataStore[yr]) {
+                            taxDataStore[yr] = createDefaultYearData(yr - baseStartYear);
+                        } else {
+                            if (!taxDataStore[yr].customIncomes) taxDataStore[yr].customIncomes = {};
+                            if (taxDataStore[yr].otherIncome1 !== undefined) {
+                                taxDataStore[yr].customIncomes['col_other1'] = taxDataStore[yr].otherIncome1;
+                                delete taxDataStore[yr].otherIncome1;
+                            }
+                            if (taxDataStore[yr].otherIncome2 !== undefined) {
+                                taxDataStore[yr].customIncomes['col_other2'] = taxDataStore[yr].otherIncome2;
+                                delete taxDataStore[yr].otherIncome2;
+                            }
+                        }
+                    }
+
+                    toggleCpiInput();
+                    updateViewSelectOptions(parsed.viewStartYear, parsed.waterfallYear, parsed.modeCompareYear);
+                    if (parsed.viewRange) {
+                        document.getElementById('viewRangeSelect').value = parsed.viewRange;
+                    }
+
+                    saveToLocalStorage();
+                    renderAll();
+                    alert("🎉 數據與自訂設定已順利成功匯入，並寫入本機快取！");
+                } catch (err) {
+                    alert("讀取檔案失敗，請確定檔案為合法的 JSON 格式。");
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        document.addEventListener('keydown', function(e) {
+            const inputModal = document.getElementById('inputModal');
+            const configModal = document.getElementById('configModal');
+            const colModal = document.getElementById('columnModal');
+
+            if (e.key === 'Escape') {
+                if (inputModal.style.display === 'flex') closeModal('inputModal');
+                if (configModal.style.display === 'flex') closeModal('configModal');
+                if (colModal.style.display === 'flex') closeModal('columnModal');
+            } else if (e.key === 'Enter') {
+                if (inputModal.style.display === 'flex') {
+                    e.preventDefault();
+                    saveModalValue();
+                } else if (colModal.style.display === 'flex') {
+                    e.preventDefault();
+                    saveColumnConfig();
+                }
+            }
+        });
+
+        initDataStore();
+        renderAll();
+    </script>
+</body>
+</html>
