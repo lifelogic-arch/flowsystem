@@ -1,0 +1,1368 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SYS_02 勞保老年給付（一次請領 vs 老年年金月領）通用試算表 - 生活型態財務邏輯</title>
+
+    <!-- 🌐 網頁圖示與社群卡片設定 -->
+    <link rel="icon" href="favicon.png" type="image/png">
+    <link rel="apple-touch-icon" href="favicon.png">
+
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google 字體：Inter、Noto Serif TC、Space Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Serif+TC:wght@500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <!-- Chart.js 視覺化圖表庫 -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        :root {
+            --bg-canvas: #dfe5e1;       /* 啞光鼠尾草灰綠 */
+            --card-surface: #faf8f5;    /* 溫和手帳奶白 */
+            --header-deep: #222e27;     /* 結構深墨黑綠 */
+            --sage-primary: #3b5245;    /* 架構墨綠 */
+            --sage-muted: #5e7568;      /* 說明文字灰綠 */
+            --amber-accent: #c86f32;    /* 琥珀焦糖亮點色 */
+            --amber-bg: #fcf3eb;        /* 琥珀淡底 */
+            --border-soft: #d3ccc0;     /* 沉著細邊框 */
+            --input-bg: #e9edea;        /* 低反光輸入底 */
+            --text-title: #222e27;      /* 標題深墨黑 */
+            --text-body: #3c4b42;       /* 內文墨黑 */
+            --highlight-yellow: #f7efe4;/* 淺焙焦糖唯讀底 */
+            --crossover-bg: #eef3ef;    /* 黃金交叉淡綠列 */
+            --danger-bg: #fdf2f2;       /* 耗盡警示淡紅列 */
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang TC", "Microsoft JhengHei", sans-serif;
+            background-color: var(--bg-canvas);
+            color: var(--text-body);
+            margin: 0;
+            padding: 0 0 40px 0;
+            background-image: 
+                linear-gradient(rgba(70, 95, 80, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(70, 95, 80, 0.05) 1px, transparent 1px);
+            background-size: 32px 32px;
+        }
+
+        .mono {
+            font-family: 'Space Mono', monospace;
+        }
+
+        /* 頂部導航 */
+        .blueprint-header {
+            background-color: var(--header-deep);
+            color: #ffffff;
+            box-shadow: 0 4px 16px rgba(34, 46, 39, 0.15);
+            border-bottom: 1px solid #3c4a40;
+            position: sticky;
+            top: 0;
+            z-index: 40;
+            padding: 12px 20px;
+        }
+
+        .header-inner {
+            max-width: 1440px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .back-home {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 12px;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #d1ded6;
+            text-decoration: none;
+            font-size: 12px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+        .back-home:hover {
+            background: rgba(255, 255, 255, 0.18);
+            color: #ffffff;
+        }
+
+        .sys-badge {
+            font-family: 'Space Mono', monospace;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 3px 8px;
+            border-radius: 4px;
+            background: rgba(200, 111, 50, 0.2);
+            color: var(--amber-accent);
+            border: 1px solid rgba(200, 111, 50, 0.4);
+            letter-spacing: 1px;
+        }
+
+        .header-title-text {
+            font-size: 18px;
+            font-weight: 700;
+            margin: 0;
+            letter-spacing: 0.5px;
+            color: #ffffff;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .btn-action {
+            background: rgba(255, 255, 255, 0.08);
+            color: #e5ede8;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            text-decoration: none;
+        }
+
+        .btn-action:hover {
+            background: #ffffff;
+            color: var(--header-deep);
+            border-color: #ffffff;
+        }
+
+        .btn-danger {
+            background: rgba(184, 51, 74, 0.25);
+            border-color: rgba(184, 51, 74, 0.4);
+            color: #fca5a5;
+        }
+        .btn-danger:hover {
+            background: #b8334a;
+            color: #ffffff;
+            border-color: #b8334a;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1440px;
+            margin: 20px auto 0;
+            padding: 0 16px;
+        }
+
+        .card-wrapper {
+            background: var(--card-surface);
+            border-radius: 8px;
+            box-shadow: 0 4px 16px rgba(34, 46, 39, 0.04);
+            border: 1px solid var(--border-soft);
+            overflow: hidden;
+            margin-bottom: 24px;
+        }
+
+        /* 圖表與收合控制區樣式 */
+        .chart-section {
+            border-bottom: 1px solid var(--border-soft);
+            transition: all 0.3s ease;
+        }
+
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            padding: 16px 20px;
+            background: #f4f1ec;
+            border-bottom: 1px solid var(--border-soft);
+        }
+
+        .chart-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--text-title);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 0;
+        }
+
+        .chart-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .tab-btn-group {
+            display: flex;
+            background: var(--input-bg);
+            padding: 3px;
+            border-radius: 6px;
+            border: 1px solid var(--border-soft);
+            gap: 2px;
+        }
+
+        .tab-btn {
+            background: transparent;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--sage-muted);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .tab-btn.active {
+            background: var(--sage-primary);
+            color: #ffffff;
+            box-shadow: 0 2px 6px rgba(59, 82, 69, 0.2);
+        }
+
+        .btn-toggle-chart {
+            background: #ffffff;
+            border: 1px solid var(--border-soft);
+            color: var(--text-body);
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s ease;
+        }
+
+        .btn-toggle-chart:hover {
+            border-color: var(--sage-primary);
+            color: var(--sage-primary);
+        }
+
+        .btn-toggle-chart i {
+            transition: transform 0.3s ease;
+        }
+
+        .btn-toggle-chart.collapsed i {
+            transform: rotate(-180deg);
+        }
+
+        .chart-body {
+            padding: 20px;
+            height: 400px;
+            position: relative;
+            transition: max-height 0.35s ease, opacity 0.3s ease, padding 0.35s ease;
+            overflow: hidden;
+            max-height: 450px;
+            opacity: 1;
+        }
+
+        .chart-body.hidden {
+            max-height: 0 !important;
+            padding-top: 0 !important;
+            padding-bottom: 0 !important;
+            opacity: 0;
+            pointer-events: none;
+            border-bottom: none;
+        }
+
+        /* 雙軌決策參數輸入卡片 */
+        .params-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            padding: 20px;
+            background: #f7f5f0;
+            border-bottom: 1px solid var(--border-soft);
+        }
+
+        @media (max-width: 900px) {
+            .params-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .track-card {
+            background: #ffffff;
+            border: 1px solid var(--border-soft);
+            border-radius: 6px;
+            padding: 16px;
+            position: relative;
+        }
+
+        .track-card.track-a {
+            border-top: 4px solid var(--amber-accent);
+        }
+
+        .track-card.track-b {
+            border-top: 4px solid var(--sage-primary);
+        }
+
+        .track-title {
+            font-size: 14px;
+            font-weight: 700;
+            margin: 0 0 12px 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .track-a .track-title { color: var(--amber-accent); }
+        .track-b .track-title { color: var(--sage-primary); }
+
+        .param-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-size: 12.5px;
+            gap: 10px;
+        }
+
+        .param-row label {
+            font-weight: 600;
+            color: var(--text-title);
+            flex: 1;
+        }
+
+        .param-row .control-group {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .param-row input, .param-row select {
+            height: 28px;
+            border: 1px solid #c2cdc6;
+            border-radius: 4px;
+            background-color: var(--input-bg);
+            text-align: center;
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--text-title);
+            outline: none;
+            font-family: 'Space Mono', monospace;
+            padding: 2px 6px;
+        }
+
+        .param-row input:focus, .param-row select:focus {
+            border-color: var(--amber-accent);
+            background-color: #ffffff;
+        }
+
+        .stat-badge {
+            font-size: 11px;
+            font-weight: 700;
+            padding: 2px 6px;
+            border-radius: 4px;
+            background: #f2eee8;
+            color: var(--text-title);
+            font-family: 'Space Mono', monospace;
+        }
+
+        /* 齊頭表格樣式 */
+        .table-responsive {
+            padding: 20px;
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            min-width: 1280px;
+            border-collapse: separate;
+            border-spacing: 0;
+            border-radius: 6px;
+            overflow: hidden;
+            border: 1px solid var(--border-soft);
+            table-layout: fixed;
+            background: var(--card-surface);
+        }
+
+        th, td {
+            padding: 7px 4px;
+            text-align: center;
+            font-size: 12px;
+            border-right: 1px solid var(--border-soft);
+            border-bottom: 1px solid var(--border-soft);
+            vertical-align: middle;
+        }
+
+        .nowrap-cell {
+            white-space: nowrap !important;
+            word-break: keep-all !important;
+        }
+
+        th:last-child, td:last-child {
+            border-right: none;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        .section-header {
+            background-color: var(--header-deep);
+            color: #ffffff;
+            font-weight: 700;
+            font-size: 13px;
+            letter-spacing: 0.5px;
+            padding: 9px 4px;
+        }
+
+        .sub-header {
+            background-color: var(--sage-primary);
+            color: #ffffff;
+            font-weight: 600;
+            font-size: 11.5px;
+            padding: 6px 4px;
+        }
+
+        .sub-header-track-a {
+            background-color: #b56025;
+            color: #ffffff;
+        }
+
+        .sub-header-track-b {
+            background-color: #2e4438;
+            color: #ffffff;
+        }
+
+        .highlight-yellow {
+            background-color: var(--highlight-yellow) !important;
+            font-weight: 700;
+            color: #8c4e20;
+            font-family: 'Space Mono', monospace;
+        }
+
+        .crossover-row {
+            background-color: var(--crossover-bg) !important;
+        }
+
+        .exhausted-row {
+            background-color: var(--danger-bg) !important;
+        }
+
+        .crossover-badge {
+            background: var(--amber-accent);
+            color: #ffffff;
+            font-size: 10.5px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 700;
+        }
+
+        .exhaust-badge {
+            background: #b8334a;
+            color: #ffffff;
+            font-size: 10.5px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 700;
+        }
+
+        .status-win-b {
+            color: var(--sage-primary);
+            font-weight: 700;
+            font-size: 11px;
+            font-family: 'Space Mono', monospace;
+        }
+
+        .status-win-a {
+            color: var(--amber-accent);
+            font-weight: 700;
+            font-size: 11px;
+            font-family: 'Space Mono', monospace;
+        }
+
+        .footer-action-area {
+            padding: 0 20px 20px 20px;
+        }
+
+        .info-note {
+            font-size: 12px;
+            color: var(--sage-muted);
+            line-height: 1.6;
+            background-color: #f2eee8;
+            padding: 12px 16px;
+            border-radius: 6px;
+            border-left: 4px solid var(--sage-primary);
+            border: 1px solid var(--border-soft);
+            border-left-width: 4px;
+        }
+    </style>
+</head>
+<body>
+
+<!-- 統一頂部導航列 -->
+<header class="blueprint-header">
+    <div class="header-inner">
+        <div class="header-left">
+            <a href="index.html#modules-overview" class="back-home">
+                <span class="mono">←</span> 返回上一頁
+            </a>
+            <a href="index.html#hero-cover" class="back-home">
+                <i class="fa-solid fa-house text-xs"></i> 封面
+            </a>
+            <span style="color:#5e7568;" class="mono text-xs">/</span>
+            <span class="sys-badge">SYS_02</span>
+            <h1 class="header-title-text">勞保老年給付（跨時期起點雙軌決策沙盤）通用試算系統</h1>
+        </div>
+        <div class="header-actions">
+            <button type="button" class="btn-action" onclick="exportData()">
+                <i class="fa-solid fa-file-export text-emerald-400"></i> 匯出.LABOR備份
+            </button>
+            <button type="button" class="btn-action" onclick="document.getElementById('importFileInput').click()">
+                <i class="fa-solid fa-file-import text-amber-400"></i> 匯入.LABOR備份
+            </button>
+            <button type="button" class="btn-action" onclick="window.print()">
+                <i class="fa-solid fa-print text-indigo-300"></i> 列印評估報告 (PDF)
+            </button>
+            <button type="button" class="btn-action btn-danger" onclick="resetForm(event)">
+                <i class="fa-solid fa-arrow-rotate-left"></i> 清空重來
+            </button>
+            <input type="file" id="importFileInput" style="display: none;" accept=".json,.labor,.txt" onchange="importData(event)">
+        </div>
+    </div>
+</header>
+
+<div class="container">
+    <div class="card-wrapper">
+
+        <!-- 可收合之視覺圖表區塊 (整合三大視角) -->
+        <div class="chart-section">
+            <div class="chart-header">
+                <h2 class="chart-title" id="currentChartTitle">
+                    <i class="fa-solid fa-chart-line" style="color: var(--amber-accent);"></i>
+                    <span>跨年齡起點．資產滾存對決走勢（同儕生理年齡對齊）</span>
+                </h2>
+                <div class="chart-controls">
+                    <div class="tab-btn-group" id="chartTabGroup">
+                        <button type="button" class="tab-btn active" id="btnTab1" onclick="switchChartView(1)">
+                            <i class="fa-solid fa-chart-line"></i> 年齡對齊走勢
+                        </button>
+                        <button type="button" class="tab-btn" id="btnTab2" onclick="switchChartView(2)">
+                            <i class="fa-solid fa-shield-halved"></i> 提領耗盡警示
+                        </button>
+                        <button type="button" class="tab-btn" id="btnTab3" onclick="switchChartView(3)">
+                            <i class="fa-solid fa-layer-group"></i> 里程碑 PK
+                        </button>
+                    </div>
+                    <!-- 圖表收合／展開切換按鈕 -->
+                    <button type="button" class="btn-toggle-chart" id="btnToggleChart" onclick="toggleChartCollapse()">
+                        <i class="fa-solid fa-chevron-up"></i>
+                        <span id="toggleChartText">收合圖表</span>
+                    </button>
+                </div>
+            </div>
+            <div class="chart-body" id="chartBodyWrapper">
+                <canvas id="comparisonChart"></canvas>
+            </div>
+        </div>
+
+        <!-- 雙軌決策參數沙盒面板 -->
+        <div class="params-grid">
+            <!-- 軌道 A：提早一次請領＋投資/自製月退設定 -->
+            <div class="track-card track-a">
+                <div class="track-title">
+                    <span><i class="fa-solid fa-person-walking-arrow-right"></i> 軌道 A：提早一次請領（投資滾存）</span>
+                    <span class="stat-badge" id="trackA_lumpSumBadge">試算金額：0 元</span>
+                </div>
+                <div class="param-row">
+                    <label for="trackA_retireAge">預計一次請領年齡 (歲)</label>
+                    <div class="control-group">
+                        <input type="number" id="trackA_retireAge" value="50" min="50" max="65" oninput="calculate()"> 歲
+                    </div>
+                </div>
+                <div class="param-row">
+                    <label for="trackA_laborYears">當時累積勞保年資 (年)</label>
+                    <div class="control-group">
+                        <input type="number" id="trackA_laborYears" value="25" step="0.5" oninput="calculate()"> 年
+                    </div>
+                </div>
+                <div class="param-row">
+                    <label for="avgSalary36">退保前36個月平均月薪 (元)</label>
+                    <div class="control-group">
+                        <input type="number" id="avgSalary36" value="45800" oninput="calculate()"> 元
+                    </div>
+                </div>
+                <div class="param-row">
+                    <label for="targetYield">一次金投資年化殖利率 (%)</label>
+                    <div class="control-group">
+                        <input type="number" id="targetYield" value="5.0" step="0.1" oninput="calculate()"> %
+                    </div>
+                </div>
+                <div class="param-row">
+                    <label for="trackA_withdrawMode">現金流模式</label>
+                    <div class="control-group">
+                        <select id="trackA_withdrawMode" onchange="calculate()">
+                            <option value="none" selected>純複利滾存（不提領生活費）</option>
+                            <option value="fixedAmount">自製月退（每年提領生活費）</option>
+                            <option value="equalMonthly">同步提領（等同軌道B月領額）</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="param-row" id="customWithdrawRow" style="display: none;">
+                    <label for="trackA_annualWithdraw">每年提領生活費金額 (元)</label>
+                    <div class="control-group">
+                        <input type="number" id="trackA_annualWithdraw" value="240000" step="10000" oninput="calculate()"> 元/年
+                    </div>
+                </div>
+            </div>
+
+            <!-- 軌道 B：延後請領／法定老年年金月領設定 -->
+            <div class="track-card track-b">
+                <div class="track-title">
+                    <span><i class="fa-solid fa-hand-holding-dollar"></i> 軌道 B：老年年金月領（終身領取）</span>
+                    <span class="stat-badge" id="trackB_monthlyBadge">月領額：0 元/月</span>
+                </div>
+                <div class="param-row">
+                    <label for="trackB_retireAge">預計開始月領年齡 (歲)</label>
+                    <div class="control-group">
+                        <input type="number" id="trackB_retireAge" value="60" min="60" max="70" oninput="calculate()"> 歲
+                    </div>
+                </div>
+                <div class="param-row">
+                    <label for="legalAge">法定退休年齡 (全額)</label>
+                    <div class="control-group">
+                        <select id="legalAge" onchange="calculate()">
+                            <option value="65" selected>65 歲 (51年次後)</option>
+                            <option value="64">64 歲 (50年次)</option>
+                            <option value="63">63 歲 (49年次)</option>
+                            <option value="62">62 歲 (48年次)</option>
+                            <option value="61">61 歲 (47年次)</option>
+                            <option value="60">60 歲 (46年次前)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="param-row">
+                    <label for="avgSalary60">最高60個月平均月薪 (元)</label>
+                    <div class="control-group">
+                        <input type="number" id="avgSalary60" value="45800" oninput="calculate()"> 元
+                    </div>
+                </div>
+                <div class="param-row">
+                    <label for="trackB_careerOption">提早退保後的年資走向</label>
+                    <div class="control-group">
+                        <select id="trackB_careerOption" onchange="calculate()">
+                            <option value="freeze" selected>凍結年資（與軌道A同工齡停止加保）</option>
+                            <option value="continueWork">繼續工作加保（加保至月領年齡）</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="param-row">
+                    <label>展延／減給比例 (每提早/延後1年±4%)</label>
+                    <div class="control-group">
+                        <span id="trackB_adjustRateText" class="mono" style="font-weight:700; color:#b8334a;">-20.00%</span>
+                    </div>
+                </div>
+                <div class="param-row">
+                    <label>計算採計總年資</label>
+                    <div class="control-group">
+                        <span id="trackB_calcYearsText" class="mono" style="font-weight:700; color:var(--sage-primary);">25.0 年</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 齊頭年齡逐年對照表 -->
+        <div class="table-responsive">
+            <table>
+                <colgroup>
+                    <col style="width: 6%;">  <!-- 生理年齡 -->
+                    <col style="width: 7%;">  <!-- 西元/民國 -->
+                    <col style="width: 10%;"> <!-- 軌道A: 期初投資資產 -->
+                    <col style="width: 9%;">  <!-- 軌道A: 當年投資收益 -->
+                    <col style="width: 9%;">  <!-- 軌道A: 當年提領生活費 -->
+                    <col style="width: 12%;"> <!-- 軌道A: 期末剩餘本利和 -->
+                    <col style="width: 10%;"> <!-- 軌道B: 當年年金進帳 -->
+                    <col style="width: 12%;"> <!-- 軌道B: 累計總領金額 -->
+                    <col style="width: 12%;"> <!-- 淨差額 (A總資產 - B累計) -->
+                    <col style="width: 13%;"> <!-- 雙軌綜合決策狀態 -->
+                </colgroup>
+                <thead>
+                    <tr class="section-header">
+                        <th colspan="2">時間軸（年齡齊頭基準）</th>
+                        <th colspan="4" class="sub-header-track-a">軌道 A：提早一次請領與自製投資庫</th>
+                        <th colspan="2" class="sub-header-track-b">軌道 B：延後老年年金月領</th>
+                        <th colspan="2">決策效益對決分析</th>
+                    </tr>
+                    <tr class="sub-header">
+                        <td>生理年齡</td>
+                        <td>西元 (民國)</td>
+                        <td>期初本金池</td>
+                        <td>投資收益(+)</td>
+                        <td>提領生活費(-)</td>
+                        <td>期末剩餘資產</td>
+                        <td>年度年金進帳</td>
+                        <td>累計年金總額</td>
+                        <td>資產淨差額 (A - B)</td>
+                        <td>勝負判定 / 警示</td>
+                    </tr>
+                </thead>
+                <tbody id="timelineTableBody">
+                    <!-- 由 JavaScript 動態生成跨越年齡列 -->
+                </tbody>
+            </table>
+        </div>
+
+        <div class="footer-action-area">
+            <div class="info-note">
+                💡 <strong>跨時期雙軌試算決策指引：</strong><br>
+                1. <strong>齊頭年齡對齊：</strong> 本表以兩軌道中較早請領的年齡（如50歲）為起點，逐年推算至 85 歲。在軌道 B 尚未起領的年份，其年金累計額皆為 0 元。<br>
+                2. <strong>時間價值與複利：</strong> 軌道 A 的優勢在於提早 10 年享受複利滾存；軌道 B 的優勢在於保證終身給付、不具備資產歸零破產風險。<br>
+                3. <strong>自製月退提領：</strong> 若軌道 A 開啟生活費提領，當提領速率大於投資回報時，請特別觀察提領耗盡警示圖表中資產耗盡的「破產紅線交叉點」。
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    // 依指令維持原有資料鍵值與版本命名
+    const STORAGE_KEY = "labor_oldage_pension_calc_data_v2_0";
+
+    // 圖表全域變數與目前檢視方案 (1: 年齡對齊走勢, 2: 提領耗盡警示, 3: 里程碑PK)
+    let myChart = null;
+    let currentViewMode = 1;
+    let isChartCollapsed = false;
+
+    // 跨年齡雙軌計算結果快取庫
+    let dualTrackData = {
+        minAge: 50,
+        maxAge: 85,
+        ages: [],
+        adYears: [],
+        rocYears: [],
+        trackA: {
+            lumpSumAmount: 0,
+            initialPrincipal: 0,
+            annualBalances: [],
+            annualYields: [],
+            annualWithdraws: [],
+            exhaustAge: null
+        },
+        trackB: {
+            monthlyAmount: 0,
+            annualAmount: 0,
+            annualIncomes: [],
+            cumulativeSums: []
+        },
+        netDifferences: [],
+        crossoverAge: null,
+        milestones: {
+            ages: [60, 65, 70, 75, 80, 85],
+            trackABalances: [],
+            trackBSums: []
+        }
+    };
+
+    // 格式化數字為千分位
+    function formatNumber(num) {
+        if (isNaN(num)) return "0";
+        return Math.round(num).toLocaleString('zh-TW');
+    }
+
+    // 1. 圖表區平滑收合／展開功能控制
+    function toggleChartCollapse() {
+        const bodyWrapper = document.getElementById('chartBodyWrapper');
+        const toggleBtn = document.getElementById('btnToggleChart');
+        const toggleText = document.getElementById('toggleChartText');
+        const tabGroup = document.getElementById('chartTabGroup');
+
+        isChartCollapsed = !isChartCollapsed;
+
+        if (isChartCollapsed) {
+            bodyWrapper.classList.add('hidden');
+            toggleBtn.classList.add('collapsed');
+            toggleText.innerText = "展開圖表";
+            tabGroup.style.opacity = '0.5';
+            tabGroup.style.pointerEvents = 'none';
+        } else {
+            bodyWrapper.classList.remove('hidden');
+            toggleBtn.classList.remove('collapsed');
+            toggleText.innerText = "收合圖表";
+            tabGroup.style.opacity = '1';
+            tabGroup.style.pointerEvents = 'auto';
+
+            // 展開後延遲調用 Chart 自適應刷新，防止因容器隱藏導致圖表寬高歸零
+            setTimeout(() => {
+                if (myChart) {
+                    myChart.resize();
+                    myChart.update();
+                }
+            }, 360);
+        }
+    }
+
+    // 2. 切換圖表三大視角
+    function switchChartView(mode) {
+        currentViewMode = mode;
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        document.getElementById(`btnTab${mode}`).classList.add('active');
+
+        const titleEl = document.getElementById('currentChartTitle');
+        if (mode === 1) {
+            titleEl.innerHTML = `<i class="fa-solid fa-chart-line" style="color: var(--amber-accent);"></i> <span>跨年齡起點．資產滾存對決走勢（同儕生理年齡對齊）</span>`;
+        } else if (mode === 2) {
+            titleEl.innerHTML = `<i class="fa-solid fa-shield-halved" style="color: #b8334a;"></i> <span>自製年金提領 vs 勞保終身公辦年金（耗盡破產風險對照）</span>`;
+        } else if (mode === 3) {
+            titleEl.innerHTML = `<i class="fa-solid fa-layer-group" style="color: var(--sage-primary);"></i> <span>重要年齡里程碑 PK（60、65、70、75、80、85歲終局對照）</span>`;
+        }
+
+        if (isChartCollapsed) {
+            toggleChartCollapse();
+        } else {
+            renderChart();
+        }
+    }
+
+    // 3. 雙軌跨年齡核心計算引擎
+    function calculate() {
+        // --- 軌道 A 參數讀取 ---
+        const ageA = parseInt(document.getElementById('trackA_retireAge').value) || 50;
+        const yearsA = parseFloat(document.getElementById('trackA_laborYears').value) || 0;
+        const salary36 = parseFloat(document.getElementById('avgSalary36').value) || 0;
+        const yieldRate = (parseFloat(document.getElementById('targetYield').value) || 0) / 100;
+        const withdrawMode = document.getElementById('trackA_withdrawMode').value;
+        const annualWithdrawCustom = parseFloat(document.getElementById('trackA_annualWithdraw').value) || 0;
+
+        // 自訂提領金額顯示連動
+        const customRow = document.getElementById('customWithdrawRow');
+        customRow.style.display = (withdrawMode === 'fixedAmount') ? 'flex' : 'none';
+
+        // 計算軌道 A 一次請領基數與總額 (上限50基數)
+        let totalBaseA = 0;
+        let lumpSumA = 0;
+        if (ageA >= 50 && yearsA > 0 && salary36 > 0) {
+            let baseUnder60 = yearsA <= 15 ? yearsA : 15 + (yearsA - 15) * 2;
+            if (baseUnder60 > 45) baseUnder60 = 45;
+
+            let extraUnits = 0;
+            if (ageA > 60) {
+                let yearsAfter60 = Math.min(ageA - 60, yearsA);
+                extraUnits = Math.min(yearsAfter60, 5);
+            }
+            totalBaseA = Math.min(baseUnder60 + extraUnits, 50);
+            lumpSumA = Math.round(salary36 * totalBaseA);
+        }
+        document.getElementById('trackA_lumpSumBadge').innerText = `一次領金額：${formatNumber(lumpSumA)} 元`;
+
+        // --- 軌道 B 參數讀取 ---
+        const ageB = parseInt(document.getElementById('trackB_retireAge').value) || 60;
+        const legalAge = parseInt(document.getElementById('legalAge').value) || 65;
+        const salary60 = parseFloat(document.getElementById('avgSalary60').value) || 0;
+        const careerOption = document.getElementById('trackB_careerOption').value;
+
+        // 決定軌道 B 採計總年資
+        let calcYearsB = yearsA;
+        if (careerOption === 'continueWork' && ageB > ageA) {
+            calcYearsB += (ageB - ageA);
+        }
+        document.getElementById('trackB_calcYearsText').innerText = `${calcYearsB.toFixed(1)} 年`;
+
+        // 計算軌道 B 提前/展延比例與月領金額
+        let adjustRateB = (ageB - legalAge) * 0.04;
+        if (adjustRateB > 0.20) adjustRateB = 0.20;
+        if (adjustRateB < -0.20) adjustRateB = -0.20;
+
+        const rateSign = adjustRateB > 0 ? "+" : "";
+        document.getElementById('trackB_adjustRateText').innerText = `${rateSign}${(adjustRateB * 100).toFixed(2)}%`;
+
+        let monthlyB = 0;
+        if (calcYearsB >= 15 && ageB >= 60 && salary60 > 0) {
+            const formulaA = (salary60 * calcYearsB * 0.00775 + 3000) * (1 + adjustRateB);
+            const formulaB = (salary60 * calcYearsB * 0.0155) * (1 + adjustRateB);
+            monthlyB = Math.max(0, Math.round(Math.max(formulaA, formulaB)));
+        }
+        document.getElementById('trackB_monthlyBadge').innerText = `月領額：${formatNumber(monthlyB)} 元/月`;
+
+        // --- 4. 建立年齡對齊（從 min(ageA, ageB) 齊頭推進至 85 歲） ---
+        const startAge = Math.min(ageA, ageB);
+        const maxTimelineAge = 85;
+        const currentYear = new Date().getFullYear();
+
+        dualTrackData.minAge = startAge;
+        dualTrackData.maxAge = maxTimelineAge;
+        dualTrackData.ages = [];
+        dualTrackData.adYears = [];
+        dualTrackData.rocYears = [];
+        dualTrackData.trackA.annualBalances = [];
+        dualTrackData.trackA.annualYields = [];
+        dualTrackData.trackA.annualWithdraws = [];
+        dualTrackData.trackA.exhaustAge = null;
+        dualTrackData.trackB.annualIncomes = [];
+        dualTrackData.trackB.cumulativeSums = [];
+        dualTrackData.netDifferences = [];
+        dualTrackData.crossoverAge = null;
+
+        dualTrackData.trackA.lumpSumAmount = lumpSumA;
+        dualTrackData.trackB.monthlyAmount = monthlyB;
+        dualTrackData.trackB.annualAmount = monthlyB * 12;
+
+        let curTrackABalance = 0;
+        let curTrackBCumulative = 0;
+        let hasStartedA = false;
+        let exhaustDetected = false;
+
+        const tableBody = document.getElementById('timelineTableBody');
+        tableBody.innerHTML = '';
+
+        for (let age = startAge; age <= maxTimelineAge; age++) {
+            const yearIndex = age - startAge;
+            const currentAD = currentYear + yearIndex;
+            const currentROC = currentAD - 1911;
+
+            dualTrackData.ages.push(age);
+            dualTrackData.adYears.push(currentAD);
+            dualTrackData.rocYears.push(currentROC);
+
+            // 軌道 A 狀態推算
+            let openBalanceA = 0;
+            let yieldA = 0;
+            let withdrawA = 0;
+
+            if (age >= ageA) {
+                if (!hasStartedA) {
+                    openBalanceA = lumpSumA;
+                    hasStartedA = true;
+                } else {
+                    openBalanceA = curTrackABalance;
+                }
+
+                if (openBalanceA > 0) {
+                    yieldA = Math.round(openBalanceA * yieldRate);
+
+                    // 提領規則
+                    if (withdrawMode === 'fixedAmount') {
+                        withdrawA = annualWithdrawCustom;
+                    } else if (withdrawMode === 'equalMonthly') {
+                        withdrawA = monthlyB * 12;
+                    } else {
+                        withdrawA = 0;
+                    }
+
+                    curTrackABalance = Math.max(0, openBalanceA + yieldA - withdrawA);
+
+                    if (curTrackABalance === 0 && !exhaustDetected) {
+                        dualTrackData.trackA.exhaustAge = age;
+                        exhaustDetected = true;
+                    }
+                } else {
+                    curTrackABalance = 0;
+                }
+            }
+
+            dualTrackData.trackA.annualBalances.push(curTrackABalance);
+            dualTrackData.trackA.annualYields.push(yieldA);
+            dualTrackData.trackA.annualWithdraws.push(withdrawA);
+
+            // 軌道 B 狀態推算
+            let incomeB = 0;
+            if (age >= ageB) {
+                incomeB = monthlyB * 12;
+                curTrackBCumulative += incomeB;
+            }
+
+            dualTrackData.trackB.annualIncomes.push(incomeB);
+            dualTrackData.trackB.cumulativeSums.push(curTrackBCumulative);
+
+            // 差額與勝負判定
+            const netDiff = curTrackABalance - curTrackBCumulative;
+            dualTrackData.netDifferences.push(netDiff);
+
+            // 檢查黃金交叉 (軌道 B 累計超越軌道 A 剩餘總資產之年齡)
+            let isCrossoverYear = false;
+            if (hasStartedA && age >= ageB && curTrackBCumulative >= curTrackABalance && dualTrackData.crossoverAge === null) {
+                dualTrackData.crossoverAge = age;
+                isCrossoverYear = true;
+            }
+
+            // 動態產生表格橫列
+            const row = document.createElement('tr');
+            if (isCrossoverYear) row.classList.add('crossover-row');
+            if (curTrackABalance === 0 && hasStartedA && withdrawMode !== 'none') row.classList.add('exhausted-row');
+
+            // 判定欄內容
+            let statusHtml = '';
+            if (age < ageA) {
+                statusHtml = '<span style="color:#8c9b92;">尚未啟動</span>';
+            } else if (age < ageB) {
+                statusHtml = '<span class="status-win-a">軌道A先發優勢中</span>';
+            } else if (curTrackABalance === 0 && withdrawMode !== 'none') {
+                statusHtml = `<span class="exhaust-badge">⚠️ 軌道A資產耗盡</span>`;
+            } else if (isCrossoverYear) {
+                statusHtml = `<span class="crossover-badge">🌟 ${age}歲黃金交叉</span>`;
+            } else if (netDiff > 0) {
+                statusHtml = `<span class="status-win-a">A 領先 +${formatNumber(netDiff)}</span>`;
+            } else {
+                statusHtml = `<span class="status-win-b">B 逆轉 +${formatNumber(Math.abs(netDiff))}</span>`;
+            }
+
+            row.innerHTML = `
+                <td class="val-text nowrap-cell" style="font-weight:700;">${age} 歲</td>
+                <td class="nowrap-cell mono" style="font-size:11px;">${currentAD} (${currentROC})</td>
+                <td class="mono nowrap-cell">${age >= ageA ? formatNumber(openBalanceA) + ' 元' : '-'}</td>
+                <td class="mono nowrap-cell" style="color:var(--amber-accent);">${yieldA > 0 ? '+' + formatNumber(yieldA) : '-'}</td>
+                <td class="mono nowrap-cell" style="color:#b8334a;">${withdrawA > 0 ? '-' + formatNumber(withdrawA) : '-'}</td>
+                <td class="mono nowrap-cell highlight-yellow" style="font-weight:700;">${age >= ageA ? formatNumber(curTrackABalance) + ' 元' : '-'}</td>
+                <td class="mono nowrap-cell" style="color:var(--sage-primary);">${incomeB > 0 ? '+' + formatNumber(incomeB) : '-'}</td>
+                <td class="mono nowrap-cell" style="font-weight:700;">${age >= ageB ? formatNumber(curTrackBCumulative) + ' 元' : '-'}</td>
+                <td class="mono nowrap-cell" style="font-weight:700; color:${netDiff >= 0 ? 'var(--amber-accent)' : 'var(--sage-primary)'};">
+                    ${age >= ageA ? (netDiff >= 0 ? '+' : '') + formatNumber(netDiff) + ' 元' : '-'}
+                </td>
+                <td class="nowrap-cell">${statusHtml}</td>
+            `;
+            tableBody.appendChild(row);
+        }
+
+        // 整理里程碑資料快取給里程碑 PK 圖表
+        dualTrackData.milestones.trackABalances = [];
+        dualTrackData.milestones.trackBSums = [];
+        dualTrackData.milestones.ages.forEach(checkAge => {
+            const targetIdx = dualTrackData.ages.indexOf(checkAge);
+            if (targetIdx !== -1) {
+                dualTrackData.milestones.trackABalances.push(dualTrackData.trackA.annualBalances[targetIdx]);
+                dualTrackData.milestones.trackBSums.push(dualTrackData.trackB.cumulativeSums[targetIdx]);
+            } else {
+                dualTrackData.milestones.trackABalances.push(0);
+                dualTrackData.milestones.trackBSums.push(0);
+            }
+        });
+
+        saveToLocalStorage();
+        if (!isChartCollapsed) {
+            renderChart();
+        }
+    }
+</script>
+<script>
+    // 4. 圖表渲染核心：整合三大視角 (Chart.js)
+    function renderChart() {
+        const canvas = document.getElementById('comparisonChart');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        if (myChart) {
+            myChart.destroy();
+        }
+
+        const commonTooltip = {
+            backgroundColor: '#222e27',
+            titleFont: { family: 'Space Mono', size: 12 },
+            bodyFont: { family: 'Space Mono', size: 12 },
+            padding: 10,
+            callbacks: {
+                label: function(context) {
+                    let label = context.dataset.label || '';
+                    if (label) label += ': ';
+                    if (context.parsed.y !== null) {
+                        label += Math.round(context.parsed.y).toLocaleString('zh-TW') + ' 元';
+                    }
+                    return label;
+                }
+            }
+        };
+
+        const ageLabels = dualTrackData.ages.map(a => `${a} 歲`);
+
+        if (currentViewMode === 1) {
+            // 年齡對齊走勢 (同儕生理年齡對齊)
+            myChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ageLabels,
+                    datasets: [
+                        {
+                            label: '軌道 A：提早一次請領 (剩餘本利和資產)',
+                            data: dualTrackData.trackA.annualBalances,
+                            borderColor: '#c86f32',
+                            backgroundColor: 'rgba(200, 111, 50, 0.1)',
+                            borderWidth: 2.5,
+                            fill: true,
+                            tension: 0.25,
+                            pointRadius: 2,
+                            pointHoverRadius: 6
+                        },
+                        {
+                            label: '軌道 B：延後年金月領 (累計領取總額)',
+                            data: dualTrackData.trackB.cumulativeSums,
+                            borderColor: '#3b5245',
+                            backgroundColor: 'rgba(59, 82, 69, 0.12)',
+                            borderWidth: 2.5,
+                            fill: true,
+                            tension: 0.25,
+                            pointRadius: 2,
+                            pointHoverRadius: 6
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'top', labels: { font: { family: 'Inter', weight: 600 } } },
+                        tooltip: commonTooltip
+                    },
+                    scales: {
+                        x: { grid: { color: 'rgba(211, 204, 192, 0.4)' } },
+                        y: {
+                            grid: { color: 'rgba(211, 204, 192, 0.4)' },
+                            ticks: {
+                                callback: val => (val / 10000).toLocaleString() + '萬',
+                                font: { family: 'Space Mono' }
+                            }
+                        }
+                    }
+                }
+            });
+        } else if (currentViewMode === 2) {
+            // 提領耗盡警示：自製年金提領 vs 勞保終身公辦年金
+            myChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ageLabels,
+                    datasets: [
+                        {
+                            type: 'bar',
+                            label: '軌道 A 每年提領生活費 (-)',
+                            data: dualTrackData.trackA.annualWithdraws,
+                            backgroundColor: 'rgba(184, 51, 74, 0.75)',
+                            borderRadius: 3,
+                            yAxisID: 'yCash'
+                        },
+                        {
+                            type: 'bar',
+                            label: '軌道 B 每年法定年金進帳 (+)',
+                            data: dualTrackData.trackB.annualIncomes,
+                            backgroundColor: 'rgba(59, 82, 69, 0.75)',
+                            borderRadius: 3,
+                            yAxisID: 'yCash'
+                        },
+                        {
+                            type: 'line',
+                            label: '軌道 A 本金庫存量 (右軸)',
+                            data: dualTrackData.trackA.annualBalances,
+                            borderColor: '#c86f32',
+                            borderWidth: 2.5,
+                            yAxisID: 'yStock',
+                            fill: false,
+                            tension: 0.25,
+                            pointRadius: 2
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'top', labels: { font: { family: 'Inter', weight: 600 } } },
+                        tooltip: commonTooltip
+                    },
+                    scales: {
+                        x: { grid: { color: 'rgba(211, 204, 192, 0.4)' } },
+                        yCash: {
+                            position: 'left',
+                            title: { display: true, text: '年度現金流量 (元)', font: { size: 11, weight: 600 } },
+                            grid: { color: 'rgba(211, 204, 192, 0.4)' },
+                            ticks: { callback: val => (val / 10000).toLocaleString() + '萬', font: { family: 'Space Mono' } }
+                        },
+                        yStock: {
+                            position: 'right',
+                            title: { display: true, text: '軌道A池存量 (元)', font: { size: 11, weight: 600 } },
+                            grid: { drawOnChartArea: false },
+                            ticks: { callback: val => (val / 10000).toLocaleString() + '萬', font: { family: 'Space Mono' } }
+                        }
+                    }
+                }
+            });
+        } else if (currentViewMode === 3) {
+            // 里程碑 PK：重要年齡里程碑 PK (60、65、70、75、80、85歲終局對照)
+            const milestoneLabels = dualTrackData.milestones.ages.map(a => `${a} 歲節點`);
+            myChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: milestoneLabels,
+                    datasets: [
+                        {
+                            label: '軌道 A 剩餘總資產 (一次請領滾存)',
+                            data: dualTrackData.milestones.trackABalances,
+                            backgroundColor: '#c86f32',
+                            borderRadius: 4
+                        },
+                        {
+                            label: '軌道 B 累計領取總額 (年金月領)',
+                            data: dualTrackData.milestones.trackBSums,
+                            backgroundColor: '#3b5245',
+                            borderRadius: 4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'top', labels: { font: { family: 'Inter', weight: 600 } } },
+                        tooltip: commonTooltip
+                    },
+                    scales: {
+                        x: { grid: { color: 'rgba(211, 204, 192, 0.4)' } },
+                        y: {
+                            grid: { color: 'rgba(211, 204, 192, 0.4)' },
+                            ticks: { callback: val => (val / 10000).toLocaleString() + '萬', font: { family: 'Space Mono' } }
+                        }
+                    }
+                }
+            });
+        }
+    }
+
+    // 5. 資料快取持久化與備份管理 (維持原有 STORAGE_KEY)
+    function saveToLocalStorage() {
+        const formData = {
+            trackA_retireAge: document.getElementById('trackA_retireAge').value,
+            trackA_laborYears: document.getElementById('trackA_laborYears').value,
+            avgSalary36: document.getElementById('avgSalary36').value,
+            targetYield: document.getElementById('targetYield').value,
+            trackA_withdrawMode: document.getElementById('trackA_withdrawMode').value,
+            trackA_annualWithdraw: document.getElementById('trackA_annualWithdraw').value,
+            trackB_retireAge: document.getElementById('trackB_retireAge').value,
+            legalAge: document.getElementById('legalAge').value,
+            avgSalary60: document.getElementById('avgSalary60').value,
+            trackB_careerOption: document.getElementById('trackB_careerOption').value
+        };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(formData));
+    }
+
+    function loadFromLocalStorage() {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (!saved) return false;
+
+        try {
+            const data = JSON.parse(saved);
+            if (data.trackA_retireAge !== undefined) document.getElementById('trackA_retireAge').value = data.trackA_retireAge;
+            if (data.trackA_laborYears !== undefined) document.getElementById('trackA_laborYears').value = data.trackA_laborYears;
+            if (data.avgSalary36 !== undefined) document.getElementById('avgSalary36').value = data.avgSalary36;
+            if (data.targetYield !== undefined) document.getElementById('targetYield').value = data.targetYield;
+            if (data.trackA_withdrawMode !== undefined) document.getElementById('trackA_withdrawMode').value = data.trackA_withdrawMode;
+            if (data.trackA_annualWithdraw !== undefined) document.getElementById('trackA_annualWithdraw').value = data.trackA_annualWithdraw;
+            if (data.trackB_retireAge !== undefined) document.getElementById('trackB_retireAge').value = data.trackB_retireAge;
+            if (data.legalAge !== undefined) document.getElementById('legalAge').value = data.legalAge;
+            if (data.avgSalary60 !== undefined) document.getElementById('avgSalary60').value = data.avgSalary60;
+            if (data.trackB_careerOption !== undefined) document.getElementById('trackB_careerOption').value = data.trackB_careerOption;
+            return true;
+        } catch (e) {
+            console.error("載入 LocalStorage 失敗", e);
+        }
+        return false;
+    }
+
+    function resetForm(event) {
+        if (event && event.preventDefault) event.preventDefault();
+
+        if (confirm("確定要重設雙軌試算參數至預設值嗎？")) {
+            localStorage.removeItem(STORAGE_KEY);
+            document.getElementById('trackA_retireAge').value = "50";
+            document.getElementById('trackA_laborYears').value = "25";
+            document.getElementById('avgSalary36').value = "45800";
+            document.getElementById('targetYield').value = "5.0";
+            document.getElementById('trackA_withdrawMode').value = "none";
+            document.getElementById('trackA_annualWithdraw').value = "240000";
+            document.getElementById('trackB_retireAge').value = "60";
+            document.getElementById('legalAge').value = "65";
+            document.getElementById('avgSalary60').value = "45800";
+            document.getElementById('trackB_careerOption').value = "freeze";
+            calculate();
+            alert("已成功重設為標準對照情境。");
+        }
+    }
+
+    function exportData() {
+        const formData = {
+            version: "SYS_02",
+            exportTime: new Date().toISOString(),
+            trackA_retireAge: document.getElementById('trackA_retireAge').value,
+            trackA_laborYears: document.getElementById('trackA_laborYears').value,
+            avgSalary36: document.getElementById('avgSalary36').value,
+            targetYield: document.getElementById('targetYield').value,
+            trackA_withdrawMode: document.getElementById('trackA_withdrawMode').value,
+            trackA_annualWithdraw: document.getElementById('trackA_annualWithdraw').value,
+            trackB_retireAge: document.getElementById('trackB_retireAge').value,
+            legalAge: document.getElementById('legalAge').value,
+            avgSalary60: document.getElementById('avgSalary60').value,
+            trackB_careerOption: document.getElementById('trackB_careerOption').value
+        };
+
+        const jsonStr = JSON.stringify(formData, null, 2);
+        const blob = new Blob([jsonStr], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `SYS02_勞保雙軌決策沙盤_${dateStr}.labor`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+
+    function importData(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const data = JSON.parse(e.target.result);
+                if (data.trackA_retireAge !== undefined) document.getElementById('trackA_retireAge').value = data.trackA_retireAge;
+                if (data.trackA_laborYears !== undefined) document.getElementById('trackA_laborYears').value = data.trackA_laborYears;
+                if (data.avgSalary36 !== undefined) document.getElementById('avgSalary36').value = data.avgSalary36;
+                if (data.targetYield !== undefined) document.getElementById('targetYield').value = data.targetYield;
+                if (data.trackA_withdrawMode !== undefined) document.getElementById('trackA_withdrawMode').value = data.trackA_withdrawMode;
+                if (data.trackA_annualWithdraw !== undefined) document.getElementById('trackA_annualWithdraw').value = data.trackA_annualWithdraw;
+                if (data.trackB_retireAge !== undefined) document.getElementById('trackB_retireAge').value = data.trackB_retireAge;
+                if (data.legalAge !== undefined) document.getElementById('legalAge').value = data.legalAge;
+                if (data.avgSalary60 !== undefined) document.getElementById('avgSalary60').value = data.avgSalary60;
+                if (data.trackB_careerOption !== undefined) document.getElementById('trackB_careerOption').value = data.trackB_careerOption;
+
+                calculate();
+                saveToLocalStorage();
+                alert('雙軌沙盤資料已成功匯入！');
+            } catch (err) {
+                alert('匯入檔案格式不正確！');
+            }
+        };
+        reader.readAsText(file);
+        event.target.value = '';
+    }
+
+    // 頁面初次載入執行
+    window.onload = function() {
+        loadFromLocalStorage();
+        calculate();
+    };
+</script>
+
+</body>
+</html>
