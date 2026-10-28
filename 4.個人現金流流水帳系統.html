@@ -1,0 +1,3075 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SYS_04 個人現金流流水帳系統 - 生活型態財務邏輯</title>
+
+    <link rel="icon" href="favicon.png" type="image/png">
+    <link rel="apple-touch-icon" href="favicon.png">
+
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google 字體：Inter、Space Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --bg-canvas: #dfe5e1;       /* 啞光鼠尾草灰綠 */
+            --card-surface: #faf8f5;    /* 溫和手帳奶白 */
+            --header-deep: #222e27;     /* 結構深墨黑綠 */
+            --sage-primary: #3b5245;    /* 架構墨綠 */
+            --sage-muted: #5e7568;      /* 說明文字灰綠 */
+            --amber-accent: #c86f32;    /* 琥珀焦糖亮點色 */
+            --amber-bg: #fcf3eb;        /* 琥珀淡底 */
+            --border-soft: #d3ccc0;     /* 沉著細邊框 */
+            --group-border: rgba(43, 62, 51, 0.45); /* 若有似無的模組細邊框 */
+            --input-bg: #e9edea;        /* 低反光輸入底 */
+            --text-title: #222e27;      /* 標題深墨黑 */
+            --text-body: #3c4b42;       /* 內文墨黑 */
+            --highlight-yellow: #f7efe4;/* 淺焙焦糖唯讀底 */
+            --cash-orange: #faeedf;     /* 期末現金淡橙底 */
+            --net-flow-green: #eef3ef;  /* 收支淨額淡綠底 */
+            --expense-red: #b8334a;     /* 支出強調紅 */
+            --profit-green: #28543d;    /* 收益強調綠 */
+            --warning-light-red: #fcedf0;/* 超支與帳差淡粉紅底 */
+            --budget-blue-bg: #e6ece9;  /* 預算上限底 */
+            --closed-row-bg: #dbe3de;   /* 結算月反淺灰底色 */
+
+            /* 風控燈號色彩 */
+            --badge-green-bg: #deeee3;
+            --badge-green-text: #21613e;
+            --badge-yellow-bg: #faeedf;
+            --badge-yellow-text: #9c5017;
+            --badge-red-bg: #f8e1e5;
+            --badge-red-text: #9e253b;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang TC", "Microsoft JhengHei", sans-serif;
+            background-color: var(--bg-canvas);
+            color: var(--text-body);
+            padding: 0 0 50px 0;
+            background-image: 
+                linear-gradient(rgba(70, 95, 80, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(70, 95, 80, 0.05) 1px, transparent 1px);
+            background-size: 32px 32px;
+            font-size: 14px;
+            width: 100%;
+        }
+
+        .mono { font-family: 'Space Mono', monospace; }
+
+        /* 頂部導覽 Header */
+        .blueprint-header {
+            background-color: var(--header-deep);
+            color: #ffffff;
+            box-shadow: 0 4px 16px rgba(34, 46, 39, 0.15);
+            border-bottom: 1px solid #3c4a40;
+            position: sticky;
+            top: 0;
+            z-index: 40;
+            padding: 12px 20px;
+            width: 100%;
+        }
+
+        .header-inner {
+            width: 100%;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .back-home {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 14px;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #d1ded6;
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+        .back-home:hover { background: rgba(255, 255, 255, 0.18); color: #ffffff; }
+
+        .sys-badge {
+            font-family: 'Space Mono', monospace;
+            font-size: 11.5px;
+            font-weight: 700;
+            padding: 3px 8px;
+            border-radius: 4px;
+            background: rgba(200, 111, 50, 0.2);
+            color: var(--amber-accent);
+            border: 1px solid rgba(200, 111, 50, 0.4);
+            letter-spacing: 1px;
+        }
+
+        .header-title-text { font-size: 18px; font-weight: 700; margin: 0; color: #ffffff; }
+
+        .header-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .btn-action {
+            background: rgba(255, 255, 255, 0.08);
+            color: #e5ede8;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 6px 13px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            text-decoration: none;
+        }
+        .btn-action:hover:not(:disabled) { background: #ffffff; color: var(--header-deep); }
+        .btn-action:disabled { opacity: 0.35; cursor: not-allowed; }
+
+        .btn-manual { background: rgba(200, 111, 50, 0.25); border-color: rgba(200, 111, 50, 0.45); color: #f7dcd0; }
+        .btn-manual:hover { background: var(--amber-accent) !important; color: #ffffff !important; }
+
+        .btn-danger { background: rgba(184, 51, 74, 0.25); border-color: rgba(184, 51, 74, 0.4); color: #fca5a5; }
+        .btn-danger:hover { background: #b8334a !important; color: #ffffff !important; }
+
+        /* 主容器自適應螢幕寬度滿版 */
+        .main-container {
+            width: 100%;
+            max-width: 100%;
+            margin: 14px auto 0;
+            padding: 0 16px;
+        }
+
+        /* 控制面板卡片 */
+        .control-card {
+            background: var(--card-surface);
+            padding: 12px 18px;
+            border-radius: 8px;
+            border: 1px solid var(--border-soft);
+            box-shadow: 0 2px 8px rgba(34, 46, 39, 0.03);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .control-item { display: flex; align-items: center; gap: 6px; }
+        .control-card label { font-weight: 600; font-size: 13px; color: var(--text-title); cursor: pointer; }
+        .control-card input, .control-card select {
+            padding: 5px 9px; border: 1px solid var(--border-soft); border-radius: 4px;
+            font-size: 13px; font-weight: 700; color: var(--text-title); outline: none; background-color: var(--input-bg);
+            font-family: 'Space Mono', monospace;
+        }
+        .input-year-blue { width: 85px; text-align: center; }
+        .select-view-year { background-color: var(--amber-bg) !important; color: #8c4e20 !important; border-color: #e3d4c1 !important; }
+
+        .view-switch-group { display: inline-flex; background-color: #d4ded8; padding: 3px; border-radius: 6px; gap: 3px; border: 1px solid var(--border-soft); }
+        .view-btn { border: none; background: transparent; padding: 5px 11px; border-radius: 4px; font-size: 12.5px; font-weight: 700; color: var(--sage-muted); cursor: pointer; transition: all 0.2s ease; }
+        .view-btn.active { background-color: var(--card-surface); color: var(--sage-primary); box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+
+        /* 圖表卡片 */
+        .chart-card {
+            background: var(--card-surface); border-radius: 8px; border: 1px solid var(--border-soft);
+            padding: 14px 16px; margin-bottom: 14px; box-shadow: 0 2px 8px rgba(34, 46, 39, 0.03);
+        }
+
+        /* 表格容器滿版展開 */
+        .table-container {
+            width: 100%; overflow-x: auto; max-height: 75vh; background: var(--card-surface);
+            border-radius: 8px; border: 1px solid var(--border-soft);
+            box-shadow: 0 2px 8px rgba(34, 46, 39, 0.03); margin-bottom: 20px; position: relative;
+        }
+        table { border-collapse: separate; border-spacing: 0; width: 100%; table-layout: fixed; text-align: center; font-size: 13px; }
+        th, td { border-right: 1px solid var(--border-soft); border-bottom: 1px solid var(--border-soft); padding: 7px 4px; position: relative; word-wrap: break-word; white-space: nowrap; vertical-align: middle; }
+
+        /* 8 大項目細外框 */
+        .grp-l { border-left: 1.5px solid var(--group-border) !important; }
+        .grp-r { border-right: 1.5px solid var(--group-border) !important; }
+
+        /* 三層 Sticky 表頭精準像素錨定 */
+        thead tr:nth-child(1) th { position: sticky; top: 0; z-index: 30; height: 38px; }
+        thead tr:nth-child(2) th { position: sticky; top: 38px; z-index: 29; min-height: 48px; }
+        thead tr:nth-child(3) th { position: sticky; top: 86px; z-index: 28; background-color: #f2eee8; color: var(--text-title); font-weight: 600; font-size: 12px; line-height: 1.25; min-height: 46px; }
+
+        tbody td:first-child, thead tr:nth-child(2) th:first-child, tfoot tr td:first-child {
+            position: sticky; left: 0; z-index: 25; background-color: #f2eee8; border-right: 2px solid var(--border-soft);
+        }
+        thead tr:nth-child(2) th:first-child { z-index: 35 !important; top: 38px; }
+
+        .year-header { background: var(--header-deep); color: #ffffff; font-weight: 700; font-size: 15px; text-align: left; padding: 8px 18px; }
+        .sec-hdr { background-color: var(--sage-primary); color: #ffffff; font-weight: 700; font-size: 13px; }
+        .sec-hdr-budget { background-color: #2f4538; color: #ffffff; font-weight: 700; font-size: 13px; }
+        .sec-hdr-reserve { background-color: #8c4e20; color: #ffffff; font-weight: 700; font-size: 13px; }
+        .sec-hdr-asset { background-color: var(--header-deep); color: #ffffff; font-weight: 700; font-size: 13px; }
+        .sec-hdr-overview { background-color: #4a5c52; color: #ffffff; font-weight: 700; font-size: 13px; }
+        .sec-hdr-risk { background-color: #55337b; color: #ffffff; font-weight: 700; font-size: 13px; }
+
+        .sec-hdr-wrap {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 3px;
+            padding: 4px 2px;
+            white-space: normal !important;
+            line-height: 1.25;
+            min-height: 44px;
+        }
+        .sec-hdr-title { text-align: center; font-size: 12.5px; font-weight: 700; }
+
+        .col-toggle-btn {
+            background: rgba(255, 255, 255, 0.22);
+            border: 1px solid rgba(255, 255, 255, 0.45);
+            color: #ffffff;
+            border-radius: 3px;
+            padding: 1px 7px;
+            font-size: 10.5px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+        .col-toggle-btn:hover { background: #ffffff; color: var(--header-deep); }
+        .col-toggle-btn.collapsed { background: var(--amber-accent); border-color: var(--amber-accent); color: #ffffff; }
+
+        .col-collapsed-hdr {
+            background: #e5ece7 !important;
+            color: var(--text-title) !important;
+            font-weight: 700 !important;
+            white-space: normal !important;
+            line-height: 1.25;
+            padding: 4px 2px !important;
+        }
+        .col-collapsed-cell {
+            background-color: #f0f5f2 !important;
+            font-weight: 700 !important;
+            font-family: 'Space Mono', monospace;
+        }
+
+        .editable-header-input { background-color: #ffffff; border: 1px dashed var(--border-soft); border-radius: 4px; padding: 2px 4px; width: 94%; text-align: center; font-weight: bold; color: var(--text-title); font-size: 12px; }
+        .blue-cell { background-color: #f2f7f4; cursor: pointer; color: var(--sage-primary); font-weight: 600; font-family: 'Space Mono', monospace; transition: background 0.15s ease; }
+        .blue-cell:hover { background-color: #dceae1; }
+
+        .expense-text { color: var(--expense-red) !important; font-weight: 700; font-family: 'Space Mono', monospace; }
+        .profit-text { color: var(--profit-green) !important; font-weight: 700; font-family: 'Space Mono', monospace; }
+        .cell-rollover { color: var(--sage-muted); font-style: italic; font-weight: normal; }
+        .over-budget-cell { background-color: var(--warning-light-red) !important; }
+
+        tr.row-closed td.flow-cell { background-color: var(--closed-row-bg) !important; color: #55625a !important; }
+        tr.row-closed td.blue-cell:hover { background-color: #c9d5ce !important; }
+
+        .metric-badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 7px; border-radius: 4px; font-size: 11.5px; font-weight: 700; white-space: nowrap; font-family: 'Space Mono', monospace; }
+        .badge-green { background-color: var(--badge-green-bg); color: var(--badge-green-text); }
+        .badge-yellow { background-color: var(--badge-yellow-bg); color: var(--badge-yellow-text); }
+        .badge-red { background-color: var(--badge-red-bg); color: var(--badge-red-text); }
+
+        .tooltip-box {
+            display: none; position: absolute; bottom: 110%; left: 50%; transform: translateX(-50%);
+            background-color: var(--header-deep); color: #faf8f5; padding: 9px 13px; border-radius: 6px;
+            font-size: 12px; white-space: nowrap; width: max-content; max-width: 600px; text-align: left;
+            z-index: 100; box-shadow: 0 6px 16px rgba(0,0,0,0.25); pointer-events: none; border: 1px solid var(--border-soft); line-height: 1.5;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+        td:hover .tooltip-box, th:hover .tooltip-box { display: block; }
+
+        .annual-summary-row td { background-color: #dbe4df !important; font-weight: 700 !important; border-top: 2px solid var(--border-soft) !important; font-family: 'Space Mono', monospace; font-size: 13.5px; }
+        .cash-col { background-color: var(--cash-orange); font-weight: 700; font-family: 'Space Mono', monospace; color: #8c4e20; }
+        .cell-calc-yellow { background-color: var(--highlight-yellow); font-weight: 700; font-family: 'Space Mono', monospace; color: #8c4e20; }
+        .cell-net-flow { background-color: var(--net-flow-green); font-weight: 700; font-family: 'Space Mono', monospace; }
+
+        .btn-header-copy-year {
+            display: inline-block; margin-top: 3px; background: var(--amber-bg);
+            color: var(--amber-accent); border: 1px solid rgba(200, 111, 50, 0.35); border-radius: 4px; padding: 2px 7px; font-size: 11px;
+            font-weight: 600; cursor: pointer; white-space: nowrap;
+        }
+        .btn-header-copy-year:hover { background: var(--amber-accent); color: #ffffff; }
+
+        .btn-month-close {
+            display: inline-block; margin-top: 3px; padding: 2px 7px; border-radius: 3px; font-size: 11px;
+            font-weight: 600; cursor: pointer; border: 1px solid #cbd5e1; background: #ffffff; color: #475569;
+        }
+        .btn-month-close.is-closed { background: #475569; color: #ffffff; border-color: #334155; }
+
+        .reference-card {
+            background: var(--card-surface); border: 1px solid var(--border-soft); border-radius: 8px;
+            padding: 16px; margin-bottom: 16px; box-shadow: 0 2px 8px rgba(34, 46, 39, 0.03);
+        }
+        .ref-header-row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+        .btn-manual-card {
+            background: var(--amber-bg); color: var(--amber-accent); border: 1px solid rgba(200, 111, 50, 0.4);
+            border-radius: 4px; padding: 4px 11px; font-size: 12.5px; font-weight: 700; cursor: pointer;
+        }
+        .btn-manual-card:hover { background: var(--amber-accent); color: #ffffff; }
+        .ref-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; margin-top: 12px; }
+        .ref-item { background: #f2eee8; border: 1px solid var(--border-soft); border-radius: 6px; padding: 10px 12px; font-size: 12.5px; }
+        .ref-item-title { font-weight: 700; color: var(--text-title); margin-bottom: 5px; display: flex; justify-content: space-between; }
+        .ref-scale-row { display: flex; gap: 6px; margin-top: 4px; }
+        .ref-pill { flex: 1; text-align: center; padding: 3px 5px; border-radius: 4px; font-weight: 600; font-size: 11.5px; }
+        .th-formula-note { display: block; font-size: 10px; font-weight: normal; color: var(--sage-muted); margin-top: 2px; }
+
+        /* 頁籤 4 & 5：損益表共用樣式 */
+        .pnl-year-card {
+            background: var(--card-surface); border: 1px solid var(--border-soft); border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(34, 46, 39, 0.03); margin-bottom: 26px; overflow: hidden; width: 100%;
+        }
+        .pnl-year-header {
+            background: var(--header-deep); color: #ffffff; padding: 12px 20px; font-size: 16px; font-weight: 700;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .pnl-content { padding: 20px; }
+        .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-bottom: 22px; }
+        .kpi-card { background: #ffffff; padding: 16px 18px; border-radius: 6px; border: 1px solid var(--border-soft); box-shadow: 0 1px 3px rgba(0,0,0,0.03); }
+        .kpi-card .title { font-size: 12.5px; color: var(--sage-muted); font-weight: 600; }
+        .kpi-card .value { font-size: 24px; font-weight: 700; margin-top: 6px; font-family: 'Space Mono', monospace; }
+        .kpi-card .sub { font-size: 12px; margin-top: 5px; }
+        .kpi-card .sub.positive { color: var(--profit-green); }
+        .kpi-card .sub.negative { color: var(--expense-red); }
+
+        .pnl-chart-box { background: #ffffff; border: 1px solid var(--border-soft); border-radius: 6px; padding: 16px; margin-bottom: 22px; }
+        .pnl-chart-title { font-size: 14.5px; font-weight: 700; color: var(--text-title); margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
+        .pnl-chart-title::before { content: ''; display: inline-block; width: 4px; height: 16px; background: var(--amber-accent); border-radius: 2px; }
+        .pnl-chart-container-large { position: relative; height: 340px; width: 100%; }
+        .pnl-chart-container-small { position: relative; height: 270px; width: 100%; }
+
+        .pnl-table-wrap { background: #ffffff; border: 1px solid var(--border-soft); border-radius: 6px; overflow-x: auto; margin-bottom: 22px; width: 100%; }
+        .pnl-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px; white-space: nowrap; }
+        .pnl-table th, .pnl-table td { padding: 9px 4px; border-bottom: 1px solid var(--border-soft); border-right: 1px solid var(--border-soft); text-align: right; font-size: 12px; }
+        .pnl-table th { background: var(--sage-primary); color: #ffffff; font-weight: 600; font-size: 12.5px; }
+        
+        /* 損益表第一欄（表頭項目）固定與防穿透遮罩設定 */
+        .pnl-table th:first-child, .pnl-table td:first-child {
+            text-align: left;
+            position: sticky;
+            left: 0;
+            z-index: 20;
+            width: 230px !important;
+            min-width: 230px !important;
+            max-width: 230px !important;
+            white-space: normal !important;
+            word-break: break-word !important;
+            line-height: 1.4;
+            padding-right: 10px;
+            padding-left: 10px;
+            border-right: 2px solid var(--border-soft);
+        }
+        .pnl-table th:first-child { background: var(--sage-primary) !important; color: #ffffff !important; z-index: 25; }
+        .pnl-table td:first-child { background-color: #faf8f5 !important; }
+        
+        /* 連續年度財務損益表樣式 */
+        .multi-pnl-table {
+            width: max-content !important;
+            min-width: 100% !important;
+            table-layout: fixed !important;
+        }
+        .multi-pnl-table th:first-child, .multi-pnl-table td:first-child {
+            width: 230px !important;
+            min-width: 230px !important;
+            max-width: 230px !important;
+            z-index: 20 !important;
+            border-right: 2px solid var(--border-soft);
+        }
+        .multi-pnl-table td:first-child { background-color: #faf8f5 !important; }
+        .multi-pnl-table tr.row-category td:first-child { background-color: #eef3ef !important; }
+        .multi-pnl-table tr.row-summary td:first-child { background-color: var(--cash-orange) !important; }
+        .multi-pnl-table tr.child-row td:first-child { background-color: #ffffff !important; }
+
+        .multi-pnl-table th.col-multi-year, .multi-pnl-table td.col-multi-year {
+            width: 125px !important;
+            min-width: 125px !important;
+            max-width: 125px !important;
+            padding: 9px 6px !important;
+            text-align: right !important;
+        }
+        .multi-pnl-table th.col-multi-total, .multi-pnl-table td.col-multi-total {
+            width: 145px !important;
+            min-width: 145px !important;
+            max-width: 145px !important;
+            padding: 9px 8px !important;
+            text-align: right !important;
+            background-color: #f7efe4 !important;
+        }
+        .multi-pnl-table th.col-multi-total { background-color: #2f4538 !important; }
+
+        /* 相鄰連續收折年份聚合欄位樣式（呈現加總值防溢出設計） */
+        .multi-pnl-table th.col-year-collapsed-range, .multi-pnl-table td.col-year-collapsed-range {
+            width: 94px !important;
+            min-width: 94px !important;
+            max-width: 94px !important;
+            padding: 8px 4px !important;
+            text-align: right !important;
+            background-color: #e6ede8 !important;
+            border-left: 1.5px dashed #a3b8ad !important;
+            border-right: 1.5px dashed #a3b8ad !important;
+            cursor: pointer;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            user-select: none;
+            font-size: 11px !important;
+        }
+        .multi-pnl-table th.col-year-collapsed-range {
+            background-color: #24352b !important;
+            color: #ffffff !important;
+            text-align: center !important;
+            padding: 4px 2px !important;
+        }
+        .btn-range-expand {
+            background: rgba(200, 111, 50, 0.35);
+            border: 1px solid rgba(200, 111, 50, 0.6);
+            color: #fce7db;
+            border-radius: 3px;
+            padding: 1px 4px;
+            font-size: 10px;
+            font-weight: 700;
+            cursor: pointer;
+            margin-top: 3px;
+            display: inline-block;
+            transition: all 0.2s;
+        }
+        .btn-range-expand:hover { background: var(--amber-accent); color:#ffffff; }
+
+        .btn-year-collapse {
+            background: rgba(255,255,255,0.2);
+            border: 1px solid rgba(255,255,255,0.4);
+            color: #ffffff;
+            border-radius: 3px;
+            padding: 0 4px;
+            font-size: 10px;
+            cursor: pointer;
+            margin-top: 3px;
+            transition: all 0.2s;
+            display: inline-block;
+        }
+        .btn-year-collapse:hover { background: var(--amber-accent); color:#ffffff; }
+
+        .toggle-btn {
+            display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; margin-right: 6px;
+            background-color: #d4ded8; color: var(--text-title); border: none; border-radius: 3px; cursor: pointer;
+            font-size: 11px; font-weight: bold; transition: all 0.2s; user-select: none;
+        }
+        .toggle-btn:hover { background-color: var(--amber-accent); color: #ffffff; }
+        .toggle-btn.collapsed { transform: rotate(-90deg); }
+        tr.child-row.hidden { display: none; }
+        tr.row-category { background-color: #eef3ef; font-weight: 700; }
+        tr.row-summary { background-color: var(--cash-orange); font-weight: 700; border-top: 2px solid var(--border-soft); border-bottom: 2px solid var(--border-soft); }
+
+        tr.pnl-diff-highlight { background-color: var(--warning-light-red) !important; font-weight: 600; }
+        tr.pnl-diff-highlight td:first-child { background-color: var(--warning-light-red) !important; color: #991b1b !important; }
+
+        .assets-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 12px; table-layout: fixed; white-space: normal; }
+        .assets-table th, .assets-table td { padding: 9px 4px; text-align: right; border-bottom: 1px solid var(--border-soft); border-right: 1px solid var(--border-soft); word-break: break-all; vertical-align: middle; }
+        .assets-table th { background-color: var(--header-deep); color: #ffffff; font-weight: 600; line-height: 1.25; font-size: 12px; }
+        .assets-table th:first-child, .assets-table td:first-child {
+            text-align: left;
+            font-weight: 600;
+            position: sticky;
+            left: 0;
+            z-index: 20;
+            border-right: 2px solid var(--border-soft);
+        }
+        .assets-table th:first-child { background-color: var(--header-deep) !important; color: #ffffff !important; z-index: 25; }
+        .assets-table td:first-child { background-color: #faf8f5 !important; }
+        .assets-table tr.row-summary td:first-child { background-color: var(--cash-orange) !important; }
+
+        .assets-table col.col-item { width: 14%; }
+        .assets-table col.col-month { width: 6.0%; }
+        .assets-table col.col-diff-amt { width: 7.0%; }
+        .assets-table col.col-diff-pct { width: 7.0%; }
+
+        .pnl-bottom-charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(460px, 1fr)); gap: 18px; margin-top: 12px; }
+
+        .manual-modal-content {
+            background-color: var(--card-surface); padding: 24px; border-radius: 8px;
+            width: 800px; max-width: 95%; max-height: 85vh; overflow-y: auto; border: 1px solid var(--border-soft);
+        }
+        .manual-item { border: 1px solid var(--border-soft); border-radius: 6px; padding: 12px 14px; margin-bottom: 12px; background: #f2eee8; }
+        .manual-item-header { font-size: 14px; font-weight: 700; color: var(--text-title); display: flex; justify-content: space-between; margin-bottom: 5px; }
+        .manual-desc { font-size: 13px; color: var(--text-body); line-height: 1.55; margin-bottom: 8px; }
+        .manual-tags { display: flex; gap: 6px; font-size: 11.5px; flex-wrap: wrap; }
+        .manual-tag { padding: 3px 8px; border-radius: 4px; font-weight: 600; }
+
+        .modal {
+            display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%;
+            background-color: rgba(34, 46, 39, 0.65); backdrop-filter: blur(2px); justify-content: center; align-items: center;
+        }
+        .modal-content { background-color: var(--card-surface); padding: 22px; border-radius: 8px; width: 580px; max-width: 92%; border: 1px solid var(--border-soft); }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-soft); padding-bottom: 10px; margin-bottom: 14px; }
+        .modal-header h3 { margin: 0; color: var(--text-title); font-size: 15.5px; font-weight: 700; }
+        .close-btn { cursor: pointer; font-size: 22px; font-weight: bold; color: var(--sage-muted); }
+        .close-btn:hover { color: var(--text-title); }
+        .form-group { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
+        .form-group input { flex: 1; padding: 7px 10px; border: 1px solid var(--border-soft); border-radius: 4px; font-size: 13px; min-width: 90px; background: var(--input-bg); }
+        .form-group input:focus { border-color: var(--amber-accent); background: #ffffff; outline: none; }
+        .btn { padding: 6px 14px; background-color: var(--sage-primary); color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 12.5px; }
+        .btn:hover { background-color: var(--header-deep); }
+        .btn-edit { background-color: var(--amber-accent); color: white; }
+        .btn-cancel { background-color: #718096; color: white; }
+        .btn-repeat { background-color: #4a5c52; }
+        .btn-sub { background-color: #e2e8f0; color: #334155; padding: 5px 9px; border-radius: 4px; font-size: 12px; border: 1px solid #cbd5e1; cursor: pointer; }
+        .btn-sub:hover { background-color: #cbd5e1; }
+        .modal-toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 8px; }
+        .detail-list { max-height: 220px; overflow-y: auto; margin-bottom: 14px; border: 1px solid var(--border-soft); border-radius: 4px; background: #ffffff; }
+        .detail-item { display: flex; justify-content: space-between; padding: 8px 10px; border-bottom: 1px solid var(--border-soft); align-items: center; font-size: 12.5px; }
+        .detail-actions { display: flex; align-items: center; gap: 4px; }
+        .btn-icon { background: none; border: none; cursor: pointer; padding: 3px 5px; font-size: 12px; border-radius: 3px; color: #64748b; }
+        .btn-icon:hover { background: #e2e8f0; color: #0f172a; }
+        .modal-footer { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-soft); padding-top: 10px; }
+
+        @media print {
+            .header-actions, .control-card, .chart-card, .btn-header-copy-year, .view-switch-group, .reference-card, .btn-month-close { display: none !important; }
+            .table-container, .pnl-year-card { max-height: none; overflow: visible; page-break-after: always; border: none; }
+            body { background: white !important; background-image: none !important; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 頂部導覽 Header -->
+    <header class="blueprint-header">
+        <div class="header-inner">
+            <div class="header-left">
+                <a href="index.html#modules-overview" class="back-home">
+                    <span class="mono">←</span> 返回上一頁
+                </a>
+                <a href="index.html#hero-cover" class="back-home">
+                    <i class="fa-solid fa-house text-xs"></i> 封面
+                </a>
+                <span style="color:#5e7568;" class="mono text-xs">/</span>
+                <span class="sys-badge">SYS_04</span>
+                <h1 class="header-title-text">個人現金流流水帳系統 (60年全景試算)</h1>
+            </div>
+            <div class="header-actions">
+                <button class="btn-action" id="btnUndo" onclick="undo()" title="上一步 (Ctrl+Z)"><i class="fa-solid fa-rotate-left"></i> 上一步</button>
+                <button class="btn-action" id="btnRedo" onclick="redo()" title="下一步 (Ctrl+Y)"><i class="fa-solid fa-rotate-right"></i> 下一步</button>
+                
+                <button class="btn-action btn-manual" onclick="openManualModal()"><i class="fa-solid fa-book-open"></i> 6大指標說明書</button>
+                <button class="btn-action" onclick="exportData()"><i class="fa-solid fa-file-export text-emerald-400"></i> 匯出.FLOW</button>
+                <button class="btn-action" onclick="importData()"><i class="fa-solid fa-file-import text-amber-400"></i> 匯入.FLOW</button>
+                <button class="btn-action" onclick="window.print()"><i class="fa-solid fa-print text-indigo-300"></i> 列印報告</button>
+                <button class="btn-action btn-danger" onclick="clearData()"><i class="fa-solid fa-arrow-rotate-left"></i> 清空重來</button>
+            </div>
+        </div>
+    </header>
+
+    <div class="main-container">
+        <!-- 控制面板卡片 -->
+        <div class="control-card">
+            <div class="control-item">
+                <label for="startYear">初始西元：</label>
+                <input type="number" id="startYear" class="input-year-blue" value="2026" min="1900" max="2100" oninput="pushHistory(); updateYearOptions(); calculateAndRender();">
+            </div>
+            <div class="control-item">
+                <label for="initialCash">初始現金：</label>
+                <input type="number" id="initialCash" value="100000" style="width: 105px;" oninput="pushHistory(); calculateAndRender()">
+            </div>
+
+            <div class="control-item">
+                <label for="viewYearSelect">🎯 檢視年度：</label>
+                <select id="viewYearSelect" class="select-view-year" onchange="pushHistory(); renderCurrentView(); saveToLocalStorage();"></select>
+            </div>
+            
+            <div class="control-item">
+                <label for="viewRange">顯示範疇：連續</label>
+                <input type="number" id="viewRange" class="input-year-blue" min="1" max="60" value="3" oninput="validateAndRenderViewRange()" style="width: 70px;">
+                <label for="viewRange">年 (1~60)</label>
+            </div>
+            <div class="control-item">
+                <input type="checkbox" id="autoRollover" checked onchange="pushHistory(); calculateAndRender()">
+                <label for="autoRollover" title="若當月未填寫現值、負債或預備金，自動延續上月存量餘額">📦 存量承接(Rollover)</label>
+            </div>
+
+            <!-- 8 大項目直式收折快速按鈕 -->
+            <div class="control-item" style="border-left: 1px solid var(--border-soft); padding-left: 10px;">
+                <button class="btn-sub" onclick="toggleAllGroups(true)" title="將8大區塊全部收合為精簡指標"><i class="fa-solid fa-compress"></i> 全部收合</button>
+                <button class="btn-sub" onclick="toggleAllGroups(false)" title="將8大區塊全部展開明細"><i class="fa-solid fa-expand"></i> 全部展開</button>
+            </div>
+
+            <!-- 視圖切換按鈕群組 -->
+            <div class="control-item" style="margin-left: auto;">
+                <div class="view-switch-group">
+                    <button class="view-btn active" id="btnViewFlow" onclick="switchView('flow')">📊 完整流水帳</button>
+                    <button class="view-btn" id="btnViewRisk" onclick="switchView('risk')">🛡️ 財務風控指標</button>
+                    <button class="view-btn" id="btnViewAll" onclick="switchView('all')">👁️ 全景雙表並排</button>
+                    <button class="view-btn" id="btnViewPnL" onclick="switchView('pnl')">📑 年度財務損益表</button>
+                    <button class="view-btn" id="btnViewMultiPnL" onclick="switchView('multi_pnl')">📈 連續年度財務損益表</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 風控標準參照對照卡片 -->
+        <div class="reference-card" id="riskReferenceCard" style="display: none;">
+            <div class="ref-header-row">
+                <div style="font-weight: 700; color: var(--text-title); font-size: 14px;">📋 財務健全度 6 大風控指標監控標準 (以真實支出與存活為本)</div>
+                <button class="btn-manual-card" onclick="openManualModal()">📖 查看詳細指標說明書</button>
+            </div>
+            <div class="ref-grid">
+                <div class="ref-item">
+                    <div class="ref-item-title"><span>1. 資產負債比</span><span style="color:var(--sage-muted); font-size:11px;">總負債 ÷ 總資產</span></div>
+                    <div class="ref-scale-row"><div class="ref-pill badge-green">低 &lt;40%</div><div class="ref-pill badge-yellow">中 40%~50%</div><div class="ref-pill badge-red">高 &gt;50%</div></div>
+                </div>
+                <div class="ref-item">
+                    <div class="ref-item-title"><span>2. 淨值槓桿率</span><span style="color:var(--sage-muted); font-size:11px;">總負債 ÷ 實際淨資產</span></div>
+                    <div class="ref-scale-row"><div class="ref-pill badge-green">低 &lt;80%</div><div class="ref-pill badge-yellow">中 80%~120%</div><div class="ref-pill badge-red">高 &gt;120%</div></div>
+                </div>
+                <div class="ref-item">
+                    <div class="ref-item-title"><span>3. 現金緩衝月數</span><span style="color:var(--sage-muted); font-size:11px;">期末現金 ÷ 當月支出</span></div>
+                    <div class="ref-scale-row"><div class="ref-pill badge-green">安全 &gt;6個月</div><div class="ref-pill badge-yellow">警戒 3~6個月</div><div class="ref-pill badge-red">危險 &lt;3個月</div></div>
+                </div>
+                <div class="ref-item">
+                    <div class="ref-item-title"><span>4. 貸款負擔比</span><span style="color:var(--sage-muted); font-size:11px;">固定借貸 ÷ 當月總收入</span></div>
+                    <div class="ref-scale-row"><div class="ref-pill badge-green">低 &lt;20%</div><div class="ref-pill badge-yellow">中 20%~30%</div><div class="ref-pill badge-red">高 &gt;30%</div></div>
+                </div>
+                <div class="ref-item">
+                    <div class="ref-item-title"><span>5. 支出收入比</span><span style="color:var(--sage-muted); font-size:11px;">當月支出 ÷ 當月總收入</span></div>
+                    <div class="ref-scale-row"><div class="ref-pill badge-green">優秀 &lt;50%</div><div class="ref-pill badge-yellow">正常 50%~70%</div><div class="ref-pill badge-red">過高 &gt;70%</div></div>
+                </div>
+                <div class="ref-item">
+                    <div class="ref-item-title"><span>6. 淨資產覆蓋年數</span><span style="color:var(--sage-muted); font-size:11px;">淨資產 ÷ 年化支出</span></div>
+                    <div class="ref-scale-row"><div class="ref-pill badge-green">自由 &gt;15年</div><div class="ref-pill badge-yellow">穩健 5~15年</div><div class="ref-pill badge-red">脆弱 &lt;5年</div></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="chart-card" id="trendChartCard">
+            <div style="height: 220px; position: relative;"><canvas id="trendChart"></canvas></div>
+        </div>
+
+        <div id="tablesContainer"></div>
+    </div>
+
+    <!-- 6 大指標深度說明書 Modal -->
+    <div id="manualModal" class="modal">
+        <div class="manual-modal-content">
+            <div class="modal-header">
+                <h3>📖 財務健全度 6 大風控指標深度解讀說明書</h3>
+                <span class="close-btn" onclick="closeManualModal()">&times;</span>
+            </div>
+            <div class="manual-item">
+                <div class="manual-item-header"><span>1. 資產負債比</span><span class="mono">總負債 ÷ 總資產</span></div>
+                <div class="manual-desc">衡量您名下全部資產中借來的比例。是股票質押追繳的核心防線，銀行風險線亦為 50%。</div>
+                <div class="manual-tags"><span class="manual-tag badge-green">🟢 &lt;40% 低負債</span><span class="manual-tag badge-yellow">🟡 40%~50% 適中</span><span class="manual-tag badge-red">🔴 &gt;50% 高負債警戒</span></div>
+            </div>
+            <div class="manual-item">
+                <div class="manual-item-header"><span>2. 淨值槓桿率</span><span class="mono">總負債 ÷ 實際淨資產</span></div>
+                <div class="manual-desc">評估真實身家撐起了幾倍借款，若負債大於身家（&gt;100%），回檔時淨值縮水速度成倍放大。</div>
+                <div class="manual-tags"><span class="manual-tag badge-green">🟢 &lt;80% 輕度</span><span class="manual-tag badge-yellow">🟡 80%~120% 中度</span><span class="manual-tag badge-red">🔴 &gt;120% 高度槓桿</span></div>
+            </div>
+            <div class="manual-item">
+                <div class="manual-item-header"><span>3. 現金緩衝月數</span><span class="mono">期末現金 ÷ 當月支出</span></div>
+                <div class="manual-desc">沒收入下手頭現金能支撐幾個月正常生活，保留半年生活費可避免股災時賤賣資產換現。</div>
+                <div class="manual-tags"><span class="manual-tag badge-green">🟢 &gt;6 個月 安全</span><span class="manual-tag badge-yellow">🟡 3~6 個月 警戒</span><span class="manual-tag badge-red">🔴 &lt;3 個月 危險</span></div>
+            </div>
+            <div class="manual-item">
+                <div class="manual-item-header"><span>4. 貸款負擔比</span><span class="mono">固定支出借貸 ÷ 當月總收入</span></div>
+                <div class="manual-desc">月收入被硬性本利攤還吃掉的比例，以流水帳中「固定支出 借貸」扣款為計算基礎，國際安全線為 1/3（33%）。</div>
+                <div class="manual-tags"><span class="manual-tag badge-green">🟢 &lt;20% 輕鬆</span><span class="manual-tag badge-yellow">🟡 20%~30% 適中</span><span class="manual-tag badge-red">🔴 &gt;30% 負擔沉重</span></div>
+            </div>
+            <div class="manual-item">
+                <div class="manual-item-header"><span>5. 支出收入比</span><span class="mono">當月支出 ÷ 當月總收入</span></div>
+                <div class="manual-desc">儲蓄率的鏡像指標，涵蓋月費、保險、借貸等所有生活與固定扣除，只要每月存下 30% 以上即為正常健全體質。</div>
+                <div class="manual-tags"><span class="manual-tag badge-green">🟢 &lt;50% 優秀</span><span class="manual-tag badge-yellow">🟡 50%~70% 正常</span><span class="manual-tag badge-red">🔴 &gt;70% 支出過度</span></div>
+            </div>
+            <div class="manual-item">
+                <div class="manual-item-header"><span>6. 淨資產覆蓋年數</span><span class="mono">實際淨資產 ÷ 基準年化支出</span></div>
+                <div class="manual-desc"><b>【終極財務自由指標】</b>。脫離月薪思維，變現後在「完全不上班」情境下手頭淨資產能過多少年。</div>
+                <div class="manual-tags"><span class="manual-tag badge-red">🔴 &lt;5 年 脆弱依賴</span><span class="manual-tag badge-yellow">🟡 5~15 年 穩健過渡</span><span class="manual-tag badge-green">🟢 &gt;15 年 財務自由 (達25年即4%法則)</span></div>
+            </div>
+            <div style="text-align: right; margin-top: 12px;"><button class="btn" onclick="closeManualModal()">了解並關閉</button></div>
+        </div>
+    </div>
+
+    <!-- 記帳明細錄入 Modal -->
+    <div id="detailModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalTitle">明細錄入</h3>
+                <span class="close-btn" onclick="closeModal()">&times;</span>
+            </div>
+
+            <div class="modal-toolbar">
+                <div style="display:flex; gap:6px;">
+                    <button class="btn-sub" onclick="copyCellDetails()" title="複製此格內所有明細"><i class="fa-regular fa-copy"></i> 複製此格明細</button>
+                    <button class="btn-sub" id="btnPasteCell" onclick="pasteCellDetails()" title="貼上剪貼簿明細" style="display:none;"><i class="fa-regular fa-paste"></i> 貼上明細</button>
+                </div>
+                <button class="btn-sub" onclick="sortDetailsByDate()" title="將下方清單按日期先後排序"><i class="fa-solid fa-arrow-down-short-wide"></i> 📅 按日期自動排序</button>
+            </div>
+
+            <div class="form-group">
+                <input type="date" id="inputDate">
+                <input type="text" id="inputItem" placeholder="項目說明 (例: 薪資 / 保單年繳 / 信貸扣款)">
+                <input type="number" id="inputAmount" placeholder="金額 (數字)">
+                <button class="btn" id="saveBtn" onclick="saveDetail()">新增</button>
+                <button class="btn btn-cancel" id="cancelEditBtn" style="display: none;" onclick="cancelEdit()">取消</button>
+            </div>
+            <div class="detail-list" id="detailList"></div>
+            <div class="modal-footer">
+                <button class="btn btn-repeat" id="repeatYearBtn" onclick="repeatToRemainingMonths()">🔁 此項目套用至本年剩餘月份</button>
+                <div style="font-weight: bold; font-size: 13.5px;">小計：<span id="modalTotal" style="color: var(--amber-accent);" class="mono">0</span> 元</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const MAX_YEARS = 60;
+        const STORAGE_KEY = "cashflow_system_v4_0_pnl";
+
+        const LEGACY_STORAGE_KEYS = [
+            "cashflow_system_v4_1_pnl4cols",
+            "cashflow_system_v3_8_ultimate",
+            "cashflow_system_v3_6_planB",
+            "cashflow_system_v3_5_planB",
+            "cashflow_system_v3_4_planB"
+        ];
+
+        let currentViewMode = "flow";
+        let customIncomeName1 = "自訂收入1";
+        let customBackupName1 = "備用欄1";
+        let customBackupName2 = "備用欄2";
+
+        /* 8 大區塊直式收折狀態開關 */
+        let groupCollapseState = {
+            inc_reg: false, ple_adj: false, exp_daily: false, exp_var: false,
+            inc_var: false, cash_mon: false, asset_calc: false, overview: false
+        };
+
+        /* 連續年度財務損益表中「各別年份收合」狀態紀錄 */
+        let collapsedYearsMap = {};
+
+        function toggleYearCollapse(yearNum) {
+            pushHistory();
+            collapsedYearsMap[yearNum] = !collapsedYearsMap[yearNum];
+            renderCurrentView();
+            saveToLocalStorage();
+        }
+
+        /* 點擊聚合欄位，將該連續區間內的所有年份一次性全部展開 */
+        function expandCollapsedRange(startYear, endYear) {
+            pushHistory();
+            for (let y = startYear; y <= endYear; y++) {
+                delete collapsedYearsMap[y];
+            }
+            renderCurrentView();
+            saveToLocalStorage();
+        }
+
+        function expandAllMultiYears() {
+            pushHistory();
+            collapsedYearsMap = {};
+            renderCurrentView();
+            saveToLocalStorage();
+        }
+
+        function toggleGroupCollapse(grpKey) {
+            pushHistory();
+            groupCollapseState[grpKey] = !groupCollapseState[grpKey];
+            renderCurrentView();
+            saveToLocalStorage();
+        }
+
+        function toggleAllGroups(collapseAll) {
+            pushHistory();
+            for (let key in groupCollapseState) {
+                groupCollapseState[key] = collapseAll;
+            }
+            renderCurrentView();
+            saveToLocalStorage();
+        }
+
+        function validateAndRenderViewRange() {
+            const input = document.getElementById('viewRange');
+            let val = parseInt(input.value);
+            if (isNaN(val) || val < 1) val = 1;
+            if (val > MAX_YEARS) val = MAX_YEARS;
+            input.value = val;
+            renderCurrentView();
+            saveToLocalStorage();
+        }
+
+        let cellClipboard = null;
+        let historyStack = [];
+        let redoStack = [];
+        let closedMonths = {};
+
+        let trendChartInstance = null;
+        let pnlChartsInstances = {};
+        let multiPnLChartInstance = null;
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+        }
+
+        const CATEGORIES = [
+            { id: "inc_main", name: "薪資主動收入", isExpense: false },
+            { id: "inc_interest", name: "儲蓄利息/回饋", isExpense: false },
+            { id: "inc_custom1", name: "自訂收入1", isCustomIncome: true, isExpense: false },
+            { id: "exp_fixed_monthly", name: "固定支出<br>月費", isExpense: true, isDaily: true },
+            { id: "exp_fixed_insurance", name: "固定支出<br>保險", isExpense: true, isDaily: true },
+            { id: "exp_fixed_loan", name: "固定支出<br>借貸", isExpense: true, isDaily: true },
+            { id: "exp_cc", name: "信用卡日常", isExpense: true, isDaily: true },
+            { id: "exp_cash", name: "提款轉帳現金", isExpense: true, isDaily: true },
+            { id: "exp_other", name: "其他支出", isExpense: true, isDaily: true },
+            { id: "exp_backup1", name: "備用欄1", isBackup: true, backupIdx: 1, isExpense: true, isDaily: true },
+            { id: "exp_backup2", name: "備用欄2", isBackup: true, backupIdx: 2, isExpense: true, isDaily: true },
+            { id: "ple_interest", name: "質押利息還款", isExpense: true },
+            { id: "ple_borrow", name: "質押本金借出<br>(現金流入)", isExpense: false },
+            { id: "ple_repay", name: "質押本金還款<br>(現金流出)", isExpense: true },
+            { id: "inv_stock", name: "投資股票基金", isExpense: true },
+            { id: "inv_other", name: "其他投資", isExpense: true },
+            { id: "inc_div", name: "賣股票基金股利", isExpense: false },
+            { id: "inc_other", name: "其他收入", isExpense: false },
+            { id: "adj_diff", name: "帳差調整 (15號後)<br>(可正可負)", isExpense: false, allowNegative: true }
+        ];
+
+        const MONTHS = Array.from({length: 12}, (_, i) => `${i + 1}月`);
+        
+        let detailsData = {
+            "Y1_M0_Cat0": [ { date: "2026-01-05", item: "基本薪資", amount: 60000 } ],
+            "Y1_M0_Cat1": [ { date: "2026-01-10", item: "數位帳戶活存利息", amount: 250 } ],
+            "Y1_M0_Cat3": [ { date: "2026-01-01", item: "房租租金", amount: 15000 } ],
+            "Y1_M0_Cat5": [ { date: "2026-01-01", item: "房信貸月攤還", amount: 12000 } ],
+            "Y1_M0_BudgetLimit": [ { date: "2026-01-01", item: "月支出預算上限", amount: 45000 } ],
+            "Y1_M0_ReserveFund": [ { date: "2026-01-01", item: "預設6個月緊急預備金", amount: 300000 } ],
+            "Y1_M0_AssetCost": [ { date: "2026-01-01", item: "ETF成本", amount: 200000 } ],
+            "Y1_M0_AssetMarket": [ { date: "2026-01-01", item: "ETF市值", amount: 240000 } ],
+            "Y1_M0_AssetLoan": [ { date: "2026-01-01", item: "信貸本金餘額", amount: 100000 } ]
+        };
+
+        let calculatedYearsData = [];
+        let currentActiveKey = null;
+        let currentActiveYear = 1;
+        let currentActiveMonth = 0;
+        let editingIndex = null;
+        function migrateDetailsDataIfNeeded(dataObj, schemaVer) {
+            if (schemaVer === "4.2") return dataObj;
+
+            let isLegacy16Cols = false;
+            for (let k in dataObj) {
+                if (k.includes("_Cat") && !k.includes("_Cat16") && !k.includes("_Cat17") && !k.includes("_Cat18")) {
+                    const idx = parseInt(k.split("_Cat")[1]);
+                    if (idx >= 2 && idx <= 15) {
+                        isLegacy16Cols = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!isLegacy16Cols) return dataObj;
+
+            const migrated = {};
+            const keyRegex = /^(Y\d+_M\d+)_Cat(\d+)$/;
+
+            for (let key in dataObj) {
+                const match = key.match(keyRegex);
+                if (match) {
+                    const prefix = match[1];
+                    const oldIdx = parseInt(match[2]);
+                    let newIdx = oldIdx;
+
+                    if (oldIdx === 0 || oldIdx === 1) {
+                        newIdx = oldIdx;
+                    } else if (oldIdx === 2) {
+                        newIdx = 3;
+                    } else if (oldIdx >= 3) {
+                        newIdx = oldIdx + 3;
+                    }
+                    migrated[`${prefix}_Cat${newIdx}`] = dataObj[key];
+                } else if (!key.includes("_MonthLoan")) {
+                    migrated[key] = dataObj[key];
+                }
+            }
+            return migrated;
+        }
+
+        function pushHistory() {
+            const snapshot = JSON.stringify({
+                detailsData,
+                closedMonths,
+                startYear: document.getElementById('startYear').value,
+                initialCash: document.getElementById('initialCash').value,
+                viewYearSelect: document.getElementById('viewYearSelect') ? document.getElementById('viewYearSelect').value : 1,
+                viewRange: document.getElementById('viewRange').value,
+                autoRollover: document.getElementById('autoRollover').checked,
+                currentViewMode,
+                groupCollapseState,
+                collapsedYearsMap,
+                customIncomeName1, customBackupName1, customBackupName2
+            });
+            historyStack.push(snapshot);
+            if (historyStack.length > 50) historyStack.shift();
+            redoStack = [];
+            updateUndoRedoButtons();
+        }
+
+        function undo() {
+            if (historyStack.length === 0) return;
+            const current = JSON.stringify({
+                detailsData, closedMonths,
+                startYear: document.getElementById('startYear').value,
+                initialCash: document.getElementById('initialCash').value,
+                viewYearSelect: document.getElementById('viewYearSelect') ? document.getElementById('viewYearSelect').value : 1,
+                viewRange: document.getElementById('viewRange').value,
+                autoRollover: document.getElementById('autoRollover').checked,
+                currentViewMode,
+                groupCollapseState,
+                collapsedYearsMap,
+                customIncomeName1, customBackupName1, customBackupName2
+            });
+            redoStack.push(current);
+
+            const prev = JSON.parse(historyStack.pop());
+            restoreSnapshot(prev);
+            updateUndoRedoButtons();
+        }
+
+        function redo() {
+            if (redoStack.length === 0) return;
+            const next = JSON.parse(redoStack.pop());
+            historyStack.push(JSON.stringify({
+                detailsData, closedMonths,
+                startYear: document.getElementById('startYear').value,
+                initialCash: document.getElementById('initialCash').value,
+                viewYearSelect: document.getElementById('viewYearSelect') ? document.getElementById('viewYearSelect').value : 1,
+                viewRange: document.getElementById('viewRange').value,
+                autoRollover: document.getElementById('autoRollover').checked,
+                currentViewMode,
+                groupCollapseState,
+                collapsedYearsMap,
+                customIncomeName1, customBackupName1, customBackupName2
+            }));
+            restoreSnapshot(next);
+            updateUndoRedoButtons();
+        }
+
+        function restoreSnapshot(snap) {
+            detailsData = snap.detailsData || {};
+            closedMonths = snap.closedMonths || {};
+            if (snap.startYear) document.getElementById('startYear').value = snap.startYear;
+            if (snap.initialCash !== undefined) document.getElementById('initialCash').value = snap.initialCash;
+            if (snap.viewRange !== undefined) document.getElementById('viewRange').value = snap.viewRange;
+            if (snap.autoRollover !== undefined) document.getElementById('autoRollover').checked = snap.autoRollover;
+            if (snap.customIncomeName1) customIncomeName1 = snap.customIncomeName1;
+            if (snap.customBackupName1) customBackupName1 = snap.customBackupName1;
+            if (snap.customBackupName2) customBackupName2 = snap.customBackupName2;
+            if (snap.groupCollapseState) groupCollapseState = Object.assign({}, snap.groupCollapseState);
+            if (snap.collapsedYearsMap) collapsedYearsMap = Object.assign({}, snap.collapsedYearsMap);
+            
+            updateYearOptions();
+            if (snap.viewYearSelect && document.getElementById('viewYearSelect')) {
+                document.getElementById('viewYearSelect').value = snap.viewYearSelect;
+            }
+
+            if (snap.currentViewMode) {
+                switchView(snap.currentViewMode);
+            } else {
+                calculateAndRender();
+            }
+            saveToLocalStorage();
+        }
+
+        function updateUndoRedoButtons() {
+            document.getElementById('btnUndo').disabled = (historyStack.length === 0);
+            document.getElementById('btnRedo').disabled = (redoStack.length === 0);
+        }
+
+        window.addEventListener('keydown', e => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+                e.preventDefault(); undo();
+            } else if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+                e.preventDefault(); redo();
+            }
+        });
+
+        function switchView(mode) {
+            currentViewMode = mode;
+            document.querySelectorAll('.view-btn').forEach(btn => btn.classList.remove('active'));
+            if (mode === 'flow') document.getElementById('btnViewFlow').classList.add('active');
+            if (mode === 'risk') document.getElementById('btnViewRisk').classList.add('active');
+            if (mode === 'all') document.getElementById('btnViewAll').classList.add('active');
+            if (mode === 'pnl') document.getElementById('btnViewPnL').classList.add('active');
+            if (mode === 'multi_pnl') document.getElementById('btnViewMultiPnL').classList.add('active');
+
+            document.getElementById('riskReferenceCard').style.display = (mode === 'risk' || mode === 'all') ? 'block' : 'none';
+            document.getElementById('trendChartCard').style.display = (mode === 'pnl' || mode === 'multi_pnl') ? 'none' : 'block';
+
+            renderCurrentView();
+            saveToLocalStorage();
+        }
+
+        function openManualModal() { document.getElementById('manualModal').style.display = 'flex'; }
+        function closeManualModal() { document.getElementById('manualModal').style.display = 'none'; }
+
+        function updateCustomNames(e) {
+            pushHistory();
+            const val = e.target.value.trim();
+            if (e.target.classList.contains("custom-income-input-1")) {
+                customIncomeName1 = val || "自訂收入1";
+                document.querySelectorAll(".custom-income-input-1").forEach(el => el.value = customIncomeName1);
+            } else if (e.target.classList.contains("backup-input-1")) {
+                customBackupName1 = val || "備用欄1";
+                document.querySelectorAll(".backup-input-1").forEach(el => el.value = customBackupName1);
+            } else {
+                customBackupName2 = val || "備用欄2";
+                document.querySelectorAll(".backup-input-2").forEach(el => el.value = customBackupName2);
+            }
+            saveToLocalStorage();
+        }
+
+        function toggleMonthClose(y, m) {
+            pushHistory();
+            const key = `Y${y}_M${m}`;
+            closedMonths[key] = !closedMonths[key];
+            calculateAndRender();
+            saveToLocalStorage();
+        }
+
+        function togglePnLGroup(groupName) {
+            const rows = document.querySelectorAll('.group-' + groupName);
+            const btn = document.getElementById('btn-' + groupName);
+            let isHidden = false;
+            rows.forEach(row => {
+                row.classList.toggle('hidden');
+                if (row.classList.contains('hidden')) isHidden = true;
+            });
+            if (btn) {
+                if (isHidden) {
+                    btn.classList.add('collapsed');
+                    btn.innerText = '►';
+                } else {
+                    btn.classList.remove('collapsed');
+                    btn.innerText = '▼';
+                }
+            }
+        }
+
+        function saveToLocalStorage() {
+            const dataToSave = {
+                schemaVersion: "4.2",
+                startYear: document.getElementById('startYear').value,
+                initialCash: document.getElementById('initialCash').value,
+                viewYearSelect: document.getElementById('viewYearSelect') ? document.getElementById('viewYearSelect').value : 1,
+                viewRange: document.getElementById('viewRange').value,
+                autoRollover: document.getElementById('autoRollover').checked,
+                currentViewMode,
+                groupCollapseState,
+                collapsedYearsMap,
+                customIncomeName1, customBackupName1, customBackupName2,
+                closedMonths,
+                detailsData
+            };
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
+        }
+
+        function loadFromLocalStorage() {
+            let saved = localStorage.getItem(STORAGE_KEY);
+            
+            if (!saved) {
+                for (let oldKey of LEGACY_STORAGE_KEYS) {
+                    const oldData = localStorage.getItem(oldKey);
+                    if (oldData) {
+                        saved = oldData;
+                        localStorage.setItem(STORAGE_KEY, saved);
+                        break;
+                    }
+                }
+            }
+
+            if (!saved) return false;
+            try {
+                const parsed = JSON.parse(saved);
+                if (parsed.startYear) document.getElementById('startYear').value = parsed.startYear;
+                if (parsed.initialCash !== undefined) document.getElementById('initialCash').value = parsed.initialCash;
+                if (parsed.viewRange !== undefined) {
+                    let vr = parseInt(parsed.viewRange);
+                    if (!isNaN(vr) && vr >= 1 && vr <= MAX_YEARS) {
+                        document.getElementById('viewRange').value = vr;
+                    }
+                }
+                if (parsed.autoRollover !== undefined) document.getElementById('autoRollover').checked = parsed.autoRollover;
+                if (parsed.customIncomeName1) customIncomeName1 = parsed.customIncomeName1;
+                if (parsed.customBackupName1) customBackupName1 = parsed.customBackupName1;
+                if (parsed.customBackupName2) customBackupName2 = parsed.customBackupName2;
+                if (parsed.closedMonths) closedMonths = parsed.closedMonths;
+                if (parsed.groupCollapseState) groupCollapseState = Object.assign({}, parsed.groupCollapseState);
+                if (parsed.collapsedYearsMap) collapsedYearsMap = Object.assign({}, parsed.collapsedYearsMap);
+                if (parsed.currentViewMode) currentViewMode = parsed.currentViewMode;
+
+                detailsData = migrateDetailsDataIfNeeded(parsed.detailsData || {}, parsed.schemaVersion);
+                
+                if (parsed.viewYearSelect) {
+                    setTimeout(() => {
+                        const sel = document.getElementById('viewYearSelect');
+                        if (sel) sel.value = parsed.viewYearSelect;
+                    }, 0);
+                }
+
+                return true;
+            } catch (e) {
+                console.error("讀取快取失敗", e);
+                return false;
+            }
+        }
+
+        function updateYearOptions() {
+            const startYear = parseInt(document.getElementById('startYear').value) || 2026;
+            const select = document.getElementById('viewYearSelect');
+            const currentSelected = select.value;
+            select.innerHTML = '';
+            for (let y = 1; y <= MAX_YEARS; y++) {
+                const opt = document.createElement('option');
+                opt.value = y;
+                opt.innerText = `${startYear + (y - 1)} 年 (第 ${y} 年)`;
+                select.appendChild(opt);
+            }
+            select.value = (currentSelected && currentSelected <= MAX_YEARS) ? currentSelected : 1;
+        }
+
+        function getCategoryTotal(key) {
+            return (detailsData[key] || []).reduce((sum, item) => sum + Math.round(Number(item.amount) || 0), 0);
+        }
+
+        function hasCategoryDetails(key) { return detailsData[key] && detailsData[key].length > 0; }
+
+        function getCategoryDetailsHtml(key, isRollover = false) {
+            if (isRollover) return "<span style='color:var(--sage-muted);'>[自動承接上月數值]</span>";
+            const list = detailsData[key] || [];
+            if (list.length === 0) return "無明細紀錄";
+            return list.map(item => {
+                const amt = Math.round(item.amount);
+                return `${escapeHtml(item.date.slice(5))} ${escapeHtml(item.item)}: ${amt < 0 ? '-$' : '$'}${Math.abs(amt).toLocaleString()}`;
+            }).join('<br>');
+        }
+
+        function calculate60YearsData() {
+            calculatedYearsData = [];
+            const baseYear = parseInt(document.getElementById('startYear').value) || 2026;
+            let initialCash = Math.round(parseFloat(document.getElementById('initialCash').value)) || 0;
+            const autoRollover = document.getElementById('autoRollover').checked;
+
+            let previousYearDecCash = initialCash;
+            let previousYearDecNetAsset = null;
+
+            let lastKnownStockCost = 0, lastKnownStockMarket = 0, lastKnownStockPledge = 0, lastKnownCreditLoan = 0;
+            let lastKnownReserveFund = 300000;
+
+            for (let y = 1; y <= MAX_YEARS; y++) {
+                const currentYearNum = baseYear + (y - 1);
+                let currentCash = (y === 1) ? initialCash : previousYearDecCash;
+                let yearNetAssets = [];
+                let categoryYearTotals = new Array(CATEGORIES.length).fill(0);
+                
+                let overviewYearTotalInc = 0;
+                let overviewYearTotalExp = 0;
+                let overviewYearTotalAdj = 0;
+                let overviewYearTotalNetFlow = 0;
+
+                let yearTotalBudgetLimit = 0, yearTotalDailyExpenses = 0;
+                let monthRows = [];
+
+                for (let m = 0; m < 12; m++) {
+                    let catVals = CATEGORIES.map((_, catIdx) => getCategoryTotal(`Y${y}_M${m}_Cat${catIdx}`));
+                    catVals.forEach((val, idx) => categoryYearTotals[idx] += val);
+
+                    let [
+                        inc_main, inc_interest, inc_custom1,
+                        exp_fixed_monthly, exp_fixed_insurance, exp_fixed_loan,
+                        exp_cc, exp_cash, exp_other,
+                        exp_backup1, exp_backup2,
+                        ple_interest, ple_borrow, ple_repay,
+                        inv_stock, inv_other,
+                        inc_div, inc_other,
+                        adj_diff
+                    ] = catVals;
+
+                    const limitKey = `Y${y}_M${m}_BudgetLimit`;
+                    const monthBudgetLimit = getCategoryTotal(limitKey);
+                    const hasLimit = hasCategoryDetails(limitKey);
+                    yearTotalBudgetLimit += monthBudgetLimit;
+
+                    let dailyExpenseSum = Math.abs(exp_fixed_monthly) + Math.abs(exp_fixed_insurance) + Math.abs(exp_fixed_loan) +
+                                          Math.abs(exp_cc) + Math.abs(exp_cash) + Math.abs(exp_other) +
+                                          Math.abs(exp_backup1) + Math.abs(exp_backup2);
+                    yearTotalDailyExpenses += dailyExpenseSum;
+
+                    let budgetRemaining = hasLimit ? (monthBudgetLimit - dailyExpenseSum) : null;
+                    let isOverBudget = hasLimit && budgetRemaining < 0;
+
+                    let overviewTotalInc = inc_main + inc_interest + inc_custom1 + ple_borrow + inc_div + inc_other;
+                    let overviewTotalExp = dailyExpenseSum + Math.abs(ple_interest) + Math.abs(ple_repay) + Math.abs(inv_stock) + Math.abs(inv_other);
+                    let overviewDiffAdj = adj_diff;
+                    let realNetFlow = (overviewTotalInc - overviewTotalExp) + overviewDiffAdj;
+
+                    overviewYearTotalInc += overviewTotalInc;
+                    overviewYearTotalExp += overviewTotalExp;
+                    overviewYearTotalAdj += overviewDiffAdj;
+                    overviewYearTotalNetFlow += realNetFlow;
+
+                    currentCash += realNetFlow;
+                    if (m === 11) previousYearDecCash = currentCash;
+
+                    const reserveKey = `Y${y}_M${m}_ReserveFund`;
+                    let isReserveRoll = false;
+                    let monthReserveFund = getCategoryTotal(reserveKey);
+                    if (hasCategoryDetails(reserveKey)) {
+                        lastKnownReserveFund = monthReserveFund;
+                    } else if (autoRollover) {
+                        monthReserveFund = lastKnownReserveFund;
+                        isReserveRoll = true;
+                    }
+                    const monthInvestableCash = currentCash - monthReserveFund;
+
+                    const costKey = `Y${y}_M${m}_AssetCost`, marketKey = `Y${y}_M${m}_AssetMarket`, pledgeKey = `Y${y}_M${m}_AssetPledge`, creditKey = `Y${y}_M${m}_AssetLoan`;
+                    let isCostRoll = false, isMarketRoll = false, isPledgeRoll = false, isCreditRoll = false;
+
+                    let stockCost = getCategoryTotal(costKey);
+                    if (hasCategoryDetails(costKey)) lastKnownStockCost = stockCost;
+                    else if (autoRollover) { stockCost = lastKnownStockCost; isCostRoll = true; }
+
+                    let stockMarket = getCategoryTotal(marketKey);
+                    if (hasCategoryDetails(marketKey)) lastKnownStockMarket = stockMarket;
+                    else if (autoRollover) { stockMarket = lastKnownStockMarket; isMarketRoll = true; }
+
+                    let stockPledge = getCategoryTotal(pledgeKey);
+                    if (hasCategoryDetails(pledgeKey)) lastKnownStockPledge = stockPledge;
+                    else if (autoRollover) { stockPledge = lastKnownStockPledge; isPledgeRoll = true; }
+
+                    let creditLoan = getCategoryTotal(creditKey);
+                    if (hasCategoryDetails(creditKey)) lastKnownCreditLoan = creditLoan;
+                    else if (autoRollover) { creditLoan = lastKnownCreditLoan; isCreditRoll = true; }
+
+                    let netStockGainLoss = stockMarket - stockCost;
+                    let estimatedAssets = currentCash + stockMarket;
+                    let realNetAsset = estimatedAssets - Math.abs(stockPledge) - Math.abs(creditLoan);
+                    yearNetAssets.push(realNetAsset);
+
+                    let momGrowthVal = null, momGrowthStr = "-";
+                    if (m > 0 && yearNetAssets[m - 1] !== 0) {
+                        momGrowthVal = ((realNetAsset / yearNetAssets[m - 1]) - 1) * 100;
+                        momGrowthStr = (momGrowthVal > 0 ? '+' : '') + momGrowthVal.toFixed(2) + "%";
+                    } else if (y > 1 && m === 0 && previousYearDecNetAsset) {
+                        momGrowthVal = ((realNetAsset / previousYearDecNetAsset) - 1) * 100;
+                        momGrowthStr = (momGrowthVal > 0 ? '+' : '') + momGrowthVal.toFixed(2) + "%";
+                    }
+                    if (m === 11) previousYearDecNetAsset = realNetAsset;
+
+                    let unleveragedRatio = estimatedAssets > 0 ? (realNetAsset / estimatedAssets) * 100 : 0;
+
+                    const totalDebt = Math.abs(stockPledge) + Math.abs(creditLoan);
+                    const totalAsset = estimatedAssets;
+
+                    let dtarVal = totalAsset > 0 ? (totalDebt / totalAsset) * 100 : 0;
+                    let netLevVal = realNetAsset > 0 ? (totalDebt / realNetAsset) * 100 : (totalDebt > 0 ? 999 : 0);
+                    let cashBufferVal = dailyExpenseSum > 0 ? (currentCash / dailyExpenseSum) : 99;
+                    let currentMonthLoan = Math.abs(exp_fixed_loan);
+                    let dtiVal = overviewTotalInc > 0 ? (currentMonthLoan / overviewTotalInc) * 100 : 0;
+                    let expIncVal = overviewTotalInc > 0 ? (dailyExpenseSum / overviewTotalInc) * 100 : 0;
+
+                    let annualExpenseBase = (monthBudgetLimit > 0 ? monthBudgetLimit : (dailyExpenseSum > 0 ? dailyExpenseSum : 35000)) * 12;
+                    let netCoverageYears = annualExpenseBase > 0 ? (realNetAsset / annualExpenseBase) : 0;
+                    let fiHint = netCoverageYears >= 25 ? " (🏆已達4%終極財務自由標準)" : "";
+
+                    const isClosed = !!closedMonths[`Y${y}_M${m}`];
+
+                    let pnlIncome = overviewTotalInc;
+                    let pnlExpense = overviewTotalExp + overviewDiffAdj;
+                    let pnlNet = realNetFlow;
+
+                    monthRows.push({
+                        monthIndex: m,
+                        monthName: MONTHS[m],
+                        isClosed,
+                        catVals, currentCash,
+                        monthReserveFund, isReserveRoll, monthInvestableCash,
+                        monthBudgetLimit, hasLimit, budgetRemaining, isOverBudget, dailyExpenseSum,
+                        stockCost, stockMarket, netStockGainLoss, stockPledge: Math.abs(stockPledge), creditLoan: Math.abs(creditLoan),
+                        estimatedAssets, realNetAsset, momGrowthStr, momGrowthVal, unleveragedRatio,
+                        isCostRoll, isMarketRoll, isPledgeRoll, isCreditRoll,
+                        overviewTotalInc, overviewTotalExp, overviewDiffAdj, overviewNetFlow: realNetFlow,
+                        pnlIncome, pnlExpense, pnlNet,
+                        riskMetrics: {
+                            dtar: { val: dtarVal, level: dtarVal > 50 ? 'red' : (dtarVal >= 40 ? 'yellow' : 'green'), text: dtarVal > 50 ? '高' : (dtarVal >= 40 ? '中' : '低'), formula: `總負債 $${totalDebt.toLocaleString()} ÷ 總資產 $${totalAsset.toLocaleString()}` },
+                            netLev: { val: netLevVal, level: netLevVal > 120 ? 'red' : (netLevVal >= 80 ? 'yellow' : 'green'), text: netLevVal > 120 ? '高' : (netLevVal >= 80 ? '中' : '低'), formula: `總負債 $${totalDebt.toLocaleString()} ÷ 實際淨資產 $${realNetAsset.toLocaleString()}` },
+                            cashBuffer: { val: cashBufferVal, level: cashBufferVal < 3 ? 'red' : (cashBufferVal <= 6 ? 'yellow' : 'green'), text: cashBufferVal < 3 ? '危險' : (cashBufferVal <= 6 ? '警戒' : '安全'), formula: `期末現金 $${currentCash.toLocaleString()} ÷ 當月支出 $${dailyExpenseSum.toLocaleString()}` },
+                            dti: { val: dtiVal, level: dtiVal > 30 ? 'red' : (dtiVal >= 20 ? 'yellow' : 'green'), text: dtiVal > 30 ? '高' : (dtiVal >= 20 ? '中' : '低'), formula: `固定借貸支出 $${currentMonthLoan.toLocaleString()} ÷ 當月總收入 $${overviewTotalInc.toLocaleString()}` },
+                            expInc: { val: expIncVal, level: expIncVal > 70 ? 'red' : (expIncVal >= 50 ? 'yellow' : 'green'), text: expIncVal > 70 ? '過高' : (expIncVal >= 50 ? '正常' : '優秀'), formula: `當月支出 $${dailyExpenseSum.toLocaleString()} ÷ 當月總收入 $${overviewTotalInc.toLocaleString()}` },
+                            netCoverage: { val: netCoverageYears, level: netCoverageYears < 5 ? 'red' : (netCoverageYears <= 15 ? 'yellow' : 'green'), text: netCoverageYears < 5 ? '脆弱' : (netCoverageYears <= 15 ? '穩健' : '自由'), formula: `實際淨資產 $${realNetAsset.toLocaleString()} ÷ 基準年支出 $${annualExpenseBase.toLocaleString()}${fiHint}` }
+                        }
+                    });
+                }
+
+                const decCash = monthRows[11].currentCash;
+                const decReserve = monthRows[11].monthReserveFund;
+                const decEstimatedAssets = monthRows[11].estimatedAssets;
+                const decNet = monthRows[11].realNetAsset;
+                const decUnleveragedRatio = monthRows[11].unleveragedRatio;
+                const janNet = monthRows[0].realNetAsset;
+                const febNet = monthRows[1].realNetAsset;
+
+                const annualInvestableCash = decCash - decReserve;
+                const annualNetChange = decNet - janNet;
+                let annualGrowthRateStr = "-";
+                if (y === 1 && febNet !== 0) annualGrowthRateStr = (((decNet / febNet) - 1) * 100).toFixed(2) + "%";
+                else if (y > 1 && janNet !== 0) annualGrowthRateStr = (((decNet / janNet) - 1) * 100).toFixed(2) + "%";
+
+                let pnlYearTotalIncome = overviewYearTotalInc;
+                let pnlYearTotalExpense = overviewYearTotalExp + overviewYearTotalAdj;
+                let pnlYearTotalNet = overviewYearTotalNetFlow;
+
+                calculatedYearsData.push({
+                    yearIdx: y, yearNum: currentYearNum, monthRows, categoryYearTotals,
+                    currentCash, decReserve, annualInvestableCash,
+                    decEstimatedAssets, decNet, decUnleveragedRatio,
+                    yearTotalBudgetLimit,
+                    yearTotalRemaining: (yearTotalBudgetLimit > 0 ? yearTotalBudgetLimit - yearTotalDailyExpenses : null),
+                    annualNetChange, annualGrowthRateStr,
+                    overviewYearTotalInc, overviewYearTotalExp, overviewYearTotalAdj, overviewYearTotalNetFlow,
+                    pnlYearTotalIncome, pnlYearTotalExpense, pnlYearTotalNet
+                });
+            }
+        }
+
+        function calculateAndRender() {
+            calculate60YearsData();
+            renderCurrentView();
+            saveToLocalStorage();
+        }
+
+        function renderRiskBadge(metric, displayStr) {
+            const dot = metric.level === 'green' ? '🟢' : (metric.level === 'yellow' ? '🟡' : '🔴');
+            return `<div class="metric-badge badge-${metric.level}" title="${metric.formula}"><span>${dot}</span><span>${displayStr}</span><span style="font-size:9.5px;">(${metric.text})</span></div>`;
+        }
+
+        function renderCurrentView() {
+            let savedScrollLeft = 0;
+            const firstContainer = document.querySelector('.table-container');
+            if (firstContainer) savedScrollLeft = firstContainer.scrollLeft;
+
+            const container = document.getElementById('tablesContainer');
+            container.innerHTML = '';
+            const startYearIdx = parseInt(document.getElementById('viewYearSelect').value) || 1;
+            const viewRange = parseInt(document.getElementById('viewRange').value) || 1;
+            const endYearIdx = Math.min(MAX_YEARS, startYearIdx + viewRange - 1);
+
+            Object.values(pnlChartsInstances).forEach(c => c && c.destroy && c.destroy());
+            pnlChartsInstances = {};
+            if (multiPnLChartInstance) { multiPnLChartInstance.destroy(); multiPnLChartInstance = null; }
+
+            if (currentViewMode === 'multi_pnl') {
+                const multiYears = calculatedYearsData.slice(startYearIdx - 1, endYearIdx);
+                const pnlCard = document.createElement('div');
+                pnlCard.className = 'pnl-year-card';
+                pnlCard.innerHTML = generateMultiPnLViewHtml(multiYears);
+                container.appendChild(pnlCard);
+
+                setTimeout(() => {
+                    initMultiPnLChart(multiYears);
+                    attachMultiPnLSyncScroll();
+                }, 50);
+
+            } else if (currentViewMode === 'pnl') {
+                for (let y = startYearIdx; y <= endYearIdx; y++) {
+                    const yearData = calculatedYearsData[y - 1];
+                    if (!yearData) continue;
+
+                    const pnlCard = document.createElement('div');
+                    pnlCard.className = 'pnl-year-card';
+                    pnlCard.innerHTML = generatePnLViewHtml(yearData, y);
+                    container.appendChild(pnlCard);
+
+                    setTimeout(() => {
+                        initPnLCharts(yearData, y);
+                    }, 50);
+                }
+            } else {
+                let chartLabels = [], chartNetAssetData = [], chartCashData = [];
+
+                for (let y = startYearIdx; y <= endYearIdx; y++) {
+                    const yearData = calculatedYearsData[y - 1];
+                    if (!yearData) continue;
+
+                    yearData.monthRows.forEach(r => {
+                        chartLabels.push(`${yearData.yearNum}/${r.monthName}`);
+                        chartNetAssetData.push(r.realNetAsset);
+                        chartCashData.push(r.currentCash);
+                    });
+
+                    const yearWrapper = document.createElement('div');
+                    yearWrapper.className = 'table-container';
+
+                    if (currentViewMode === 'risk') {
+                        yearWrapper.innerHTML = generateRiskOnlyTable(yearData, y);
+                    } else {
+                        yearWrapper.innerHTML = generatePlanBTable(yearData, y, currentViewMode === 'all');
+                    }
+                    container.appendChild(yearWrapper);
+                }
+
+                renderTrendChart(chartLabels, chartNetAssetData, chartCashData);
+                attachSyncScrollListeners();
+            }
+
+            if (savedScrollLeft > 0) {
+                document.querySelectorAll('.table-container').forEach(el => el.scrollLeft = savedScrollLeft);
+            }
+        }
+
+        let isSyncingScroll = false;
+        function attachSyncScrollListeners() {
+            const containers = document.querySelectorAll('.table-container');
+            containers.forEach(container => {
+                container.addEventListener('scroll', e => {
+                    if (isSyncingScroll) return;
+                    isSyncingScroll = true;
+                    const scrollLeft = e.target.scrollLeft;
+                    containers.forEach(c => {
+                        if (c !== e.target) c.scrollLeft = scrollLeft;
+                    });
+                    setTimeout(() => { isSyncingScroll = false; }, 20);
+                });
+            });
+        }
+
+        let isMultiSyncing = false;
+        function attachMultiPnLSyncScroll() {
+            const box1 = document.getElementById('multi_pnl_wrap1');
+            const box2 = document.getElementById('multi_pnl_wrap2');
+            if (!box1 || !box2) return;
+
+            const syncScroll = (source, target) => {
+                source.addEventListener('scroll', () => {
+                    if (isMultiSyncing) return;
+                    isMultiSyncing = true;
+                    target.scrollLeft = source.scrollLeft;
+                    setTimeout(() => { isMultiSyncing = false; }, 15);
+                });
+            };
+
+            syncScroll(box1, box2);
+            syncScroll(box2, box1);
+        }
+
+        function generatePlanBTable(yearData, y, includeRisk) {
+            const cState = groupCollapseState;
+
+            const spanIncReg = cState.inc_reg ? 1 : 3;
+            const spanExpDaily = cState.exp_daily ? 1 : 10;
+            const spanPleAdj = cState.ple_adj ? 2 : 3;
+            const spanExpVar = cState.exp_var ? 1 : 2;
+            const spanIncVar = cState.inc_var ? 1 : 2;
+            const spanAdj = 1;
+            const spanCashMon = cState.cash_mon ? 1 : 3;
+            const spanAssetCalc = cState.asset_calc ? 2 : 9;
+            const spanOverview = cState.overview ? 1 : 4;
+            const spanRisk = includeRisk ? 6 : 0;
+
+            const totalCols = 1 + spanIncReg + spanExpDaily + spanPleAdj + spanExpVar + spanIncVar + spanAdj + spanCashMon + spanAssetCalc + spanOverview + spanRisk;
+
+            let colgroupHtml = `
+                <colgroup>
+                    <col style="width: 86px;">
+                    ${cState.inc_reg ? '<col style="width: 140px;">' : '<col style="width: 100px;"><col style="width: 100px;"><col style="width: 105px;">'}
+                    ${cState.exp_daily ? '<col style="width: 150px;">' : '<col style="width: 95px;"><col style="width: 95px;"><col style="width: 95px;"><col style="width: 95px;"><col style="width: 95px;"><col style="width: 95px;"><col style="width: 95px;"><col style="width: 80px;"><col style="width: 80px;"><col style="width: 95px;">'}
+                    ${cState.ple_adj ? '<col style="width: 110px;"><col style="width: 125px;">' : '<col style="width: 100px;"><col style="width: 105px;"><col style="width: 105px;">'}
+                    ${cState.exp_var ? '<col style="width: 135px;">' : '<col style="width: 110px;"><col style="width: 110px;">'}
+                    ${cState.inc_var ? '<col style="width: 135px;">' : '<col style="width: 115px;"><col style="width: 110px;">'}
+                    <col style="width: 110px;">
+                    ${cState.cash_mon ? '<col style="width: 145px;">' : '<col style="width: 115px;"><col style="width: 110px;"><col style="width: 120px;">'}
+                    ${cState.asset_calc ? '<col style="width: 125px;"><col style="width: 105px;">' : '<col style="width: 100px;"><col style="width: 100px;"><col style="width: 100px;"><col style="width: 105px;"><col style="width: 105px;"><col style="width: 115px;"><col style="width: 115px;"><col style="width: 100px;"><col style="width: 110px;">'}
+                    ${cState.overview ? '<col style="width: 125px;">' : '<col style="width: 105px;"><col style="width: 105px;"><col style="width: 100px;"><col style="width: 105px;">'}
+                    ${includeRisk ? '<col style="width: 145px;"><col style="width: 145px;"><col style="width: 145px;"><col style="width: 145px;"><col style="width: 145px;"><col style="width: 160px;">' : ''}
+                </colgroup>
+            `;
+
+            let tableHtml = `
+                <table>
+                    ${colgroupHtml}
+                    <thead>
+                        <tr><th colspan="${totalCols}" class="year-header">${yearData.yearNum} 年 (第 ${y} 年度)</th></tr>
+                        <tr>
+                            <th rowspan="2">
+                                <div>月份</div>
+                                <button class="btn-header-copy-year" onclick="copyJanToRestOfYear(${y})">⚡複製整年</button>
+                            </th>
+
+                            <th colspan="${spanIncReg}" class="sec-hdr grp-l grp-r">
+                                <div class="sec-hdr-wrap">
+                                    <span class="sec-hdr-title">常規收入</span>
+                                    <button class="col-toggle-btn ${cState.inc_reg ? 'collapsed' : ''}" onclick="toggleGroupCollapse('inc_reg')">${cState.inc_reg ? '◀展開' : '▼收合'}</button>
+                                </div>
+                            </th>
+
+                            <th colspan="${spanExpDaily}" class="sec-hdr-budget grp-l grp-r">
+                                <div class="sec-hdr-wrap">
+                                    <span class="sec-hdr-title">日常/固定支出<br><span style="font-size:11px; font-weight:normal;">(預算控管與扣除)</span></span>
+                                    <button class="col-toggle-btn ${cState.exp_daily ? 'collapsed' : ''}" onclick="toggleGroupCollapse('exp_daily')">${cState.exp_daily ? '◀展開' : '▼收合'}</button>
+                                </div>
+                            </th>
+
+                            <th colspan="${spanPleAdj}" class="sec-hdr grp-l grp-r">
+                                <div class="sec-hdr-wrap">
+                                    <span class="sec-hdr-title">質押調整</span>
+                                    <button class="col-toggle-btn ${cState.ple_adj ? 'collapsed' : ''}" onclick="toggleGroupCollapse('ple_adj')">${cState.ple_adj ? '◀展開' : '▼收合'}</button>
+                                </div>
+                            </th>
+
+                            <th colspan="${spanExpVar}" class="sec-hdr grp-l grp-r">
+                                <div class="sec-hdr-wrap">
+                                    <span class="sec-hdr-title">變動支出</span>
+                                    <button class="col-toggle-btn ${cState.exp_var ? 'collapsed' : ''}" onclick="toggleGroupCollapse('exp_var')">${cState.exp_var ? '◀展開' : '▼收合'}</button>
+                                </div>
+                            </th>
+
+                            <th colspan="${spanIncVar}" class="sec-hdr grp-l grp-r">
+                                <div class="sec-hdr-wrap">
+                                    <span class="sec-hdr-title">變動收入</span>
+                                    <button class="col-toggle-btn ${cState.inc_var ? 'collapsed' : ''}" onclick="toggleGroupCollapse('inc_var')">${cState.inc_var ? '◀展開' : '▼收合'}</button>
+                                </div>
+                            </th>
+
+                            <th class="sec-hdr">
+                                <div class="sec-hdr-wrap"><span class="sec-hdr-title">月結算</span></div>
+                            </th>
+
+                            <th colspan="${spanCashMon}" class="sec-hdr-reserve grp-l grp-r">
+                                <div class="sec-hdr-wrap">
+                                    <span class="sec-hdr-title">流動現金與<br>可投資額監控</span>
+                                    <button class="col-toggle-btn ${cState.cash_mon ? 'collapsed' : ''}" onclick="toggleGroupCollapse('cash_mon')">${cState.cash_mon ? '◀展開' : '▼收合'}</button>
+                                </div>
+                            </th>
+
+                            <th colspan="${spanAssetCalc}" class="sec-hdr-asset grp-l grp-r">
+                                <div class="sec-hdr-wrap">
+                                    <span class="sec-hdr-title">淨資產試算<br><span style="font-size:11px; font-weight:normal;">(負債自動扣除)</span></span>
+                                    <button class="col-toggle-btn ${cState.asset_calc ? 'collapsed' : ''}" onclick="toggleGroupCollapse('asset_calc')">${cState.asset_calc ? '◀展開' : '▼收合'}</button>
+                                </div>
+                            </th>
+
+                            <th colspan="${spanOverview}" class="sec-hdr-overview grp-l grp-r">
+                                <div class="sec-hdr-wrap">
+                                    <span class="sec-hdr-title">收支總覽</span>
+                                    <button class="col-toggle-btn ${cState.overview ? 'collapsed' : ''}" onclick="toggleGroupCollapse('overview')">${cState.overview ? '◀展開' : '▼收合'}</button>
+                                </div>
+                            </th>
+
+                            ${includeRisk ? '<th colspan="6" class="sec-hdr-risk grp-l grp-r"><div class="sec-hdr-wrap"><span class="sec-hdr-title">🛡️ 財務風控指標 (三色預警)</span></div></th>' : ''}
+                        </tr>
+
+                        <tr>
+                            ${cState.inc_reg ? `
+                                <th class="col-collapsed-hdr grp-l grp-r">常規收入合計<span class="th-formula-note">(薪資+利息+自訂)</span></th>
+                            ` : `
+                                <th class="grp-l">${CATEGORIES[0].name}</th>
+                                <th>${CATEGORIES[1].name}</th>
+                                <th class="grp-r"><input type="text" class="editable-header-input custom-income-input-1" value="${escapeHtml(customIncomeName1)}" oninput="updateCustomNames(event)"></th>
+                            `}
+
+                            ${cState.exp_daily ? `
+                                <th class="col-collapsed-hdr grp-l grp-r" style="color:var(--expense-red) !important;">日常固定總支出<span class="th-formula-note">(月費+保險+借貸+日常+其他)</span></th>
+                            ` : `
+                                <th class="grp-l" style="background-color: var(--budget-blue-bg); color: var(--text-title);">支出上限</th>
+                                <th style="color: var(--expense-red);">${CATEGORIES[3].name}</th>
+                                <th style="color: var(--expense-red);">${CATEGORIES[4].name}</th>
+                                <th style="color: var(--expense-red);">${CATEGORIES[5].name}</th>
+                                <th style="color: var(--expense-red);">${CATEGORIES[6].name}</th>
+                                <th style="color: var(--expense-red);">${CATEGORIES[7].name}</th>
+                                <th style="color: var(--expense-red);">${CATEGORIES[8].name}</th>
+                                <th><input type="text" class="editable-header-input backup-input-1" value="${escapeHtml(customBackupName1)}" oninput="updateCustomNames(event)"></th>
+                                <th><input type="text" class="editable-header-input backup-input-2" value="${escapeHtml(customBackupName2)}" oninput="updateCustomNames(event)"></th>
+                                <th class="cell-calc-yellow grp-r">支出餘額</th>
+                            `}
+
+                            ${cState.ple_adj ? `
+                                <th class="col-collapsed-hdr grp-l" style="color:var(--expense-red) !important;">A.質押利息還款</th>
+                                <th class="col-collapsed-hdr grp-r">B.質押金流<span class="th-formula-note">(借出 - 還款)</span></th>
+                            ` : `
+                                <th class="grp-l" style="color: var(--expense-red);">${CATEGORIES[11].name}</th>
+                                <th>${CATEGORIES[12].name}</th>
+                                <th class="grp-r" style="color: var(--expense-red);">${CATEGORIES[13].name}</th>
+                            `}
+
+                            ${cState.exp_var ? `
+                                <th class="col-collapsed-hdr grp-l grp-r" style="color:var(--expense-red) !important;">變動支出合計<span class="th-formula-note">(股票基金+其他投資)</span></th>
+                            ` : `
+                                <th class="grp-l" style="color: var(--expense-red);">${CATEGORIES[14].name}</th>
+                                <th class="grp-r" style="color: var(--expense-red);">${CATEGORIES[15].name}</th>
+                            `}
+
+                            ${cState.inc_var ? `
+                                <th class="col-collapsed-hdr grp-l grp-r">變動收入合計<span class="th-formula-note">(股利+其他收入)</span></th>
+                            ` : `
+                                <th class="grp-l">${CATEGORIES[16].name}</th>
+                                <th class="grp-r">${CATEGORIES[17].name}</th>
+                            `}
+
+                            <th>${CATEGORIES[18].name}</th>
+
+                            ${cState.cash_mon ? `
+                                <th class="cash-col grp-l grp-r">全帳戶總額<br>期末現金</th>
+                            ` : `
+                                <th class="grp-l" style="background-color: var(--cash-orange); color: #8c4e20;">全帳戶總額<br>期末現金</th>
+                                <th style="background-color: #e6ece9; color: var(--sage-primary); font-weight: 700;">固定預備金<br>(各月可點擊)</th>
+                                <th class="cell-calc-yellow grp-r" style="color:var(--text-title);">可動用/可投資額<br>(現金 - 預備金)</th>
+                            `}
+
+                            ${cState.asset_calc ? `
+                                <th class="cell-calc-yellow grp-l">A.實際淨資產</th>
+                                <th class="cell-calc-yellow grp-r">B.淨資產(MoM)</th>
+                            ` : `
+                                <th class="grp-l">股票基金成本</th><th>股票基金現值</th><th class="cell-calc-yellow">即時淨損</th>
+                                <th style="color: var(--expense-red);">質押負債</th><th style="color: var(--expense-red);">信貸負債</th>
+                                <th class="cell-calc-yellow" style="color:var(--text-title);">初估資產<br>(現金+現值)</th>
+                                <th class="cell-calc-yellow">實際淨資產</th>
+                                <th class="cell-calc-yellow">淨資產(MoM)</th>
+                                <th class="cell-calc-yellow grp-r">無槓桿資產比<br>(淨值÷初估)</th>
+                            `}
+
+                            ${cState.overview ? `
+                                <th class="cell-net-flow grp-l grp-r">收支淨額</th>
+                            ` : `
+                                <th class="grp-l">總收入</th>
+                                <th style="color: var(--expense-red);">總支出</th>
+                                <th>帳差調整</th>
+                                <th class="cell-net-flow grp-r">收支淨額</th>
+                            `}
+
+                            ${includeRisk ? `
+                                <th class="grp-l">1. 資產負債比<span class="th-formula-note">(總負債 ÷ 總資產)</span></th>
+                                <th>2. 淨值槓桿率<span class="th-formula-note">(總負債 ÷ 實際淨資產)</span></th>
+                                <th>3. 現金緩衝月<span class="th-formula-note">(期末現金 ÷ 當月支出)</span></th>
+                                <th>4. 貸款負擔比<span class="th-formula-note">(借貸支出 ÷ 總收入)</span></th>
+                                <th>5. 支出收入比<span class="th-formula-note">(當月支出 ÷ 當月總收入)</span></th>
+                                <th class="grp-r">6. 淨資產覆蓋年數<span class="th-formula-note">(實際淨資產 ÷ 年化支出)</span></th>
+                            ` : ''}
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            yearData.monthRows.forEach(row => {
+                const m = row.monthIndex;
+                const getCellHtml = (catIdx, extraBorderCls = "") => {
+                    const cat = CATEGORIES[catIdx];
+                    const key = `Y${y}_M${m}_Cat${catIdx}`;
+                    const val = row.catVals[catIdx];
+                    let displayVal = '-';
+                    let expClass = '';
+
+                    if (val !== 0) {
+                        if (cat.allowNegative) {
+                            displayVal = (val > 0 ? '+$' : '-$') + Math.abs(val).toLocaleString();
+                            expClass = val < 0 ? 'expense-text' : 'profit-text';
+                        } else if (cat.isExpense) {
+                            displayVal = `-$${val.toLocaleString()}`;
+                            expClass = 'expense-text';
+                        } else {
+                            displayVal = `$${val.toLocaleString()}`;
+                        }
+                    }
+                    const isOverCell = (cat.isDaily && row.isOverBudget);
+                    const displayName = cat.isCustomIncome ? customIncomeName1 : (cat.isBackup ? (cat.backupIdx === 1 ? customBackupName1 : customBackupName2) : cat.name);
+                    return `<td class="blue-cell flow-cell ${expClass} ${isOverCell ? 'over-budget-cell' : ''} ${extraBorderCls}" onclick="openModal(${y}, ${m}, '${key}', '${displayName}')">${displayVal}<div class="tooltip-box">${getCategoryDetailsHtml(key)}</div></td>`;
+                };
+
+                const limitKey = `Y${y}_M${m}_BudgetLimit`;
+                const limitDisplay = row.hasLimit ? `$${row.monthBudgetLimit.toLocaleString()}` : '-';
+
+                const reserveKey = `Y${y}_M${m}_ReserveFund`;
+                const reserveDisplay = row.monthReserveFund > 0 ? `$${row.monthReserveFund.toLocaleString()}` : '-';
+
+                const isInvestablePositive = row.monthInvestableCash >= 0;
+                const investableClass = isInvestablePositive ? 'profit-text' : 'expense-text';
+                const investableSign = isInvestablePositive ? '+$' : '-$';
+
+                const unleveragedClass = row.unleveragedRatio >= 60 ? 'profit-text' : (row.unleveragedRatio < 40 ? 'expense-text' : '');
+                const closedClass = row.isClosed ? 'row-closed' : '';
+
+                const collapsedIncRegVal = row.catVals[0] + row.catVals[1] + row.catVals[2];
+                const collapsedExpDailyVal = row.dailyExpenseSum;
+                const collapsedPledgeFlow = row.catVals[12] - Math.abs(row.catVals[13]);
+                const collapsedExpVarVal = Math.abs(row.catVals[14]) + Math.abs(row.catVals[15]);
+                const collapsedIncVarVal = row.catVals[16] + row.catVals[17];
+
+                tableHtml += `
+                    <tr class="${closedClass}">
+                        <td style="font-weight: bold;">
+                            <div>${row.monthName}</div>
+                            <button class="btn-month-close ${row.isClosed ? 'is-closed' : ''}" onclick="toggleMonthClose(${y}, ${m})" title="每月末確認完畢點擊關帳反灰">${row.isClosed ? '🔒已結' : '結帳'}</button>
+                        </td>
+
+                        ${cState.inc_reg ? `
+                            <td class="col-collapsed-cell flow-cell grp-l grp-r profit-text">${collapsedIncRegVal === 0 ? '-' : '$' + collapsedIncRegVal.toLocaleString()}</td>
+                        ` : `
+                            ${getCellHtml(0, 'grp-l')}
+                            ${getCellHtml(1)}
+                            ${getCellHtml(2, 'grp-r')}
+                        `}
+
+                        ${cState.exp_daily ? `
+                            <td class="col-collapsed-cell flow-cell grp-l grp-r expense-text">${collapsedExpDailyVal === 0 ? '-' : '-$' + collapsedExpDailyVal.toLocaleString()}</td>
+                        ` : `
+                            <td class="blue-cell flow-cell grp-l" style="background-color: var(--budget-blue-bg); font-weight: bold;" onclick="openModal(${y}, ${m}, '${limitKey}', '支出上限')">${limitDisplay}</td>
+                            ${getCellHtml(3)}${getCellHtml(4)}${getCellHtml(5)}${getCellHtml(6)}${getCellHtml(7)}${getCellHtml(8)}${getCellHtml(9)}${getCellHtml(10)}
+                            <td class="cell-calc-yellow flow-cell grp-r ${row.hasLimit ? (row.budgetRemaining >= 0 ? 'profit-text' : 'expense-text') : ''}">${row.hasLimit ? (row.budgetRemaining >= 0 ? '+$' : '-$') + Math.abs(row.budgetRemaining).toLocaleString() : '-'}</td>
+                        `}
+
+                        ${cState.ple_adj ? `
+                            <td class="blue-cell flow-cell grp-l expense-text" onclick="openModal(${y}, ${m}, 'Y${y}_M${m}_Cat11', '${CATEGORIES[11].name}')">${row.catVals[11] === 0 ? '-' : '-$' + Math.abs(row.catVals[11]).toLocaleString()}</td>
+                            <td class="col-collapsed-cell flow-cell grp-r ${collapsedPledgeFlow > 0 ? 'profit-text' : (collapsedPledgeFlow < 0 ? 'expense-text' : '')}">
+                                ${collapsedPledgeFlow === 0 ? '0' : (collapsedPledgeFlow > 0 ? '+$' : '-$') + Math.abs(collapsedPledgeFlow).toLocaleString()}
+                            </td>
+                        ` : `
+                            ${getCellHtml(11, 'grp-l')}
+                            ${getCellHtml(12)}
+                            ${getCellHtml(13, 'grp-r')}
+                        `}
+
+                        ${cState.exp_var ? `
+                            <td class="col-collapsed-cell flow-cell grp-l grp-r expense-text">${collapsedExpVarVal === 0 ? '-' : '-$' + collapsedExpVarVal.toLocaleString()}</td>
+                        ` : `
+                            ${getCellHtml(14, 'grp-l')}
+                            ${getCellHtml(15, 'grp-r')}
+                        `}
+
+                        ${cState.inc_var ? `
+                            <td class="col-collapsed-cell flow-cell grp-l grp-r profit-text">${collapsedIncVarVal === 0 ? '-' : '$' + collapsedIncVarVal.toLocaleString()}</td>
+                        ` : `
+                            ${getCellHtml(16, 'grp-l')}
+                            ${getCellHtml(17, 'grp-r')}
+                        `}
+
+                        ${getCellHtml(18)}
+
+                        ${cState.cash_mon ? `
+                            <td class="cash-col flow-cell grp-l grp-r">$${row.currentCash.toLocaleString()}</td>
+                        ` : `
+                            <td class="cash-col flow-cell grp-l">$${row.currentCash.toLocaleString()}</td>
+                            <td class="blue-cell flow-cell ${row.isReserveRoll ? 'cell-rollover' : ''}" style="background-color: #eef3ef; color: var(--sage-primary); font-weight: 600;" onclick="openModal(${y}, ${m}, '${reserveKey}', '固定預備金')">
+                                ${reserveDisplay}
+                                <div class="tooltip-box">${getCategoryDetailsHtml(reserveKey, row.isReserveRoll)}</div>
+                            </td>
+                            <td class="cell-calc-yellow flow-cell grp-r ${investableClass}" title="當月期末現金 - 預備金">
+                                ${investableSign}${Math.abs(row.monthInvestableCash).toLocaleString()}
+                            </td>
+                        `}
+
+                        ${cState.asset_calc ? `
+                            <td class="cell-calc-yellow flow-cell grp-l ${row.realNetAsset >= 0 ? 'profit-text' : 'expense-text'}">${row.realNetAsset >= 0 ? '+$' : '-$'}${Math.abs(row.realNetAsset).toLocaleString()}</td>
+                            <td class="cell-calc-yellow flow-cell grp-r ${row.momGrowthVal > 0 ? 'profit-text' : (row.momGrowthVal < 0 ? 'expense-text' : '')}">${row.momGrowthStr}</td>
+                        ` : `
+                            <td class="blue-cell flow-cell grp-l" onclick="openModal(${y}, ${m}, 'Y${y}_M${m}_AssetCost', '股票基金成本')">${row.stockCost === 0 ? '-' : '$' + row.stockCost.toLocaleString()}</td>
+                            <td class="blue-cell flow-cell" onclick="openModal(${y}, ${m}, 'Y${y}_M${m}_AssetMarket', '股票基金現值')">${row.stockMarket === 0 ? '-' : '$' + row.stockMarket.toLocaleString()}</td>
+                            <td class="cell-calc-yellow flow-cell ${row.netStockGainLoss > 0 ? 'profit-text' : (row.netStockGainLoss < 0 ? 'expense-text' : '')}">${row.netStockGainLoss === 0 ? '0' : (row.netStockGainLoss > 0 ? '+$' : '-$') + Math.abs(row.netStockGainLoss).toLocaleString()}</td>
+                            <td class="blue-cell flow-cell expense-text" onclick="openModal(${y}, ${m}, 'Y${y}_M${m}_AssetPledge', '質押負債')">${row.stockPledge === 0 ? '-' : '-$' + row.stockPledge.toLocaleString()}</td>
+                            <td class="blue-cell flow-cell expense-text" onclick="openModal(${y}, ${m}, 'Y${y}_M${m}_AssetLoan', '信貸負債')">${row.creditLoan === 0 ? '-' : '-$' + row.creditLoan.toLocaleString()}</td>
+                            <td class="cell-calc-yellow flow-cell" title="期末現金 + 股票基金現值">$${row.estimatedAssets.toLocaleString()}</td>
+                            <td class="cell-calc-yellow flow-cell ${row.realNetAsset >= 0 ? 'profit-text' : 'expense-text'}">${row.realNetAsset >= 0 ? '+$' : '-$'}${Math.abs(row.realNetAsset).toLocaleString()}</td>
+                            <td class="cell-calc-yellow flow-cell ${row.momGrowthVal > 0 ? 'profit-text' : (row.momGrowthVal < 0 ? 'expense-text' : '')}">${row.momGrowthStr}</td>
+                            <td class="cell-calc-yellow flow-cell grp-r ${unleveragedClass}" title="實際淨資產 ÷ 初估資產">${row.unleveragedRatio.toFixed(1)}%</td>
+                        `}
+
+                        ${cState.overview ? `
+                            <td class="cell-net-flow mono flow-cell grp-l grp-r ${row.overviewNetFlow < 0 ? 'expense-text' : 'profit-text'}">${row.overviewNetFlow === 0 ? '0' : (row.overviewNetFlow > 0 ? '+$' : '-$') + Math.abs(row.overviewNetFlow).toLocaleString()}</td>
+                        ` : `
+                            <td class="mono flow-cell grp-l">${row.overviewTotalInc === 0 ? '-' : '$' + row.overviewTotalInc.toLocaleString()}</td>
+                            <td class="expense-text mono flow-cell">${row.overviewTotalExp === 0 ? '-' : '-$' + row.overviewTotalExp.toLocaleString()}</td>
+                            <td class="mono flow-cell ${row.overviewDiffAdj < 0 ? 'expense-text' : (row.overviewDiffAdj > 0 ? 'profit-text' : '')}">${row.overviewDiffAdj === 0 ? '-' : (row.overviewDiffAdj > 0 ? '+$' : '-$') + Math.abs(row.overviewDiffAdj).toLocaleString()}</td>
+                            <td class="cell-net-flow mono flow-cell grp-r ${row.overviewNetFlow < 0 ? 'expense-text' : 'profit-text'}">${row.overviewNetFlow === 0 ? '0' : (row.overviewNetFlow > 0 ? '+$' : '-$') + Math.abs(row.overviewNetFlow).toLocaleString()}</td>
+                        `}
+
+                        ${includeRisk ? `
+                            <td class="risk-cell grp-l">${renderRiskBadge(row.riskMetrics.dtar, row.riskMetrics.dtar.val.toFixed(1) + '%')}</td>
+                            <td class="risk-cell">${renderRiskBadge(row.riskMetrics.netLev, (row.riskMetrics.netLev.val > 500 ? '>500%' : row.riskMetrics.netLev.val.toFixed(1) + '%'))}</td>
+                            <td class="risk-cell">${renderRiskBadge(row.riskMetrics.cashBuffer, row.riskMetrics.cashBuffer.val >= 99 ? '>99月' : row.riskMetrics.cashBuffer.val.toFixed(1) + '月')}</td>
+                            <td class="risk-cell">${renderRiskBadge(row.riskMetrics.dti, row.riskMetrics.dti.val.toFixed(1) + '%')}</td>
+                            <td class="risk-cell">${renderRiskBadge(row.riskMetrics.expInc, row.riskMetrics.expInc.val.toFixed(1) + '%')}</td>
+                            <td class="risk-cell grp-r">${renderRiskBadge(row.riskMetrics.netCoverage, row.riskMetrics.netCoverage.val.toFixed(1) + ' 年')}</td>
+                        ` : ''}
+                    </tr>
+                `;
+            });
+
+            const renderSumCell = (catIdx, extraBorderCls = "") => {
+                const cat = CATEGORIES[catIdx];
+                const val = yearData.categoryYearTotals[catIdx];
+                if (val === 0) return `<td class="${extraBorderCls}">-</td>`;
+                if (cat.allowNegative) {
+                    const cls = val < 0 ? 'expense-text' : 'profit-text';
+                    return `<td class="${cls} mono ${extraBorderCls}">${val > 0 ? '+$' : '-$'}${Math.abs(val).toLocaleString()}</td>`;
+                }
+                const isExp = cat.isExpense;
+                const cls = isExp ? 'expense-text' : '';
+                return `<td class="${cls} mono ${extraBorderCls}">${isExp ? '-$' : '$'}${val.toLocaleString()}</td>`;
+            };
+
+            const annualInvestClass = yearData.annualInvestableCash >= 0 ? 'profit-text' : 'expense-text';
+            const annualInvestSign = yearData.annualInvestableCash >= 0 ? '+$' : '-$';
+
+            let yearRemainingHtml = '-';
+            let yearRemainingClass = '';
+            if (yearData.yearTotalRemaining !== null) {
+                if (yearData.yearTotalRemaining >= 0) {
+                    yearRemainingHtml = `+$${yearData.yearTotalRemaining.toLocaleString()}`;
+                    yearRemainingClass = 'profit-text';
+                } else {
+                    yearRemainingHtml = `-$${Math.abs(yearData.yearTotalRemaining).toLocaleString()}`;
+                    yearRemainingClass = 'expense-text';
+                }
+            }
+
+            const decUnleveragedClass = yearData.decUnleveragedRatio >= 60 ? 'profit-text' : (yearData.decUnleveragedRatio < 40 ? 'expense-text' : '');
+
+            const sumIncRegYear = yearData.categoryYearTotals[0] + yearData.categoryYearTotals[1] + yearData.categoryYearTotals[2];
+            const sumExpDailyYear = [3,4,5,6,7,8,9,10].reduce((s, idx) => s + yearData.categoryYearTotals[idx], 0);
+            const sumPleFlowYear = yearData.categoryYearTotals[12] - Math.abs(yearData.categoryYearTotals[13]);
+            const sumExpVarYear = Math.abs(yearData.categoryYearTotals[14]) + Math.abs(yearData.categoryYearTotals[15]);
+            const sumIncVarYear = yearData.categoryYearTotals[16] + yearData.categoryYearTotals[17];
+
+            tableHtml += `
+                <tr class="annual-summary-row">
+                    <td style="font-weight: bold;">年度總結</td>
+
+                    ${cState.inc_reg ? `
+                        <td class="col-collapsed-cell grp-l grp-r profit-text mono">$${sumIncRegYear.toLocaleString()}</td>
+                    ` : `
+                        ${renderSumCell(0, 'grp-l')}
+                        ${renderSumCell(1)}
+                        ${renderSumCell(2, 'grp-r')}
+                    `}
+
+                    ${cState.exp_daily ? `
+                        <td class="col-collapsed-cell grp-l grp-r expense-text mono">-$${sumExpDailyYear.toLocaleString()}</td>
+                    ` : `
+                        <td class="grp-l" style="background-color: var(--budget-blue-bg); font-weight: bold;" class="mono">${yearData.yearTotalBudgetLimit > 0 ? '$' + yearData.yearTotalBudgetLimit.toLocaleString() : '-'}</td>
+                        ${renderSumCell(3)}${renderSumCell(4)}${renderSumCell(5)}${renderSumCell(6)}${renderSumCell(7)}${renderSumCell(8)}${renderSumCell(9)}${renderSumCell(10)}
+                        <td class="cell-calc-yellow grp-r ${yearRemainingClass}">${yearRemainingHtml}</td>
+                    `}
+
+                    ${cState.ple_adj ? `
+                        <td class="grp-l expense-text mono">${yearData.categoryYearTotals[11] === 0 ? '-' : '-$' + Math.abs(yearData.categoryYearTotals[11]).toLocaleString()}</td>
+                        <td class="col-collapsed-cell grp-r mono ${sumPleFlowYear > 0 ? 'profit-text' : (sumPleFlowYear < 0 ? 'expense-text' : '')}">
+                            ${sumPleFlowYear === 0 ? '0' : (sumPleFlowYear > 0 ? '+$' : '-$') + Math.abs(sumPleFlowYear).toLocaleString()}
+                        </td>
+                    ` : `
+                        ${renderSumCell(11, 'grp-l')}
+                        ${renderSumCell(12)}
+                        ${renderSumCell(13, 'grp-r')}
+                    `}
+
+                    ${cState.exp_var ? `
+                        <td class="col-collapsed-cell grp-l grp-r expense-text mono">-$${sumExpVarYear.toLocaleString()}</td>
+                    ` : `
+                        ${renderSumCell(14, 'grp-l')}
+                        ${renderSumCell(15, 'grp-r')}
+                    `}
+
+                    ${cState.inc_var ? `
+                        <td class="col-collapsed-cell grp-l grp-r profit-text mono">$${sumIncVarYear.toLocaleString()}</td>
+                    ` : `
+                        ${renderSumCell(16, 'grp-l')}
+                        ${renderSumCell(17, 'grp-r')}
+                    `}
+
+                    ${renderSumCell(18)}
+
+                    ${cState.cash_mon ? `
+                        <td class="cash-col grp-l grp-r">$${yearData.currentCash.toLocaleString()}</td>
+                    ` : `
+                        <td class="cash-col grp-l">$${yearData.currentCash.toLocaleString()}</td>
+                        <td style="background-color: #eef3ef; color: var(--sage-primary); font-weight: 700;">$${yearData.decReserve.toLocaleString()}</td>
+                        <td class="cell-calc-yellow grp-r ${annualInvestClass}" style="font-size: 13.5px;" title="12月期末現金 - 12月固定預備金 = 年度可投資總額">
+                            🎯${annualInvestSign}${Math.abs(yearData.annualInvestableCash).toLocaleString()}
+                        </td>
+                    `}
+
+                    ${cState.asset_calc ? `
+                        <td class="cell-calc-yellow grp-l ${yearData.annualNetChange >= 0 ? 'profit-text' : 'expense-text'}" title="全年度淨資產增減">${yearData.annualNetChange >= 0 ? '+$' : '-$'}${Math.abs(yearData.annualNetChange).toLocaleString()}</td>
+                        <td class="cell-calc-yellow grp-r">${yearData.annualGrowthRateStr}</td>
+                    ` : `
+                        <td class="grp-l">-</td><td>-</td><td>-</td><td>-</td><td>-</td>
+                        <td class="cell-calc-yellow">$${yearData.decEstimatedAssets.toLocaleString()}</td>
+                        <td class="cell-calc-yellow ${yearData.annualNetChange >= 0 ? 'profit-text' : 'expense-text'}" title="全年度淨資產增減">${yearData.annualNetChange >= 0 ? '+$' : '-$'}${Math.abs(yearData.annualNetChange).toLocaleString()}</td>
+                        <td class="cell-calc-yellow">${yearData.annualGrowthRateStr}</td>
+                        <td class="cell-calc-yellow grp-r ${decUnleveragedClass}">${yearData.decUnleveragedRatio.toFixed(1)}%</td>
+                    `}
+
+                    ${cState.overview ? `
+                        <td class="cell-net-flow mono grp-l grp-r ${yearData.overviewYearTotalNetFlow >= 0 ? 'profit-text' : 'expense-text'}">${yearData.overviewYearTotalNetFlow === 0 ? '0' : (yearData.overviewYearTotalNetFlow > 0 ? '+$' : '-$') + Math.abs(yearData.overviewYearTotalNetFlow).toLocaleString()}</td>
+                    ` : `
+                        <td class="mono grp-l">${yearData.overviewYearTotalInc === 0 ? '-' : '$' + yearData.overviewYearTotalInc.toLocaleString()}</td>
+                        <td class="expense-text mono">${yearData.overviewYearTotalExp === 0 ? '-' : '-$' + yearData.overviewYearTotalExp.toLocaleString()}</td>
+                        <td class="mono ${yearData.overviewYearTotalAdj < 0 ? 'expense-text' : (yearData.overviewYearTotalAdj > 0 ? 'profit-text' : '')}">${yearData.overviewYearTotalAdj === 0 ? '-' : (yearData.overviewYearTotalAdj > 0 ? '+$' : '-$') + Math.abs(yearData.overviewYearTotalAdj).toLocaleString()}</td>
+                        <td class="cell-net-flow mono grp-r ${yearData.overviewYearTotalNetFlow >= 0 ? 'profit-text' : 'expense-text'}">${yearData.overviewYearTotalNetFlow === 0 ? '0' : (yearData.overviewYearTotalNetFlow > 0 ? '+$' : '-$') + Math.abs(yearData.overviewYearTotalNetFlow).toLocaleString()}</td>
+                    `}
+
+                    ${includeRisk ? '<td colspan="6" class="grp-l grp-r" style="color:var(--sage-muted); font-size:12px;">(風控動態監控)</td>' : ''}
+                </tr>
+            `;
+
+            tableHtml += `</tbody></table>`;
+            return tableHtml;
+        }
+
+        function generateRiskOnlyTable(yearData, y) {
+            let html = `
+                <table style="width: 100%;">
+                    <thead>
+                        <tr><th colspan="10" class="year-header" style="background:var(--sage-primary);">🛡️ ${yearData.yearNum} 年 (第 ${y} 年度) 財務健康與風控指標體檢</th></tr>
+                        <tr>
+                            <th>月份</th>
+                            <th class="cash-col">期末現金</th>
+                            <th class="cell-calc-yellow">實際淨資產</th>
+                            <th>1. 資產負債比<span class="th-formula-note">(總負債 ÷ 總資產)</span></th>
+                            <th>2. 淨值槓桿率<span class="th-formula-note">(總負債 ÷ 實際淨資產)</span></th>
+                            <th>3. 現金緩衝月數<span class="th-formula-note">(期末現金 ÷ 當月支出)</span></th>
+                            <th>4. 貸款負擔比<span class="th-formula-note">(固定借貸 ÷ 當月總收入)</span></th>
+                            <th>5. 支出收入比<span class="th-formula-note">(當月支出 ÷ 當月總收入)</span></th>
+                            <th>6. 淨資產覆蓋年數<span class="th-formula-note">(實際淨資產 ÷ 年化支出)</span></th>
+                            <th class="cell-net-flow">收支淨額</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            yearData.monthRows.forEach(row => {
+                const r = row.riskMetrics;
+                html += `
+                    <tr>
+                        <td style="font-weight: bold;">${row.monthName}</td>
+                        <td class="cash-col">$${row.currentCash.toLocaleString()}</td>
+                        <td class="cell-calc-yellow ${row.realNetAsset >= 0 ? 'profit-text' : 'expense-text'}">${row.realNetAsset >= 0 ? '+$' : '-$'}${Math.abs(row.realNetAsset).toLocaleString()}</td>
+                        <td>${renderRiskBadge(r.dtar, r.dtar.val.toFixed(1) + '%')}</td>
+                        <td>${renderRiskBadge(r.netLev, r.netLev.val.toFixed(1) + '%')}</td>
+                        <td>${renderRiskBadge(r.cashBuffer, r.cashBuffer.val.toFixed(1) + '月')}</td>
+                        <td>${renderRiskBadge(r.dti, r.dti.val.toFixed(1) + '%')}</td>
+                        <td>${renderRiskBadge(r.expInc, r.expInc.val.toFixed(1) + '%')}</td>
+                        <td>${renderRiskBadge(r.netCoverage, r.netCoverage.val.toFixed(1) + ' 年')}</td>
+                        <td class="cell-net-flow ${row.overviewNetFlow >= 0 ? 'profit-text' : 'expense-text'}">${row.overviewNetFlow >= 0 ? '+$' : '-$'}${Math.abs(row.overviewNetFlow).toLocaleString()}</td>
+                    </tr>
+                `;
+            });
+            html += `</tbody></table>`;
+            return html;
+        }
+
+        function generatePnLViewHtml(yearData, y) {
+            const yr = yearData.yearNum;
+            const ym = yearData.monthRows;
+
+            let maxIncomeCatName = "無收入";
+            let maxIncomeCatPct = 0;
+            if (yearData.pnlYearTotalIncome > 0) {
+                let maxVal = -1;
+                let maxIdx = 0;
+                [0, 1, 2, 12, 16, 17].forEach(idx => {
+                    if (yearData.categoryYearTotals[idx] > maxVal) {
+                        maxVal = yearData.categoryYearTotals[idx];
+                        maxIdx = idx;
+                    }
+                });
+                maxIncomeCatName = maxIdx === 2 ? customIncomeName1 : CATEGORIES[maxIdx].name.replace(/<br\s*[\/]?>/gi, ' ');
+                maxIncomeCatPct = ((maxVal / yearData.pnlYearTotalIncome) * 100).toFixed(2);
+            }
+
+            const pnlRate = yearData.pnlYearTotalIncome > 0 ? ((yearData.pnlYearTotalNet / yearData.pnlYearTotalIncome) * 100).toFixed(2) : 0;
+            const pnlRateSign = pnlRate >= 0 ? '+' : '';
+
+            const renderPnLDataRow = (title, catIdx, totalParent, isExpense = false, isDiffRow = false) => {
+                const vals = ym.map(m => m.catVals[catIdx]);
+                const sum = vals.reduce((a, b) => a + b, 0);
+                const pct = totalParent > 0 ? ((sum / totalParent) * 100).toFixed(2) + '%' : '0.00%';
+                const highlightClass = isDiffRow ? 'pnl-diff-highlight' : '';
+
+                return `
+                    <tr class="child-row group-${isExpense ? 'expense' : 'income'}-${yr} ${highlightClass}">
+                        <td style="padding-left: 28px;">${title}</td>
+                        ${vals.map(v => {
+                            if (v === 0) return '<td class="mono">-</td>';
+                            if (catIdx === 18) {
+                                const s = v > 0 ? '+$' : '-$';
+                                return `<td class="mono ${v < 0 ? 'expense-text' : 'profit-text'}">${s}${Math.abs(v).toLocaleString()}</td>`;
+                            }
+                            return `<td class="mono">${v.toLocaleString()}</td>`;
+                        }).join('')}
+                        <td class="mono" style="font-weight:700;">
+                            ${sum === 0 ? '-' : (catIdx === 18 ? (sum > 0 ? '+$' : '-$') + Math.abs(sum).toLocaleString() : sum.toLocaleString())}
+                        </td>
+                        <td class="mono">${pct}</td>
+                    </tr>
+                `;
+            };
+
+            const renderAssetRow = (title, getValFn, isDebt = false) => {
+                const vals = ym.map(m => getValFn(m));
+                const firstVal = vals[0];
+                const lastVal = vals[11];
+                const diffAmt = lastVal - firstVal;
+                let diffPctStr = "-";
+                if (firstVal !== 0) {
+                    const pct = ((diffAmt / Math.abs(firstVal)) * 100).toFixed(2);
+                    diffPctStr = (pct > 0 ? '+' : '') + pct + '%';
+                }
+
+                let amtColorClass = '';
+                if (diffAmt !== 0) {
+                    if (isDebt) amtColorClass = diffAmt < 0 ? 'profit-text' : 'expense-text';
+                    else amtColorClass = diffAmt > 0 ? 'profit-text' : 'expense-text';
+                }
+
+                const diffSign = diffAmt > 0 ? '+' : (diffAmt < 0 ? '-' : '');
+
+                return `
+                    <tr>
+                        <td>${title}</td>
+                        ${vals.map(v => `<td class="mono">${v === 0 ? '-' : v.toLocaleString()}</td>`).join('')}
+                        <td class="mono ${amtColorClass}" style="font-weight:700;" title="${isDebt ? '負債變動 (負數為減少還款)' : '資產變動'}">
+                            ${diffAmt === 0 ? '0' : diffSign + Math.abs(diffAmt).toLocaleString()}
+                        </td>
+                        <td class="mono ${amtColorClass}">${diffPctStr}</td>
+                    </tr>
+                `;
+            };
+
+            return `
+                <div class="pnl-year-header">
+                    <span>📑 ${yr} 年度財務損益與資產負債表 (第 ${y} 年度)</span>
+                    <span style="font-size:13px; font-weight:normal; opacity:0.9;">數據來源：流水帳即時連動</span>
+                </div>
+                <div class="pnl-content">
+                    <div class="kpi-grid">
+                        <div class="kpi-card">
+                            <div class="title">年度總收入</div>
+                            <div class="value" style="color: #1e3a8a;">$${yearData.pnlYearTotalIncome.toLocaleString()}</div>
+                            <div class="sub">主要來源：${maxIncomeCatName} (${maxIncomeCatPct}%)</div>
+                        </div>
+                        <div class="kpi-card">
+                            <div class="title">年度總支出</div>
+                            <div class="value" style="color: #b8334a;">$${yearData.pnlYearTotalExpense.toLocaleString()}</div>
+                            <div class="sub">佔總收入 ${yearData.pnlYearTotalIncome > 0 ? ((yearData.pnlYearTotalExpense / yearData.pnlYearTotalIncome) * 100).toFixed(2) : 0}%</div>
+                        </div>
+                        <div class="kpi-card">
+                            <div class="title">年度總損益 (結餘)</div>
+                            <div class="value ${yearData.pnlYearTotalNet >= 0 ? 'profit-text' : 'expense-text'}">
+                                ${yearData.pnlYearTotalNet >= 0 ? '+$' : '-$'}${Math.abs(yearData.pnlYearTotalNet).toLocaleString()}
+                            </div>
+                            <div class="sub ${yearData.pnlYearTotalNet >= 0 ? 'positive' : 'negative'}">淨損益率 ${pnlRateSign}${pnlRate}%</div>
+                        </div>
+                        <div class="kpi-card">
+                            <div class="title">年末實際淨資產</div>
+                            <div class="value" style="color: #0369a1;">$${yearData.decNet.toLocaleString()}</div>
+                            <div class="sub ${yearData.annualNetChange >= 0 ? 'positive' : 'negative'}">年度增減 ${yearData.annualNetChange >= 0 ? '+$' : '-$'}${Math.abs(yearData.annualNetChange).toLocaleString()} (${yearData.annualGrowthRateStr})</div>
+                        </div>
+                    </div>
+
+                    <div class="pnl-chart-box">
+                        <div class="pnl-chart-title">年度每月收支與損益趨勢比較圖 (${yr})</div>
+                        <div class="pnl-chart-container-large">
+                            <canvas id="pnl_top_chart_${yr}"></canvas>
+                        </div>
+                    </div>
+
+                    <div style="font-size:15px; font-weight:700; color:var(--text-title); margin:20px 0 10px 0; display:flex; align-items:center; gap:6px;">
+                        <span>損益表 (Income Statement - ${yr})</span>
+                    </div>
+                    <div class="pnl-table-wrap">
+                        <table class="pnl-table">
+                            <colgroup>
+                                <col style="width: 230px;">
+                                <col style="width: 82px;"><col style="width: 82px;"><col style="width: 82px;"><col style="width: 82px;"><col style="width: 82px;"><col style="width: 82px;">
+                                <col style="width: 82px;"><col style="width: 82px;"><col style="width: 82px;"><col style="width: 82px;"><col style="width: 82px;"><col style="width: 82px;">
+                                <col style="width: 100px;"><col style="width: 75px;">
+                            </colgroup>
+                            <thead>
+                                <tr>
+                                    <th>項目 (${yr})</th>
+                                    ${MONTHS.map(m => `<th>${m}</th>`).join('')}
+                                    <th>年度累計</th>
+                                    <th>佔比</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr class="row-category">
+                                    <td>
+                                        <button class="toggle-btn" id="btn-income-${yr}" onclick="togglePnLGroup('income-${yr}')">▼</button>
+                                        總收入
+                                    </td>
+                                    ${ym.map(m => `<td class="mono">${m.pnlIncome === 0 ? '-' : m.pnlIncome.toLocaleString()}</td>`).join('')}
+                                    <td class="mono" style="font-weight:700;">$${yearData.pnlYearTotalIncome.toLocaleString()}</td>
+                                    <td class="mono">100.00%</td>
+                                </tr>
+                                ${renderPnLDataRow('薪資主動收入', 0, yearData.pnlYearTotalIncome, false)}
+                                ${renderPnLDataRow('儲蓄利息/回饋', 1, yearData.pnlYearTotalIncome, false)}
+                                ${renderPnLDataRow(customIncomeName1, 2, yearData.pnlYearTotalIncome, false)}
+                                ${renderPnLDataRow('質押本金借出 (現金流入)', 12, yearData.pnlYearTotalIncome, false)}
+                                ${renderPnLDataRow('賣股票基金股利', 16, yearData.pnlYearTotalIncome, false)}
+                                ${renderPnLDataRow('其他收入', 17, yearData.pnlYearTotalIncome, false)}
+
+                                <tr class="row-category">
+                                    <td>
+                                        <button class="toggle-btn" id="btn-expense-${yr}" onclick="togglePnLGroup('expense-${yr}')">▼</button>
+                                        總支出
+                                    </td>
+                                    ${ym.map(m => `<td class="mono">${m.pnlExpense === 0 ? '-' : m.pnlExpense.toLocaleString()}</td>`).join('')}
+                                    <td class="mono expense-text" style="font-weight:700;">$${yearData.pnlYearTotalExpense.toLocaleString()}</td>
+                                    <td class="mono">${yearData.pnlYearTotalIncome > 0 ? ((yearData.pnlYearTotalExpense / yearData.pnlYearTotalIncome) * 100).toFixed(2) + '%' : '0.00%'}</td>
+                                </tr>
+                                ${renderPnLDataRow('固定支出 月費', 3, yearData.pnlYearTotalExpense, true)}
+                                ${renderPnLDataRow('固定支出 保險', 4, yearData.pnlYearTotalExpense, true)}
+                                ${renderPnLDataRow('固定支出 借貸', 5, yearData.pnlYearTotalExpense, true)}
+                                ${renderPnLDataRow('信用卡日常', 6, yearData.pnlYearTotalExpense, true)}
+                                ${renderPnLDataRow('提款轉帳現金', 7, yearData.pnlYearTotalExpense, true)}
+                                ${renderPnLDataRow('其他支出', 8, yearData.pnlYearTotalExpense, true)}
+                                ${renderPnLDataRow(customBackupName1, 9, yearData.pnlYearTotalExpense, true)}
+                                ${renderPnLDataRow(customBackupName2, 10, yearData.pnlYearTotalExpense, true)}
+                                ${renderPnLDataRow('質押利息還款', 11, yearData.pnlYearTotalExpense, true)}
+                                ${renderPnLDataRow('質押本金還款 (現金流出)', 13, yearData.pnlYearTotalExpense, true)}
+                                ${renderPnLDataRow('投資股票基金', 14, yearData.pnlYearTotalExpense, true)}
+                                ${renderPnLDataRow('其他投資', 15, yearData.pnlYearTotalExpense, true)}
+                                
+                                ${renderPnLDataRow('帳差調整', 18, yearData.pnlYearTotalExpense, true, true)}
+
+                                <tr class="row-summary">
+                                    <td style="padding-left: 14px; font-weight:700;">總損益 (結餘)</td>
+                                    ${ym.map(m => {
+                                        const cls = m.pnlNet >= 0 ? 'profit-text' : 'expense-text';
+                                        return `<td class="mono ${cls}">${m.pnlNet === 0 ? '0' : (m.pnlNet > 0 ? '+' : '-') + Math.abs(m.pnlNet).toLocaleString()}</td>`;
+                                    }).join('')}
+                                    <td class="mono ${yearData.pnlYearTotalNet >= 0 ? 'profit-text' : 'expense-text'}" style="font-weight:700;">
+                                        ${yearData.pnlYearTotalNet >= 0 ? '+$' : '-$'}${Math.abs(yearData.pnlYearTotalNet).toLocaleString()}
+                                    </td>
+                                    <td class="mono ${yearData.pnlYearTotalNet >= 0 ? 'profit-text' : 'expense-text'}">${pnlRateSign}${pnlRate}%</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div style="font-size:15px; font-weight:700; color:var(--text-title); margin:22px 0 10px 0; display:flex; align-items:center; gap:6px;">
+                        <span>資產與負債變動 (Assets & Liabilities - ${yr})</span>
+                    </div>
+                    <div style="background:#ffffff; border:1px solid var(--border-soft); border-radius:6px; overflow:hidden; margin-bottom:22px;">
+                        <table class="assets-table">
+                            <colgroup>
+                                <col class="col-item">
+                                <col class="col-month"><col class="col-month"><col class="col-month">
+                                <col class="col-month"><col class="col-month"><col class="col-month">
+                                <col class="col-month"><col class="col-month"><col class="col-month">
+                                <col class="col-month"><col class="col-month"><col class="col-month">
+                                <col class="col-diff-amt">
+                                <col class="col-diff-pct">
+                            </colgroup>
+                            <thead>
+                                <tr>
+                                    <th>項目 (${yr})</th>
+                                    ${MONTHS.map(m => `<th>${m}</th>`).join('')}
+                                    <th>年度增減<br><span style="font-size:10px; font-weight:normal;">(年末-年初)</span></th>
+                                    <th>成長率<br><span style="font-size:10px; font-weight:normal;">(增額/年初)</span></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${renderAssetRow('股票基金成本', m => m.stockCost, false)}
+                                ${renderAssetRow('股票基金現值', m => m.stockMarket, false)}
+                                ${renderAssetRow('淨損 (未實現損益)', m => m.netStockGainLoss, false)}
+                                ${renderAssetRow('質押負債', m => m.stockPledge, true)}
+                                ${renderAssetRow('信貸負債', m => m.creditLoan, true)}
+                                <tr class="row-summary">
+                                    <td>實際淨資產</td>
+                                    ${ym.map(m => `<td class="mono">${m.realNetAsset === 0 ? '-' : m.realNetAsset.toLocaleString()}</td>`).join('')}
+                                    <td class="mono ${yearData.annualNetChange >= 0 ? 'profit-text' : 'expense-text'}" style="font-weight:700;">
+                                        ${yearData.annualNetChange >= 0 ? '+' : '-'}${Math.abs(yearData.annualNetChange).toLocaleString()}
+                                    </td>
+                                    <td class="mono ${yearData.annualNetChange >= 0 ? 'profit-text' : 'expense-text'}">${yearData.annualGrowthRateStr}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="pnl-bottom-charts">
+                        <div class="pnl-chart-box">
+                            <div class="pnl-chart-title">圖表1：股票基金成本、現值與淨損比較圖 (${yr})</div>
+                            <div class="pnl-chart-container-small">
+                                <canvas id="pnl_invest_chart_${yr}"></canvas>
+                            </div>
+                        </div>
+                        <div class="pnl-chart-box">
+                            <div class="pnl-chart-title">圖表2：負債結構與實際淨資產比較圖 (${yr})</div>
+                            <div class="pnl-chart-container-small">
+                                <canvas id="pnl_balance_chart_${yr}"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        /* 頁籤 5：連續年度財務損益表 HTML（單指標無衝突線性走訪，徹底防止卡死） */
+        function generateMultiPnLViewHtml(multiYears) {
+            if (!multiYears || multiYears.length === 0) return '<div style="padding:20px;">無可顯示之年度資料</div>';
+
+            const startYr = multiYears[0].yearNum;
+            const endYr = multiYears[multiYears.length - 1].yearNum;
+            const yrSpanStr = startYr === endYr ? `${startYr} 年` : `${startYr} ~ ${endYr} 年 (連續 ${multiYears.length} 年)`;
+
+            const grandTotalInc = multiYears.reduce((s, y) => s + y.pnlYearTotalIncome, 0);
+            const grandTotalExp = multiYears.reduce((s, y) => s + y.pnlYearTotalExpense, 0);
+            const grandTotalNet = multiYears.reduce((s, y) => s + y.pnlYearTotalNet, 0);
+            const lastYearData = multiYears[multiYears.length - 1];
+            const endDecNet = lastYearData.decNet;
+            const firstJanNet = multiYears[0].monthRows[0].realNetAsset;
+            const periodNetGrowth = endDecNet - firstJanNet;
+            const periodGrowthPctStr = firstJanNet !== 0 ? (((endDecNet / firstJanNet) - 1) * 100).toFixed(2) + '%' : '-';
+
+            // 嚴謹單指針走訪聚合演算法：保證指針只進不退，根除任何卡死死循環可能
+            const displaySegments = [];
+            let ptr = 0;
+            while (ptr < multiYears.length) {
+                const currentYr = multiYears[ptr].yearNum;
+                if (!collapsedYearsMap[currentYr]) {
+                    displaySegments.push({ type: 'year', data: multiYears[ptr] });
+                    ptr++;
+                } else {
+                    let rangeYears = [];
+                    const rangeStart = currentYr;
+                    let rangeEnd = currentYr;
+                    while (ptr < multiYears.length && collapsedYearsMap[multiYears[ptr].yearNum]) {
+                        rangeYears.push(multiYears[ptr]);
+                        rangeEnd = multiYears[ptr].yearNum;
+                        ptr++;
+                    }
+                    displaySegments.push({
+                        type: 'collapsedRange',
+                        startYear: rangeStart,
+                        endYear: rangeEnd,
+                        count: rangeYears.length,
+                        yearsInRange: rangeYears
+                    });
+                }
+            }
+
+            const generateMultiColgroup = () => {
+                return `
+                    <colgroup>
+                        <col style="width: 230px; min-width: 230px; max-width: 230px;">
+                        ${displaySegments.map(seg => {
+                            if (seg.type === 'year') {
+                                return `<col style="width: 125px; min-width: 125px; max-width: 125px;">`;
+                            } else {
+                                return `<col style="width: 94px; min-width: 94px; max-width: 94px;">`;
+                            }
+                        }).join('')}
+                        <col style="width: 145px; min-width: 145px; max-width: 145px;">
+                    </colgroup>
+                `;
+            };
+
+            const renderMultiHeaderTh = () => {
+                return displaySegments.map(seg => {
+                    if (seg.type === 'year') {
+                        const y = seg.data;
+                        return `
+                            <th class="col-multi-year">
+                                <div>${y.yearNum}年</div>
+                                <button class="btn-year-collapse" onclick="toggleYearCollapse(${y.yearNum})" title="收折此年份">◀收合</button>
+                            </th>
+                        `;
+                    } else {
+                        const label = seg.count === 1 ? `${seg.startYear}年` : `${seg.startYear.toString().slice(-2)}~${seg.endYear.toString().slice(-2)}年`;
+                        return `
+                            <th class="col-year-collapsed-range" onclick="expandCollapsedRange(${seg.startYear}, ${seg.endYear})" title="已收折 ${seg.startYear} ~ ${seg.endYear} 年 (共 ${seg.count} 年累計)，點擊全部展開">
+                                <div style="font-size:11px; font-weight:bold; line-height:1.2;">${label}</div>
+                                <div class="btn-range-expand">${seg.count}年加總 ►</div>
+                            </th>
+                        `;
+                    }
+                }).join('');
+            };
+
+            const renderMultiDataRow = (title, catIdx, isExpense = false, isDiffRow = false) => {
+                const highlightClass = isDiffRow ? 'pnl-diff-highlight' : '';
+                const sum = multiYears.reduce((acc, y) => acc + y.categoryYearTotals[catIdx], 0);
+
+                return `
+                    <tr class="child-row group-${isExpense ? 'expense' : 'income'}-multi ${highlightClass}">
+                        <td style="padding-left: 28px;">${title}</td>
+                        ${displaySegments.map(seg => {
+                            if (seg.type === 'year') {
+                                const v = seg.data.categoryYearTotals[catIdx];
+                                if (v === 0) return '<td class="mono col-multi-year">-</td>';
+                                if (catIdx === 18) {
+                                    const s = v > 0 ? '+$' : '-$';
+                                    return `<td class="mono col-multi-year ${v < 0 ? 'expense-text' : 'profit-text'}">${s}${Math.abs(v).toLocaleString()}</td>`;
+                                }
+                                return `<td class="mono col-multi-year">${v.toLocaleString()}</td>`;
+                            } else {
+                                const rangeSum = (seg.yearsInRange || []).reduce((acc, y) => acc + y.categoryYearTotals[catIdx], 0);
+                                if (rangeSum === 0) {
+                                    return `<td class="col-year-collapsed-range mono" onclick="expandCollapsedRange(${seg.startYear}, ${seg.endYear})" title="${seg.startYear}~${seg.endYear} (共${seg.count}年累計): $0 (點擊展開)">-</td>`;
+                                }
+                                let displayStr = rangeSum.toLocaleString();
+                                let colorClass = '';
+                                if (catIdx === 18) {
+                                    displayStr = (rangeSum > 0 ? '+$' : '-$') + Math.abs(rangeSum).toLocaleString();
+                                    colorClass = rangeSum < 0 ? 'expense-text' : 'profit-text';
+                                } else if (isExpense) {
+                                    displayStr = '-$' + rangeSum.toLocaleString();
+                                    colorClass = 'expense-text';
+                                }
+                                return `<td class="col-year-collapsed-range mono ${colorClass}" onclick="expandCollapsedRange(${seg.startYear}, ${seg.endYear})" title="${seg.startYear}~${seg.endYear} (共${seg.count}年累計): ${displayStr} (點擊展開)">${displayStr}</td>`;
+                            }
+                        }).join('')}
+                        <td class="mono col-multi-total" style="font-weight:700;">
+                            ${sum === 0 ? '-' : (catIdx === 18 ? (sum > 0 ? '+$' : '-$') + Math.abs(sum).toLocaleString() : sum.toLocaleString())}
+                        </td>
+                    </tr>
+                `;
+            };
+
+            const renderMultiAssetRow = (title, getValFn, isDebt = false) => {
+                const firstVal = getValFn(multiYears[0]);
+                const lastVal = getValFn(multiYears[multiYears.length - 1]);
+                const diffAmt = lastVal - firstVal;
+                let amtColorClass = '';
+                if (diffAmt !== 0) {
+                    if (isDebt) amtColorClass = diffAmt < 0 ? 'profit-text' : 'expense-text';
+                    else amtColorClass = diffAmt > 0 ? 'profit-text' : 'expense-text';
+                }
+                const diffSign = diffAmt > 0 ? '+' : (diffAmt < 0 ? '-' : '');
+
+                return `
+                    <tr>
+                        <td>${title}</td>
+                        ${displaySegments.map(seg => {
+                            if (seg.type === 'year') {
+                                const v = getValFn(seg.data);
+                                return `<td class="mono col-multi-year">${v === 0 ? '-' : v.toLocaleString()}</td>`;
+                            } else {
+                                const list = seg.yearsInRange || [];
+                                const endValOfRange = list.length > 0 ? getValFn(list[list.length - 1]) : 0;
+                                const startValOfRange = list.length > 0 ? getValFn(list[0]) : 0;
+                                const changeVal = endValOfRange - startValOfRange;
+                                const changeSign = changeVal > 0 ? '+' : (changeVal < 0 ? '-' : '');
+                                return `
+                                    <td class="col-year-collapsed-range mono" onclick="expandCollapsedRange(${seg.startYear}, ${seg.endYear})" title="${seg.startYear}~${seg.endYear} (${seg.endYear}年末餘額: $${endValOfRange.toLocaleString()}，區間增減: ${changeSign}$${Math.abs(changeVal).toLocaleString()}) (點擊展開)">
+                                        ${endValOfRange === 0 ? '-' : endValOfRange.toLocaleString()}
+                                    </td>
+                                `;
+                            }
+                        }).join('')}
+                        <td class="mono col-multi-total ${amtColorClass}" style="font-weight:700;">
+                            ${diffAmt === 0 ? '0' : diffSign + Math.abs(diffAmt).toLocaleString()}
+                        </td>
+                    </tr>
+                `;
+            };
+
+            const colgroupStr = generateMultiColgroup();
+            const headerThStr = renderMultiHeaderTh();
+
+            return `
+                <div class="pnl-year-header">
+                    <span>📈 連續年度財務損益與資產累積表 (${yrSpanStr})</span>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <button class="btn-sub" style="background:#ffffff; color:#222e27; font-size:11.5px; padding:2px 8px;" onclick="expandAllMultiYears()"><i class="fa-solid fa-arrows-left-right-to-line"></i> 全部展開所有年份</button>
+                        <span style="font-size:13px; font-weight:normal; opacity:0.9;">數據來源：全景試算連續貫通</span>
+                    </div>
+                </div>
+                <div class="pnl-content">
+                    <div class="kpi-grid">
+                        <div class="kpi-card">
+                            <div class="title">連續期間總收入合計</div>
+                            <div class="value" style="color: #1e3a8a;">$${grandTotalInc.toLocaleString()}</div>
+                            <div class="sub">年均收入 $${Math.round(grandTotalInc / multiYears.length).toLocaleString()}</div>
+                        </div>
+                        <div class="kpi-card">
+                            <div class="title">連續期間總支出合計</div>
+                            <div class="value" style="color: #b8334a;">$${grandTotalExp.toLocaleString()}</div>
+                            <div class="sub">佔總收入 ${grandTotalInc > 0 ? ((grandTotalExp / grandTotalInc) * 100).toFixed(2) : 0}%</div>
+                        </div>
+                        <div class="kpi-card">
+                            <div class="title">連續期間總結餘 (儲蓄投資)</div>
+                            <div class="value ${grandTotalNet >= 0 ? 'profit-text' : 'expense-text'}">
+                                ${grandTotalNet >= 0 ? '+$' : '-$'}${Math.abs(grandTotalNet).toLocaleString()}
+                            </div>
+                            <div class="sub ${grandTotalNet >= 0 ? 'positive' : 'negative'}">總淨存活率 ${grandTotalInc > 0 ? ((grandTotalNet / grandTotalInc) * 100).toFixed(2) : 0}%</div>
+                        </div>
+                        <div class="kpi-card">
+                            <div class="title">期末年末實際淨資產</div>
+                            <div class="value" style="color: #0369a1;">$${endDecNet.toLocaleString()}</div>
+                            <div class="sub ${periodNetGrowth >= 0 ? 'positive' : 'negative'}">全期身家增減 ${periodNetGrowth >= 0 ? '+$' : '-$'}${Math.abs(periodNetGrowth).toLocaleString()} (${periodGrowthPctStr})</div>
+                        </div>
+                    </div>
+
+                    <div class="pnl-chart-box">
+                        <div class="pnl-chart-title">連續年度收支與淨資產擴張趨勢圖 (${yrSpanStr})</div>
+                        <div class="pnl-chart-container-large">
+                            <canvas id="multi_pnl_chart"></canvas>
+                        </div>
+                    </div>
+
+                    <div style="font-size:15px; font-weight:700; color:var(--text-title); margin:20px 0 10px 0; display:flex; align-items:center; gap:6px;">
+                        <span>連續年度損益表 (Multi-Year Income Statement)</span>
+                    </div>
+                    <div class="pnl-table-wrap" id="multi_pnl_wrap1">
+                        <table class="pnl-table multi-pnl-table">
+                            ${colgroupStr}
+                            <thead>
+                                <tr>
+                                    <th>財務科目</th>
+                                    ${headerThStr}
+                                    <th class="col-multi-total">期間累計總額</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr class="row-category">
+                                    <td>
+                                        <button class="toggle-btn" id="btn-income-multi" onclick="togglePnLGroup('income-multi')">▼</button>
+                                        總收入
+                                    </td>
+                                    ${displaySegments.map(seg => {
+                                        if (seg.type === 'year') {
+                                            return `<td class="mono col-multi-year">$${seg.data.pnlYearTotalIncome.toLocaleString()}</td>`;
+                                        } else {
+                                            const rangeInc = (seg.yearsInRange || []).reduce((acc, y) => acc + y.pnlYearTotalIncome, 0);
+                                            return `<td class="col-year-collapsed-range mono" onclick="expandCollapsedRange(${seg.startYear}, ${seg.endYear})" title="${seg.startYear}~${seg.endYear} (共${seg.count}年收入累計): $${rangeInc.toLocaleString()} (點擊展開)">$${rangeInc.toLocaleString()}</td>`;
+                                        }
+                                    }).join('')}
+                                    <td class="mono col-multi-total" style="font-weight:700;">$${grandTotalInc.toLocaleString()}</td>
+                                </tr>
+                                ${renderMultiDataRow('薪資主動收入', 0, false)}
+                                ${renderMultiDataRow('儲蓄利息/回饋', 1, false)}
+                                ${renderMultiDataRow(customIncomeName1, 2, false)}
+                                ${renderMultiDataRow('質押本金借出 (現金流入)', 12, false)}
+                                ${renderMultiDataRow('賣股票基金股利', 16, false)}
+                                ${renderMultiDataRow('其他收入', 17, false)}
+
+                                <tr class="row-category">
+                                    <td>
+                                        <button class="toggle-btn" id="btn-expense-multi" onclick="togglePnLGroup('expense-multi')">▼</button>
+                                        總支出
+                                    </td>
+                                    ${displaySegments.map(seg => {
+                                        if (seg.type === 'year') {
+                                            return `<td class="mono col-multi-year expense-text">-$${seg.data.pnlYearTotalExpense.toLocaleString()}</td>`;
+                                        } else {
+                                            const rangeExp = (seg.yearsInRange || []).reduce((acc, y) => acc + y.pnlYearTotalExpense, 0);
+                                            return `<td class="col-year-collapsed-range mono expense-text" onclick="expandCollapsedRange(${seg.startYear}, ${seg.endYear})" title="${seg.startYear}~${seg.endYear} (共${seg.count}年支出累計): -$${rangeExp.toLocaleString()} (點擊展開)">-$${rangeExp.toLocaleString()}</td>`;
+                                        }
+                                    }).join('')}
+                                    <td class="mono col-multi-total expense-text" style="font-weight:700;">-$${grandTotalExp.toLocaleString()}</td>
+                                </tr>
+                                ${renderMultiDataRow('固定支出 月費', 3, true)}
+                                ${renderMultiDataRow('固定支出 保險', 4, true)}
+                                ${renderMultiDataRow('固定支出 借貸', 5, true)}
+                                ${renderMultiDataRow('信用卡日常', 6, true)}
+                                ${renderMultiDataRow('提款轉帳現金', 7, true)}
+                                ${renderMultiDataRow('其他支出', 8, true)}
+                                ${renderMultiDataRow(customBackupName1, 9, true)}
+                                ${renderMultiDataRow(customBackupName2, 10, true)}
+                                ${renderMultiDataRow('質押利息還款', 11, true)}
+                                ${renderMultiDataRow('質押本金還款 (現金流出)', 13, true)}
+                                ${renderMultiDataRow('投資股票基金', 14, true)}
+                                ${renderMultiDataRow('其他投資', 15, true)}
+                                ${renderMultiDataRow('帳差調整', 18, true, true)}
+
+                                <tr class="row-summary">
+                                    <td style="padding-left: 14px; font-weight:700;">總損益 (結餘)</td>
+                                    ${displaySegments.map(seg => {
+                                        if (seg.type === 'year') {
+                                            const y = seg.data;
+                                            const cls = y.pnlYearTotalNet >= 0 ? 'profit-text' : 'expense-text';
+                                            return `<td class="mono col-multi-year ${cls}">${y.pnlYearTotalNet >= 0 ? '+' : '-'}$${Math.abs(y.pnlYearTotalNet).toLocaleString()}</td>`;
+                                        } else {
+                                            const rangeNet = (seg.yearsInRange || []).reduce((acc, y) => acc + y.pnlYearTotalNet, 0);
+                                            const cls = rangeNet >= 0 ? 'profit-text' : 'expense-text';
+                                            return `<td class="col-year-collapsed-range mono ${cls}" onclick="expandCollapsedRange(${seg.startYear}, ${seg.endYear})" title="${seg.startYear}~${seg.endYear} (共${seg.count}年總損益累計): ${rangeNet >= 0 ? '+' : '-'}$${Math.abs(rangeNet).toLocaleString()} (點擊展開)">${rangeNet >= 0 ? '+' : '-'}$${Math.abs(rangeNet).toLocaleString()}</td>`;
+                                        }
+                                    }).join('')}
+                                    <td class="mono col-multi-total ${grandTotalNet >= 0 ? 'profit-text' : 'expense-text'}" style="font-weight:700;">
+                                        ${grandTotalNet >= 0 ? '+$' : '-$'}${Math.abs(grandTotalNet).toLocaleString()}
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div style="font-size:15px; font-weight:700; color:var(--text-title); margin:22px 0 10px 0; display:flex; align-items:center; gap:6px;">
+                        <span>年末資產與負債走勢 (Year-End Balance Sheet Trends)</span>
+                    </div>
+                    <div class="pnl-table-wrap" id="multi_pnl_wrap2">
+                        <table class="pnl-table multi-pnl-table">
+                            ${colgroupStr}
+                            <thead>
+                                <tr>
+                                    <th>項目</th>
+                                    ${headerThStr}
+                                    <th class="col-multi-total">全期總變動</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${renderMultiAssetRow('年末期末現金', y => y.currentCash, false)}
+                                ${renderMultiAssetRow('年末股票基金成本', y => y.monthRows[11].stockCost, false)}
+                                ${renderMultiAssetRow('年末股票基金現值', y => y.monthRows[11].stockMarket, false)}
+                                ${renderMultiAssetRow('年末質押負債餘額', y => y.monthRows[11].stockPledge, true)}
+                                ${renderMultiAssetRow('年末信貸負債餘額', y => y.monthRows[11].creditLoan, true)}
+                                <tr class="row-summary">
+                                    <td>年末實際淨資產</td>
+                                    ${displaySegments.map(seg => {
+                                        if (seg.type === 'year') {
+                                            return `<td class="mono col-multi-year" style="color:#0369a1; font-weight:700;">$${seg.data.decNet.toLocaleString()}</td>`;
+                                        } else {
+                                            const list = seg.yearsInRange || [];
+                                            const lastNet = list.length > 0 ? list[list.length - 1].decNet : 0;
+                                            return `<td class="col-year-collapsed-range mono" style="color:#0369a1; font-weight:700;" onclick="expandCollapsedRange(${seg.startYear}, ${seg.endYear})" title="${seg.startYear}~${seg.endYear} (${seg.endYear}年末實際淨資產: $${lastNet.toLocaleString()}) (點擊展開)">$${lastNet.toLocaleString()}</td>`;
+                                        }
+                                    }).join('')}
+                                    <td class="mono col-multi-total ${periodNetGrowth >= 0 ? 'profit-text' : 'expense-text'}" style="font-weight:700;">
+                                        ${periodNetGrowth >= 0 ? '+' : '-'}$${Math.abs(periodNetGrowth).toLocaleString()}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>年度淨資產增長率</td>
+                                    ${displaySegments.map(seg => {
+                                        if (seg.type === 'year') {
+                                            return `<td class="mono col-multi-year">${seg.data.annualGrowthRateStr}</td>`;
+                                        } else {
+                                            const list = seg.yearsInRange || [];
+                                            const firstJan = list.length > 0 ? list[0].monthRows[0].realNetAsset : 0;
+                                            const lastDec = list.length > 0 ? list[list.length - 1].decNet : 0;
+                                            let rangePctStr = "-";
+                                            if (firstJan !== 0) {
+                                                const pct = (((lastDec / firstJan) - 1) * 100).toFixed(2);
+                                                rangePctStr = (pct > 0 ? '+' : '') + pct + '%';
+                                            }
+                                            return `<td class="col-year-collapsed-range mono" onclick="expandCollapsedRange(${seg.startYear}, ${seg.endYear})" title="${seg.startYear}~${seg.endYear} (區間複合增長率: ${rangePctStr}) (點擊展開)">${rangePctStr}</td>`;
+                                        }
+                                    }).join('')}
+                                    <td class="mono col-multi-total ${periodNetGrowth >= 0 ? 'profit-text' : 'expense-text'}">${periodGrowthPctStr}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        }
+
+        function initMultiPnLChart(multiYears) {
+            const ctx = document.getElementById('multi_pnl_chart');
+            if (!ctx) return;
+            const labels = multiYears.map(y => `${y.yearNum}年`);
+
+            multiPnLChartInstance = new Chart(ctx.getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: '年度總收入',
+                            data: multiYears.map(y => y.pnlYearTotalIncome),
+                            backgroundColor: 'rgba(59, 82, 69, 0.75)',
+                            borderColor: '#3b5245',
+                            borderWidth: 1,
+                            order: 3
+                        },
+                        {
+                            label: '年度總支出',
+                            data: multiYears.map(y => y.pnlYearTotalExpense),
+                            backgroundColor: 'rgba(184, 51, 74, 0.75)',
+                            borderColor: '#b8334a',
+                            borderWidth: 1,
+                            order: 3
+                        },
+                        {
+                            label: '年度總損益 (結餘)',
+                            data: multiYears.map(y => y.pnlYearTotalNet),
+                            type: 'line',
+                            borderColor: '#c86f32',
+                            backgroundColor: 'rgba(200, 111, 50, 0.1)',
+                            borderWidth: 2.5,
+                            pointRadius: 4,
+                            fill: false,
+                            order: 2
+                        },
+                        {
+                            label: '年末實際淨資產',
+                            data: multiYears.map(y => y.decNet),
+                            type: 'line',
+                            borderColor: '#2563eb',
+                            backgroundColor: 'rgba(37, 99, 235, 0.08)',
+                            borderWidth: 2.5,
+                            borderDash: [5, 5],
+                            pointRadius: 4,
+                            fill: false,
+                            order: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { ticks: { font: { family: 'Space Mono', size: 11 } } },
+                        y: { ticks: { callback: v => '$' + (v / 10000).toFixed(0) + '萬', font: { family: 'Space Mono', size: 11 } } }
+                    }
+                }
+            });
+        }
+
+        function initPnLCharts(yearData, y) {
+            const yr = yearData.yearNum;
+            const ym = yearData.monthRows;
+
+            const ctxTop = document.getElementById(`pnl_top_chart_${yr}`);
+            if (ctxTop) {
+                pnlChartsInstances[`top_${yr}`] = new Chart(ctxTop.getContext('2d'), {
+                    type: 'bar',
+                    data: {
+                        labels: MONTHS,
+                        datasets: [
+                            {
+                                label: '總收入',
+                                data: ym.map(m => m.pnlIncome),
+                                backgroundColor: 'rgba(59, 82, 69, 0.75)',
+                                borderColor: '#3b5245',
+                                borderWidth: 1,
+                                order: 2
+                            },
+                            {
+                                label: '總支出',
+                                data: ym.map(m => m.pnlExpense),
+                                backgroundColor: 'rgba(184, 51, 74, 0.75)',
+                                borderColor: '#b8334a',
+                                borderWidth: 1,
+                                order: 2
+                            },
+                            {
+                                label: '總損益 (結餘)',
+                                data: ym.map(m => m.pnlNet),
+                                type: 'line',
+                                borderColor: '#28543d',
+                                backgroundColor: 'rgba(40, 84, 61, 0.15)',
+                                borderWidth: 2.5,
+                                pointRadius: 3,
+                                fill: false,
+                                tension: 0.15,
+                                order: 1
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            x: { ticks: { font: { family: 'Space Mono', size: 11 } } },
+                            y: { ticks: { callback: v => '$' + Number(v).toLocaleString(), font: { family: 'Space Mono', size: 11 } } }
+                        }
+                    }
+                });
+            }
+
+            const ctxInvest = document.getElementById(`pnl_invest_chart_${yr}`);
+            if (ctxInvest) {
+                pnlChartsInstances[`invest_${yr}`] = new Chart(ctxInvest.getContext('2d'), {
+                    type: 'bar',
+                    data: {
+                        labels: MONTHS,
+                        datasets: [
+                            { label: '成本', data: ym.map(m => m.stockCost), backgroundColor: 'rgba(94, 117, 104, 0.75)', borderWidth: 1 },
+                            { label: '現值', data: ym.map(m => m.stockMarket), backgroundColor: 'rgba(34, 46, 39, 0.85)', borderWidth: 1 },
+                            { label: '淨損(未實現)', data: ym.map(m => m.netStockGainLoss), backgroundColor: 'rgba(200, 111, 50, 0.75)', borderWidth: 1 }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            x: { ticks: { font: { family: 'Space Mono', size: 10.5 } } },
+                            y: { ticks: { callback: v => '$' + (v / 10000).toFixed(0) + '萬', font: { family: 'Space Mono', size: 10.5 } } }
+                        }
+                    }
+                });
+            }
+
+            const ctxBal = document.getElementById(`pnl_balance_chart_${yr}`);
+            if (ctxBal) {
+                pnlChartsInstances[`balance_${yr}`] = new Chart(ctxBal.getContext('2d'), {
+                    type: 'bar',
+                    data: {
+                        labels: MONTHS,
+                        datasets: [
+                            { label: '質押負債', data: ym.map(m => m.stockPledge), backgroundColor: 'rgba(200, 111, 50, 0.75)', borderWidth: 1 },
+                            { label: '信貸負債', data: ym.map(m => m.creditLoan), backgroundColor: 'rgba(184, 51, 74, 0.75)', borderWidth: 1 },
+                            { label: '實際淨資產', data: ym.map(m => m.realNetAsset), backgroundColor: 'rgba(40, 84, 61, 0.8)', borderWidth: 1 }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            x: { ticks: { font: { family: 'Space Mono', size: 10.5 } } },
+                            y: { ticks: { callback: v => '$' + (v / 10000).toFixed(0) + '萬', font: { family: 'Space Mono', size: 10.5 } } }
+                        }
+                    }
+                });
+            }
+        }
+
+        function renderTrendChart(labels, netAssetData, cashData) {
+            const ctx = document.getElementById('trendChart').getContext('2d');
+            if (trendChartInstance) trendChartInstance.destroy();
+            trendChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        { label: '實際淨資產', data: netAssetData, borderColor: '#28543d', backgroundColor: 'rgba(40, 84, 61, 0.08)', borderWidth: 2, fill: true, pointRadius: 2 },
+                        { label: '期末現金', data: cashData, borderColor: '#c86f32', backgroundColor: 'rgba(200, 111, 50, 0.05)', borderWidth: 2, borderDash: [4, 4], fill: false, pointRadius: 2 }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { ticks: { font: { family: 'Space Mono', size: 10.5 } }, grid: { color: 'rgba(70,95,80,0.08)' } },
+                        y: { ticks: { font: { family: 'Space Mono', size: 10.5 } }, grid: { color: 'rgba(70,95,80,0.08)' } }
+                    },
+                    plugins: {
+                        legend: { labels: { font: { family: 'Inter', size: 12 }, color: '#222e27' } }
+                    }
+                }
+            });
+        }
+
+        function exportData() {
+            const dataToExport = {
+                schemaVersion: "4.2",
+                version: "4.2-FullSystem",
+                exportDate: new Date().toISOString(),
+                startYear: document.getElementById('startYear').value,
+                initialCash: document.getElementById('initialCash').value,
+                viewYearSelect: document.getElementById('viewYearSelect') ? document.getElementById('viewYearSelect').value : 1,
+                viewRange: document.getElementById('viewRange').value,
+                autoRollover: document.getElementById('autoRollover').checked,
+                currentViewMode,
+                groupCollapseState,
+                collapsedYearsMap,
+                closedMonths,
+                customIncomeName1,
+                customBackupName1,
+                customBackupName2,
+                detailsData
+            };
+            const blob = new Blob([JSON.stringify(dataToExport, null, 2)], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `SYS04_財務流水帳與損益_${new Date().toISOString().slice(0, 10)}.FLOW`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function importData() {
+            const fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.accept = '.FLOW, .json';
+            fileInput.onchange = e => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = event => {
+                    try {
+                        const imported = JSON.parse(event.target.result);
+                        pushHistory();
+                        if (imported.startYear) document.getElementById('startYear').value = imported.startYear;
+                        if (imported.initialCash !== undefined) document.getElementById('initialCash').value = imported.initialCash;
+                        if (imported.viewRange !== undefined) {
+                            let vr = parseInt(imported.viewRange);
+                            if (!isNaN(vr) && vr >= 1 && vr <= MAX_YEARS) {
+                                document.getElementById('viewRange').value = vr;
+                            }
+                        }
+                        if (imported.closedMonths) closedMonths = imported.closedMonths;
+                        if (imported.customIncomeName1) customIncomeName1 = imported.customIncomeName1;
+                        if (imported.customBackupName1) customBackupName1 = imported.customBackupName1;
+                        if (imported.customBackupName2) customBackupName2 = imported.customBackupName2;
+                        if (imported.groupCollapseState) groupCollapseState = Object.assign({}, imported.groupCollapseState);
+                        if (imported.collapsedYearsMap) collapsedYearsMap = Object.assign({}, imported.collapsedYearsMap);
+                        if (imported.currentViewMode) currentViewMode = imported.currentViewMode;
+                        
+                        detailsData = migrateDetailsDataIfNeeded(imported.detailsData || {}, imported.schemaVersion);
+                        updateYearOptions();
+                        if (imported.viewYearSelect && document.getElementById('viewYearSelect')) {
+                            document.getElementById('viewYearSelect').value = imported.viewYearSelect;
+                        }
+
+                        if (imported.currentViewMode) {
+                            switchView(imported.currentViewMode);
+                        } else {
+                            calculateAndRender();
+                        }
+                        alert("備份資料匯入成功！");
+                    } catch (err) { alert("檔案格式不符！"); }
+                };
+                reader.readAsText(file);
+            };
+            fileInput.click();
+        }
+
+        function clearData() {
+            if (confirm("確定要清空所有紀錄嗎？此動作將清除快取。")) {
+                pushHistory();
+                localStorage.removeItem(STORAGE_KEY);
+                detailsData = {};
+                closedMonths = {};
+                collapsedYearsMap = {};
+                calculateAndRender();
+            }
+        }
+
+        function copyJanToRestOfYear(yearIdx) {
+            const baseStartYear = parseInt(document.getElementById('startYear').value) || 2026;
+            const currentCalYear = baseStartYear + (yearIdx - 1);
+            if (!confirm(`確定要將 ${currentCalYear} 年 1 月所有收支、上限與預備金設定複製到 2~12 月整年嗎？`)) return;
+
+            pushHistory();
+
+            for (let catIdx = 0; catIdx < CATEGORIES.length; catIdx++) {
+                const sourceKey = `Y${yearIdx}_M0_Cat${catIdx}`;
+                const sourceItems = detailsData[sourceKey] || [];
+                for (let m = 1; m < 12; m++) {
+                    const targetKey = `Y${yearIdx}_M${m}_Cat${catIdx}`;
+                    const targetMonthStr = String(m + 1).padStart(2, '0');
+                    if (sourceItems.length > 0) {
+                        detailsData[targetKey] = sourceItems.map(it => ({ date: `${currentCalYear}-${targetMonthStr}-01`, item: it.item, amount: it.amount }));
+                    } else delete detailsData[targetKey];
+                }
+            }
+
+            const janLimitKey = `Y${yearIdx}_M0_BudgetLimit`;
+            const sourceLimitItems = detailsData[janLimitKey] || [];
+            for (let m = 1; m < 12; m++) {
+                const targetKey = `Y${yearIdx}_M${m}_BudgetLimit`;
+                const targetMonthStr = String(m + 1).padStart(2, '0');
+                if (sourceLimitItems.length > 0) {
+                    detailsData[targetKey] = sourceLimitItems.map(it => ({ date: `${currentCalYear}-${targetMonthStr}-01`, item: it.item, amount: it.amount }));
+                } else delete detailsData[targetKey];
+            }
+
+            const janReserveKey = `Y${yearIdx}_M0_ReserveFund`;
+            const sourceReserveItems = detailsData[janReserveKey] || [];
+            for (let m = 1; m < 12; m++) {
+                const targetKey = `Y${yearIdx}_M${m}_ReserveFund`;
+                const targetMonthStr = String(m + 1).padStart(2, '0');
+                if (sourceReserveItems.length > 0) {
+                    detailsData[targetKey] = sourceReserveItems.map(it => ({ date: `${currentCalYear}-${targetMonthStr}-01`, item: it.item, amount: it.amount }));
+                } else delete detailsData[targetKey];
+            }
+
+            saveToLocalStorage();
+            calculateAndRender();
+            alert("複製完成！已套用至全年。");
+        }
+
+        function copyCellDetails() {
+            const list = detailsData[currentActiveKey] || [];
+            if (list.length === 0) return alert("目前格子無明細可複製！");
+            cellClipboard = JSON.parse(JSON.stringify(list));
+            document.getElementById('btnPasteCell').style.display = 'inline-block';
+            alert(`已複製 ${cellClipboard.length} 筆明細！可至其他格子開啟彈窗貼上。`);
+        }
+
+        function pasteCellDetails() {
+            if (!cellClipboard || cellClipboard.length === 0) return;
+            pushHistory();
+            if (!detailsData[currentActiveKey]) detailsData[currentActiveKey] = [];
+
+            const baseStartYear = parseInt(document.getElementById('startYear').value) || 2026;
+            const currentCalYear = baseStartYear + (currentActiveYear - 1);
+            const targetMonthStr = String(currentActiveMonth + 1).padStart(2, '0');
+
+            cellClipboard.forEach(it => {
+                const dayPart = (it.date && it.date.length >= 10) ? it.date.slice(8) : '01';
+                detailsData[currentActiveKey].push({
+                    date: `${currentCalYear}-${targetMonthStr}-${dayPart}`,
+                    item: it.item,
+                    amount: it.amount
+                });
+            });
+            renderModalList();
+            saveToLocalStorage();
+        }
+
+        function sortDetailsByDate() {
+            const list = detailsData[currentActiveKey] || [];
+            if (list.length <= 1) return;
+            pushHistory();
+            list.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+            renderModalList();
+            saveToLocalStorage();
+        }
+
+        function moveDetail(index, direction) {
+            const list = detailsData[currentActiveKey] || [];
+            const newIndex = index + direction;
+            if (newIndex < 0 || newIndex >= list.length) return;
+            pushHistory();
+            const temp = list[index];
+            list[index] = list[newIndex];
+            list[newIndex] = temp;
+            renderModalList();
+            saveToLocalStorage();
+        }
+
+        function openModal(yearIdx, monthIndex, catKey, titleName) {
+            currentActiveKey = catKey; currentActiveYear = yearIdx; currentActiveMonth = monthIndex; editingIndex = null;
+            const baseStartYear = parseInt(document.getElementById('startYear').value) || 2026;
+            document.getElementById('modalTitle').innerText = `${baseStartYear + (yearIdx - 1)} 年 - ${monthIndex + 1}月 【${titleName.replace(/<br\s*[\/]?>/gi, ' ')}】`;
+            document.getElementById('inputDate').value = `${baseStartYear + (yearIdx - 1)}-${String(monthIndex + 1).padStart(2, '0')}-01`;
+            document.getElementById('inputItem').value = ''; document.getElementById('inputAmount').value = '';
+            document.getElementById('btnPasteCell').style.display = (cellClipboard && cellClipboard.length > 0) ? 'inline-block' : 'none';
+            renderModalList();
+            document.getElementById('detailModal').style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('detailModal').style.display = 'none';
+            calculateAndRender();
+        }
+
+        function saveDetail() {
+            const date = document.getElementById('inputDate').value;
+            const item = document.getElementById('inputItem').value.trim();
+            const rawAmount = parseFloat(document.getElementById('inputAmount').value);
+            if (!item || isNaN(rawAmount)) return alert("請輸入說明與金額！");
+
+            pushHistory();
+            const isAdjDiff = currentActiveKey.includes("_Cat18");
+            const amount = isAdjDiff ? Math.round(rawAmount) : Math.abs(Math.round(rawAmount));
+            if (!detailsData[currentActiveKey]) detailsData[currentActiveKey] = [];
+
+            if (editingIndex !== null) {
+                detailsData[currentActiveKey][editingIndex] = { date, item, amount };
+                editingIndex = null;
+            } else detailsData[currentActiveKey].push({ date, item, amount });
+
+            document.getElementById('inputItem').value = ''; document.getElementById('inputAmount').value = '';
+            renderModalList(); saveToLocalStorage();
+        }
+
+        function repeatToRemainingMonths() {
+            const currentItems = detailsData[currentActiveKey] || [];
+            if (currentItems.length === 0 || currentActiveMonth === 11) return;
+            if (!confirm(`確定要將此項目的 ${currentItems.length} 筆明細複製套用到本年剩餘月份嗎？`)) return;
+
+            pushHistory();
+            const keyParts = currentActiveKey.split('_');
+            const baseStartYear = parseInt(document.getElementById('startYear').value) || 2026;
+            const currentCalYear = baseStartYear + (currentActiveYear - 1);
+
+            for (let m = currentActiveMonth + 1; m < 12; m++) {
+                detailsData[`${keyParts[0]}_M${m}_${keyParts.slice(2).join('_')}`] = currentItems.map(it => ({
+                    date: `${currentCalYear}-${String(m + 1).padStart(2, '0')}-01`,
+                    item: it.item,
+                    amount: it.amount
+                }));
+            }
+            saveToLocalStorage(); calculateAndRender(); closeModal();
+            alert("已批次複製至本年年底所有月份！");
+        }
+
+        function cancelEdit() {
+            editingIndex = null;
+            document.getElementById('inputItem').value = '';
+            document.getElementById('inputAmount').value = '';
+            document.getElementById('saveBtn').innerText = "新增";
+            document.getElementById('saveBtn').className = "btn";
+            document.getElementById('cancelEditBtn').style.display = "none";
+        }
+
+        function editDetail(index) {
+            editingIndex = index;
+            const record = detailsData[currentActiveKey][index];
+            if (!record) return;
+            document.getElementById('inputDate').value = record.date;
+            document.getElementById('inputItem').value = record.item;
+            document.getElementById('inputAmount').value = record.amount;
+            document.getElementById('saveBtn').innerText = "儲存修改";
+            document.getElementById('saveBtn').className = "btn btn-edit";
+            document.getElementById('cancelEditBtn').style.display = "inline-block";
+        }
+
+        function deleteDetail(index) {
+            pushHistory();
+            if (editingIndex === index) cancelEdit();
+            detailsData[currentActiveKey].splice(index, 1);
+            renderModalList();
+            saveToLocalStorage();
+        }
+
+        function renderModalList() {
+            const listContainer = document.getElementById('detailList');
+            const list = detailsData[currentActiveKey] || [];
+            listContainer.innerHTML = '';
+            let total = 0;
+
+            list.forEach((item, index) => {
+                total += Number(item.amount) || 0;
+                const div = document.createElement('div');
+                div.className = 'detail-item';
+                div.innerHTML = `
+                    <span>${escapeHtml(item.date)} | <strong>${escapeHtml(item.item)}</strong></span>
+                    <div class="detail-actions">
+                        <span style="font-weight:600; margin-right:6px;" class="mono">$${Number(item.amount).toLocaleString()}</span>
+                        <button class="btn-icon" onclick="moveDetail(${index}, -1)" title="上移" ${index === 0 ? 'disabled style="opacity:0.25; cursor:not-allowed;"' : ''}><i class="fa-solid fa-chevron-up"></i></button>
+                        <button class="btn-icon" onclick="moveDetail(${index}, 1)" title="下移" ${index === list.length - 1 ? 'disabled style="opacity:0.25; cursor:not-allowed;"' : ''}><i class="fa-solid fa-chevron-down"></i></button>
+                        <button class="btn btn-edit" style="padding:2px 7px; font-size:11px;" onclick="editDetail(${index})">編輯</button>
+                        <button class="btn" style="background:#b8334a; padding:2px 7px; font-size:11px;" onclick="deleteDetail(${index})">刪除</button>
+                    </div>
+                `;
+                listContainer.appendChild(div);
+            });
+            document.getElementById('modalTotal').innerText = total.toLocaleString();
+        }
+
+        document.getElementById('inputAmount').addEventListener('keyup', e => {
+            if (e.key === 'Enter') saveDetail();
+        });
+        document.getElementById('inputItem').addEventListener('keyup', e => {
+            if (e.key === 'Enter') document.getElementById('inputAmount').focus();
+        });
+
+        window.onclick = function(e) {
+            const detailModal = document.getElementById('detailModal');
+            const manualModal = document.getElementById('manualModal');
+            if (e.target === detailModal) closeModal();
+            if (e.target === manualModal) closeManualModal();
+        };
+
+        // 初始化執行
+        loadFromLocalStorage();
+        updateYearOptions();
+        calculateAndRender();
+        updateUndoRedoButtons();
+    </script>
+</body>
+</html>
