@@ -1,0 +1,2461 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-color=1.0">
+    <title>資產配置比例調整與年化報酬試算工具</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+        
+        :root {
+            --bg-canvas: #dfe5e1;       /* 啞光鼠尾草灰綠 */
+            --card-surface: #faf8f5;    /* 溫和手帳奶白 */
+            --header-deep: #222e27;     /* 結構深墨黑綠 */
+            --sage-primary: #3b5245;    /* 架構墨綠 */
+            --sage-muted: #5e7568;      /* 說明文字灰綠 */
+            --amber-accent: #c86f32;    /* 琥珀焦糖亮點色 */
+            --amber-bg: #fcf3eb;        /* 琥珀淡底 */
+            --border-soft: #d3ccc0;     /* 沉著細邊框 */
+            --input-bg: #e9edea;        /* 低反光輸入底 */
+            --text-title: #222e27;      /* 標題深墨黑 */
+            --text-body: #3c4b42;       /* 內文墨黑 */
+            --summary-bg: #f7efe4;      /* 淺焙焦糖唯讀底 */
+            --danger-color: #b8334a;    /* 支出赤字紅 */
+            --success-color: #21613e;   /* 盈餘收益綠 */
+            --breakeven-bg: #fcedf0;    /* 兩平警戒淡紅 */
+            
+            /* 標記列專用淡紅薄霧風格 */
+            --highlight-bg: rgba(254, 226, 226, 0.65);
+            --highlight-border: rgba(248, 113, 113, 0.75);
+        }
+
+        body {
+            font-family: 'Noto Sans TC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--bg-canvas);
+            color: var(--text-body);
+        }
+
+        .font-mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* 隱藏數字輸入框外加箭頭 */
+        input[type="number"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type="number"] {
+            -moz-appearance: textfield;
+        }
+
+        /* 自訂細緻滾動條 */
+        ::-webkit-scrollbar {
+            width: 5px;
+            height: 5px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-soft);
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--sage-muted);
+        }
+
+        /* 高亮標記列樣式 */
+        .marked-row {
+            background-color: var(--highlight-bg) !important;
+            box-shadow: inset 0 0 0 1px var(--highlight-border) !important;
+        }
+
+        /* 超過20年啟動上下捲頁與表頭凍結 */
+        .scrollable-projection {
+            max-height: 680px;
+            overflow-y: auto;
+        }
+        .scrollable-projection thead {
+            position: sticky;
+            top: 0;
+            z-index: 20;
+        }
+
+        /* 列印媒體樣式優化 */
+        @media print {
+            .no-print {
+                display: none !important;
+            }
+            body {
+                background-color: #ffffff !important;
+                color: #000000 !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            .card-print-clean {
+                box-shadow: none !important;
+                border: 1px solid #cccccc !important;
+                background-color: #ffffff !important;
+                break-inside: avoid;
+                page-break-inside: avoid;
+            }
+            .scrollable-projection {
+                max-height: none !important;
+                overflow-y: visible !important;
+            }
+        }
+    </style>
+</head>
+<body class="min-h-screen pb-16">
+
+    <!-- 頂部導覽列 (滿版寬度) -->
+    <header class="border-b no-print sticky top-0 z-50 shadow-sm" style="background-color: var(--header-deep); border-color: rgba(255,255,255,0.1);">
+        <div class="w-full px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            
+            <div class="flex items-center space-x-3">
+                <button onclick="handleGoBack()" title="返回上一頁" class="p-2 rounded-xl text-slate-300 hover:text-white transition" style="background-color: rgba(255,255,255,0.08);">
+                    <i data-lucide="arrow-left" class="w-5 h-5"></i>
+                </button>
+                <div class="p-2 rounded-xl" style="background-color: var(--amber-accent); color: #fff;">
+                    <i data-lucide="pie-chart" class="w-5 h-5"></i>
+                </div>
+                <div>
+                    <h1 class="text-base font-bold text-white leading-tight tracking-wide">資產配置比例調整與年化報酬試算</h1>
+                    <p class="text-xs text-slate-300">雙向獨立資產重組、定期定額動態注入與雙軌彈性再投入長程終值模型</p>
+                </div>
+            </div>
+
+            <!-- 右側功能按鈕列 -->
+            <div class="flex items-center space-x-2">
+                <!-- 匯出 JSON -->
+                <button onclick="exportData()" title="匯出配置檔 JSON" class="px-3 py-1.5 text-xs font-medium rounded-xl text-slate-200 hover:text-white transition flex items-center gap-1.5" style="background-color: rgba(255,255,255,0.08);">
+                    <i data-lucide="download" class="w-4 h-4"></i>
+                    <span class="hidden sm:inline">匯出</span>
+                </button>
+                
+                <!-- 匯入 JSON -->
+                <input type="file" id="importFile" accept=".json" class="hidden" onchange="importData(event)">
+                <button onclick="document.getElementById('importFile').click()" title="匯入配置檔 JSON" class="px-3 py-1.5 text-xs font-medium rounded-xl text-slate-200 hover:text-white transition flex items-center gap-1.5" style="background-color: rgba(255,255,255,0.08);">
+                    <i data-lucide="upload" class="w-4 h-4"></i>
+                    <span class="hidden sm:inline">匯入</span>
+                </button>
+
+                <!-- 列印 PDF -->
+                <button onclick="window.print()" title="列印報表或另存 PDF" class="px-3 py-1.5 text-xs font-medium rounded-xl text-slate-200 hover:text-white transition flex items-center gap-1.5" style="background-color: rgba(255,255,255,0.08);">
+                    <i data-lucide="printer" class="w-4 h-4"></i>
+                    <span class="hidden sm:inline">列印</span>
+                </button>
+
+                <!-- 重置清空 -->
+                <button onclick="resetDataWithConfirm()" title="清空重置為預設資料" class="px-3 py-1.5 text-xs font-medium rounded-xl text-rose-300 hover:text-white transition flex items-center gap-1.5" style="background-color: rgba(184, 51, 74, 0.2);">
+                    <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                    <span class="hidden sm:inline">重置</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- 主內容區 -->
+    <main class="w-full px-4 sm:px-6 lg:px-8 pt-6 space-y-6">
+
+        <!-- 控制面板：模式切換與單複利設定 -->
+        <div class="rounded-2xl p-4 shadow-sm border no-print flex flex-wrap items-center justify-between gap-4" style="background-color: var(--card-surface); border-color: var(--border-soft);">
+            
+            <!-- 再平衡模式切換 -->
+            <div class="flex items-center space-x-3">
+                <span class="text-xs font-bold uppercase tracking-wider" style="color: var(--sage-muted);">再平衡策略模式：</span>
+                <div class="inline-flex rounded-xl p-1" style="background-color: var(--input-bg);">
+                    <button id="mode-btn-rebalance" onclick="setRebalanceMode('rebalance')" class="px-3 py-1.5 text-xs font-medium rounded-lg transition-all">
+                        總資產不變 (內部平衡)
+                    </button>
+                    <button id="mode-btn-anchor" onclick="setRebalanceMode('anchor')" class="px-3 py-1.5 text-xs font-medium rounded-lg transition-all">
+                        錨定基準標的 (推算新資產)
+                    </button>
+                </div>
+            </div>
+
+            <!-- 再投入快速批次設定快捷列 -->
+            <div class="flex items-center space-x-3">
+                <span class="text-xs font-bold uppercase tracking-wider" style="color: var(--sage-muted);">配息再投入批次設定：</span>
+                <div class="inline-flex rounded-xl p-1" style="background-color: var(--input-bg);">
+                    <button onclick="applyBatchReinvest(100)" title="全設為 100% 配息再投入 (完全複利)" class="px-3 py-1.5 text-xs font-medium rounded-lg transition-all text-slate-700 hover:bg-slate-200">
+                        全額再投入 (100%)
+                    </button>
+                    <button onclick="applyBatchReinvest(50)" title="全設為 50% 配息再投入 (半數領出)" class="px-3 py-1.5 text-xs font-medium rounded-lg transition-all text-slate-700 hover:bg-slate-200">
+                        半數再投入 (50%)
+                    </button>
+                    <button onclick="applyBatchReinvest(0)" title="全設為 0% 再投入 (配息全數領出 / 單利)" class="px-3 py-1.5 text-xs font-medium rounded-lg transition-all text-slate-700 hover:bg-slate-200">
+                        全數領出 (0%)
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 警示訊息 (佔比 100% 檢查) -->
+        <div id="alert-weight" class="hidden rounded-2xl p-4 flex items-center justify-between transition-all border" style="background-color: var(--amber-bg); border-color: var(--amber-accent); color: var(--amber-accent);">
+            <div class="flex items-center space-x-3">
+                <i data-lucide="alert-triangle" class="w-5 h-5 flex-shrink-0"></i>
+                <span id="alert-weight-msg" class="text-sm font-medium">警告：調整後總佔比尚未達到 100%</span>
+            </div>
+            <span id="alert-weight-val" class="text-xs font-mono font-bold px-2.5 py-1 rounded-lg" style="background-color: rgba(200, 111, 50, 0.15);">目前: 0%</span>
+        </div>
+
+        <!-- 關鍵指標卡片列 (KPIs) (5 欄) -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+            <!-- 投資總現值 -->
+            <div class="rounded-2xl p-5 shadow-sm border card-print-clean" style="background-color: var(--card-surface); border-color: var(--border-soft);">
+                <div class="flex justify-between items-start mb-2">
+                    <span class="text-xs font-bold uppercase tracking-wider" style="color: var(--sage-muted);">現況現值總額 (資金池)</span>
+                    <i data-lucide="wallet" class="w-4 h-4" style="color: var(--sage-primary);"></i>
+                </div>
+                <div class="text-2xl font-bold font-mono" style="color: var(--text-title);" id="kpi-total-val">$0</div>
+                <div class="mt-2 text-xs flex justify-between" style="color: var(--sage-muted);">
+                    <span>目標總資產預估</span>
+                    <span id="kpi-target-total-val" class="font-mono font-bold" style="color: var(--text-title);">$0</span>
+                </div>
+            </div>
+
+            <!-- 現況加權總報酬率 -->
+            <div class="rounded-2xl p-5 shadow-sm border card-print-clean" style="background-color: var(--card-surface); border-color: var(--border-soft);">
+                <div class="flex justify-between items-start mb-2">
+                    <span class="text-xs font-bold uppercase tracking-wider" style="color: var(--sage-muted);">現況加權總報酬率</span>
+                    <i data-lucide="activity" class="w-4 h-4" style="color: var(--success-color);"></i>
+                </div>
+                <div class="text-2xl font-bold font-mono" style="color: var(--success-color);" id="kpi-current-weighted-return">0.00%</div>
+                <div class="mt-2 text-xs flex justify-between" style="color: var(--sage-muted);">
+                    <span>現況 配息/價差</span>
+                    <span id="kpi-cur-return-breakdown" class="font-mono font-bold" style="color: var(--text-body);">0% / 0%</span>
+                </div>
+            </div>
+
+            <!-- 現況預估年配息 -->
+            <div class="rounded-2xl p-5 shadow-sm border card-print-clean" style="background-color: var(--card-surface); border-color: var(--border-soft);">
+                <div class="flex justify-between items-start mb-2">
+                    <span class="text-xs font-bold uppercase tracking-wider" style="color: var(--sage-muted);">現況年配息 / 定期定額</span>
+                    <i data-lucide="coins" class="w-4 h-4" style="color: var(--success-color);"></i>
+                </div>
+                <div class="text-2xl font-bold font-mono" style="color: var(--success-color);" id="kpi-current-dividend">$0</div>
+                <div class="mt-2 text-xs flex justify-between" style="color: var(--sage-muted);">
+                    <span>年定期定額活水</span>
+                    <span id="kpi-current-dca" class="font-mono font-bold" style="color: var(--success-color);">$0/年</span>
+                </div>
+            </div>
+
+            <!-- 調整後預估年配息 -->
+            <div class="rounded-2xl p-5 shadow-sm border card-print-clean" style="background-color: var(--card-surface); border-color: var(--border-soft);">
+                <div class="flex justify-between items-start mb-2">
+                    <span class="text-xs font-bold uppercase tracking-wider" style="color: var(--sage-muted);">調整後年配息 / 定期定額</span>
+                    <i data-lucide="trending-up" class="w-4 h-4" style="color: var(--amber-accent);"></i>
+                </div>
+                <div class="text-2xl font-bold font-mono" style="color: var(--amber-accent);" id="kpi-adjusted-dividend">$0</div>
+                <div class="mt-2 text-xs flex justify-between" style="color: var(--sage-muted);">
+                    <span>年定期定額活水</span>
+                    <span id="kpi-adjusted-dca" class="font-mono font-bold text-amber-800">$0/年</span>
+                </div>
+            </div>
+
+            <!-- 調整後加權總報酬率 -->
+            <div class="rounded-2xl p-5 shadow-sm border card-print-clean" style="background-color: var(--card-surface); border-color: var(--border-soft);">
+                <div class="flex justify-between items-start mb-2">
+                    <span class="text-xs font-bold uppercase tracking-wider" style="color: var(--sage-muted);">調整後加權總報酬率</span>
+                    <i data-lucide="line-chart" class="w-4 h-4" style="color: var(--amber-accent);"></i>
+                </div>
+                <div class="text-2xl font-bold font-mono" style="color: var(--amber-accent);" id="kpi-weighted-return">0.00%</div>
+                <div class="mt-2 text-xs flex justify-between" style="color: var(--sage-muted);">
+                    <span>調整 配息/價差</span>
+                    <span id="kpi-return-breakdown" class="font-mono font-bold" style="color: var(--text-body);">0% / 0%</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 錨定模式提示區塊 (僅在錨定模式下顯示) -->
+        <div id="anchor-info-panel" class="hidden rounded-2xl p-4 border flex items-center justify-between text-xs transition-all" style="background-color: var(--summary-bg); border-color: var(--border-soft); color: var(--text-body);">
+            <div class="flex items-center space-x-2">
+                <i data-lucide="anchor" class="w-4 h-4" style="color: var(--amber-accent);"></i>
+                <span>目前已選擇左側錨定標的：<strong id="anchor-target-name" style="color: var(--amber-accent);">無</strong>。系統依右側同名標的之目標佔比，推算所需之擴增總資產。</span>
+            </div>
+            <span class="font-mono font-bold text-sm" style="color: var(--sage-primary);" id="anchor-total-needed">需再投入新資金：$0</span>
+        </div>
+
+        <!-- 左右雙獨立表格：現況資產組合 VS 調整後目標組合 (平均分配欄寬佈局) -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            
+            <!-- 左表格：現況資產配置 (現有資金部位) -->
+            <div class="rounded-2xl shadow-sm border overflow-hidden card-print-clean flex flex-col justify-between" style="background-color: var(--card-surface); border-color: var(--border-soft);">
+                <div>
+                    <div class="p-3.5 border-b flex items-center justify-between gap-2" style="border-color: var(--border-soft); background-color: rgba(33, 97, 62, 0.04);">
+                        <div class="flex items-center space-x-2">
+                            <span class="w-2.5 h-2.5 rounded-full" style="background-color: var(--success-color);"></span>
+                            <h2 class="text-sm font-bold" style="color: var(--text-title);">現況資產部位 (原始資金來源)</h2>
+                        </div>
+                        <button onclick="addCurrentAssetRow()" class="no-print px-3 py-1 text-xs font-semibold rounded-xl text-white transition flex items-center gap-1 shadow-sm" style="background-color: var(--sage-primary);">
+                            <i data-lucide="plus" class="w-3.5 h-3.5"></i> 新增現況標的
+                        </button>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <!-- 套用 table-fixed 並以 <colgroup> 平均分配欄寬 -->
+                        <table class="w-full text-left text-[12.5px] text-slate-700 table-fixed">
+                            <colgroup>
+                                <col style="width: 5%;">   <!-- 錨定 -->
+                                <col style="width: 19%;">  <!-- 標的名稱 -->
+                                <col style="width: 17%;">  <!-- 現況現值 -->
+                                <col style="width: 8%;">   <!-- 現況佔比 -->
+                                <col style="width: 16%;">  <!-- 定期定額/年 -->
+                                <col style="width: 8.5%;"> <!-- 配息率 -->
+                                <col style="width: 8.5%;"> <!-- 價差率 -->
+                                <col style="width: 13%;">  <!-- 再投入設定 (收斂平衡) -->
+                                <col style="width: 5%;">   <!-- 操作 -->
+                            </colgroup>
+                            <thead class="uppercase tracking-wider font-bold border-b text-[11px]" style="background-color: var(--input-bg); color: var(--sage-primary); border-color: var(--border-soft);">
+                                <tr>
+                                    <th class="py-2.5 px-1 text-center no-print" title="選取錨定基準標的(可複選)">錨定</th>
+                                    <th class="py-2.5 px-2 truncate">現況標的</th>
+                                    <th class="py-2.5 px-2 text-right truncate">現況現值 ($)</th>
+                                    <th class="py-2.5 px-1 text-right truncate">佔比</th>
+                                    <th class="py-2.5 px-2 text-right truncate" title="每年外部薪資或活水持續買入的金額(非股息再投入)">定期定額/年</th>
+                                    <th class="py-2.5 px-1 text-right truncate">配息率</th>
+                                    <th class="py-2.5 px-1 text-right truncate">價差率</th>
+                                    <th class="py-2.5 px-1 text-center truncate" title="設定每年配息再投入複利的比例(%)或固定金額($)">再投入</th>
+                                    <th class="py-2.5 px-1 text-center no-print">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="cur-asset-table-body" class="divide-y font-mono font-medium" style="border-color: var(--border-soft);">
+                                <!-- JavaScript 動態生成 -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 左表合計底部 -->
+                <div class="border-t font-sans text-xs font-bold p-3 flex justify-between items-center" style="background-color: var(--summary-bg); border-color: var(--border-soft); color: var(--text-title);">
+                    <div class="flex items-center space-x-2">
+                        <span>現況合計：</span>
+                        <span class="font-mono text-sm text-emerald-800" id="foot-cur-total-val">$0</span>
+                        <span class="text-slate-400 font-mono">(100%)</span>
+                    </div>
+                    <div class="text-right font-mono text-[11px] text-slate-600">
+                        年定額: <span id="foot-cur-total-dca" class="text-emerald-800 font-bold">$0</span> | 
+                        加權配息: <span id="foot-cur-div-rate">0.00%</span> | 價差: <span id="foot-cur-cap-rate">0.00%</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 右表格：調整後目標配置 (重組與新標的配置) -->
+            <div class="rounded-2xl shadow-sm border overflow-hidden card-print-clean flex flex-col justify-between" style="background-color: var(--card-surface); border-color: var(--border-soft);">
+                <div>
+                    <div class="p-3.5 border-b flex flex-wrap items-center justify-between gap-2" style="border-color: var(--border-soft); background-color: rgba(200, 111, 50, 0.05);">
+                        <div class="flex items-center space-x-2">
+                            <span class="w-2.5 h-2.5 rounded-full" style="background-color: var(--amber-accent);"></span>
+                            <h2 class="text-sm font-bold" style="color: var(--text-title);">調整後目標部位 (分配或換標的)</h2>
+                        </div>
+                        <div class="flex items-center space-x-1.5 no-print">
+                            <!-- 一鍵複製現況按鈕 -->
+                            <button onclick="copyCurrentToTarget()" title="一鍵複製現況所有標的名稱、目前佔比、定期定額、報酬率與再投入設定至目標組合" class="px-2.5 py-1 text-xs font-semibold rounded-xl text-amber-800 bg-amber-100/80 hover:bg-amber-200 transition flex items-center gap-1 shadow-xs border border-amber-300">
+                                <i data-lucide="copy" class="w-3.5 h-3.5"></i> 複製現況標的與數據
+                            </button>
+                            <!-- 新增目標標的按鈕 -->
+                            <button onclick="addTargetAssetRow()" class="px-3 py-1 text-xs font-semibold rounded-xl text-white transition flex items-center gap-1 shadow-sm" style="background-color: var(--amber-accent);">
+                                <i data-lucide="plus" class="w-3.5 h-3.5"></i> 新增目標標的
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <!-- 套用 table-fixed 並以 <colgroup> 平均分配欄寬 -->
+                        <table class="w-full text-left text-[12.5px] text-slate-700 table-fixed">
+                            <colgroup>
+                                <col style="width: 17%;">  <!-- 目標標的 -->
+                                <col style="width: 7.5%;"> <!-- 目標佔比 -->
+                                <col style="width: 14%;">  <!-- 目標現值 -->
+                                <col style="width: 14%;">  <!-- 須增減資金 -->
+                                <col style="width: 15%;">  <!-- 定期定額/年 -->
+                                <col style="width: 8.5%;"> <!-- 預估配息 -->
+                                <col style="width: 8.5%;"> <!-- 預估價差 -->
+                                <col style="width: 11.5%;"> <!-- 再投入設定 (收斂平衡) -->
+                                <col style="width: 4%;">   <!-- 操作 -->
+                            </colgroup>
+                            <thead class="uppercase tracking-wider font-bold border-b text-[11px]" style="background-color: rgba(200, 111, 50, 0.08); color: var(--amber-accent); border-color: var(--border-soft);">
+                                <tr>
+                                    <th class="py-2.5 px-2 truncate">目標標的</th>
+                                    <th class="py-2.5 px-1 text-right truncate">佔比</th>
+                                    <th class="py-2.5 px-2 text-right truncate">目標現值</th>
+                                    <th class="py-2.5 px-2 text-right truncate" title="對比現況同名標的：增減資金">增減資金</th>
+                                    <th class="py-2.5 px-2 text-right truncate" title="每年外部薪資或活水持續買入的金額(非股息再投入)">定期定額/年</th>
+                                    <th class="py-2.5 px-1 text-right truncate">預估配息</th>
+                                    <th class="py-2.5 px-1 text-right truncate">預估價差</th>
+                                    <th class="py-2.5 px-1 text-center truncate" title="設定每年配息再投入複利的比例(%)或固定金額($)">再投入</th>
+                                    <th class="py-2.5 px-1 text-center no-print">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="target-asset-table-body" class="divide-y font-mono font-medium" style="border-color: var(--border-soft);">
+                                <!-- JavaScript 動態生成 -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 右表合計底部 -->
+                <div class="border-t font-sans text-xs font-bold p-3 flex justify-between items-center" style="background-color: var(--summary-bg); border-color: var(--border-soft); color: var(--text-title);">
+                    <div class="flex items-center space-x-2">
+                        <span>目標合計：</span>
+                        <span class="font-mono text-sm text-amber-800" id="foot-adj-total-val">$0</span>
+                        <span id="foot-adj-weight" class="font-mono px-1.5 py-0.5 rounded text-[11px]" style="background-color: rgba(200, 111, 50, 0.15); color: var(--amber-accent);">0.0%</span>
+                    </div>
+                    <div class="text-right font-mono text-[11px] text-slate-600">
+                        年定額: <span id="foot-adj-total-dca" class="text-amber-800 font-bold">$0</span> | 
+                        調度淨額: <span id="foot-adj-diff-val" class="font-bold text-slate-700">$0</span> | 
+                        加權配息: <span id="foot-adj-div-rate">0.00%</span>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- 圖表儀表板專區 (三圖並列：4欄 + 2欄 + 6欄 重構佈局) -->
+        <div class="grid grid-cols-1 xl:grid-cols-12 gap-5">
+            
+            <!-- 圖表 1：雙環佔比對比圖 (4 欄) -->
+            <div class="xl:col-span-4 rounded-2xl p-4 shadow-sm border card-print-clean flex flex-col justify-between" style="background-color: var(--card-surface); border-color: var(--border-soft);">
+                <div>
+                    <div class="flex items-center justify-between pb-2 border-b" style="border-color: var(--border-soft);">
+                        <div class="flex items-center space-x-2">
+                            <i data-lucide="pie-chart" class="w-4 h-4" style="color: var(--amber-accent);"></i>
+                            <h3 class="text-sm font-bold" style="color: var(--text-title);">資產配置佔比對比雙環圖</h3>
+                        </div>
+                        <span class="text-[10px] px-2 py-0.5 rounded-full font-medium" style="background-color: var(--input-bg); color: var(--sage-muted);">現況 / 目標</span>
+                    </div>
+                </div>
+
+                <!-- 雙環展示容器 (自適應排列) -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-2 gap-3 my-2">
+                    
+                    <!-- 左環卡片：現況現值雙環 -->
+                    <div class="p-2.5 rounded-xl flex flex-col items-center border" style="background-color: #ffffff; border-color: var(--border-soft);">
+                        <span class="text-[11px] font-bold mb-1.5 font-mono px-2 py-0.5 rounded" style="background-color: rgba(33, 97, 62, 0.1); color: var(--success-color);">現況佔比</span>
+                        
+                        <div class="relative w-36 h-36 my-1 flex items-center justify-center flex-shrink-0">
+                            <canvas id="chart-cur-donut"></canvas>
+                            <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
+                                <span class="text-[8.5px] text-slate-400 font-sans">現況現值</span>
+                                <span id="center-cur-total" class="text-xs font-bold font-mono text-emerald-800 leading-tight">$0</span>
+                                <span id="center-cur-pct" class="text-[8.5px] font-bold text-slate-400 font-mono">0.0%</span>
+                            </div>
+                        </div>
+
+                        <div class="w-full mt-1.5 pt-1.5 border-t border-slate-100">
+                            <div id="cur-card-list" class="max-h-36 overflow-y-auto pr-1 space-y-1"></div>
+                        </div>
+                    </div>
+
+                    <!-- 右環卡片：調整後目標雙環 -->
+                    <div class="p-2.5 rounded-xl flex flex-col items-center border" style="background-color: #ffffff; border-color: var(--border-soft);">
+                        <span class="text-[11px] font-bold mb-1.5 font-mono px-2 py-0.5 rounded" style="background-color: rgba(200, 111, 50, 0.1); color: var(--amber-accent);">目標佔比</span>
+                        
+                        <div class="relative w-36 h-36 my-1 flex items-center justify-center flex-shrink-0">
+                            <canvas id="chart-adj-donut"></canvas>
+                            <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
+                                <span class="text-[8.5px] text-slate-400 font-sans">目標總額</span>
+                                <span id="center-adj-total" class="text-xs font-bold font-mono text-amber-800 leading-tight">$0</span>
+                                <span id="center-adj-pct" class="text-[8.5px] font-bold text-slate-400 font-mono">0.0%</span>
+                            </div>
+                        </div>
+
+                        <div class="w-full mt-1.5 pt-1.5 border-t border-slate-100">
+                            <div id="adj-card-list" class="max-h-36 overflow-y-auto pr-1 space-y-1"></div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- 圖表 2：調度差額柱狀圖 (2 欄) -->
+            <div class="xl:col-span-2 rounded-2xl p-4 shadow-sm border card-print-clean flex flex-col justify-between" style="background-color: var(--card-surface); border-color: var(--border-soft);">
+                <div>
+                    <div class="flex items-center justify-between pb-2 border-b" style="border-color: var(--border-soft);">
+                        <div class="flex items-center space-x-1.5 truncate">
+                            <i data-lucide="bar-chart-2" class="w-4 h-4 flex-shrink-0" style="color: var(--sage-primary);"></i>
+                            <h3 class="text-xs font-bold truncate" style="color: var(--text-title);" title="標的資金調度差額">調度差額</h3>
+                        </div>
+                        <span class="text-[10px] font-mono text-slate-500 flex-shrink-0">買/賣</span>
+                    </div>
+                    <p class="text-[10px] text-slate-500 mt-1">綠柱加碼，紅柱出清減碼。</p>
+                </div>
+
+                <div class="relative w-full h-72 my-auto pt-2">
+                    <canvas id="chart-flow-bar"></canvas>
+                </div>
+
+                <div class="text-[10px] text-right font-mono pt-2 border-t truncate" style="border-color: var(--border-soft); color: var(--sage-muted);" id="flow-bar-footnote">
+                    目標現值差額
+                </div>
+            </div>
+
+            <!-- 圖表 3：終值成長走勢曲線圖 (6 欄寬幅) -->
+            <div class="xl:col-span-6 rounded-2xl p-4 shadow-sm border card-print-clean flex flex-col justify-between" style="background-color: var(--card-surface); border-color: var(--border-soft);">
+                <div>
+                    <div class="flex flex-wrap items-center justify-between gap-2 pb-2 border-b" style="border-color: var(--border-soft);">
+                        <div class="flex items-center space-x-2">
+                            <i data-lucide="trending-up" class="w-4 h-4" style="color: var(--amber-accent);"></i>
+                            <h3 class="text-sm font-bold" style="color: var(--text-title);">長程終值成長走勢 (寬幅全景視角)</h3>
+                        </div>
+                        
+                        <!-- 視角切換器 -->
+                        <div class="inline-flex rounded-lg p-0.5 border" style="background-color: var(--input-bg); border-color: var(--border-soft);">
+                            <button id="view-btn-principal" onclick="setTrendLineView('principal')" class="px-2.5 py-1 text-[11px] font-bold rounded-md transition-all" style="background-color: var(--sage-primary); color: #fff;">
+                                在倉資產規模
+                            </button>
+                            <button id="view-btn-total" onclick="setTrendLineView('total')" class="px-2.5 py-1 text-[11px] font-bold rounded-md transition-all text-slate-600">
+                                含提領總財富
+                            </button>
+                        </div>
+                    </div>
+                    <p class="text-[11px] text-slate-500 mt-1" id="trend-view-desc">
+                        顯示市場內部留存的在倉資產複利滾存規模（含定期定額累積注入，提領配息不重複計入）。
+                    </p>
+                </div>
+
+                <div class="relative w-full h-72 my-auto pt-2">
+                    <canvas id="chart-trend-line"></canvas>
+                </div>
+
+                <div class="text-[11px] text-right font-mono pt-2 border-t" style="border-color: var(--border-soft); color: var(--sage-muted);" id="trend-line-footnote">
+                    Y 軸動態依起始資金適應縮放，長程橫軸全面擴展
+                </div>
+            </div>
+
+        </div>
+
+        <!-- 方案 C：長程投資收益與資產終值對比預估 (分頁籤架構：綜合總表 VS 各標的逐年歷程矩陣) -->
+        <div class="rounded-2xl shadow-sm border overflow-hidden card-print-clean" style="background-color: var(--card-surface); border-color: var(--border-soft);">
+            <div class="p-4 border-b flex flex-wrap items-center justify-between gap-4" style="border-color: var(--border-soft);">
+                <div class="space-y-2">
+                    <div class="flex items-center space-x-3">
+                        <h2 class="text-base font-bold flex items-center gap-2" style="color: var(--text-title);">
+                            <i data-lucide="calculator" class="w-4 h-4" style="color: var(--sage-primary);"></i>
+                            長程投資收益與資產終值對比預估
+                        </h2>
+                        
+                        <!-- 方案 C 分頁籤切換器 -->
+                        <div class="inline-flex rounded-xl p-1 no-print" style="background-color: var(--input-bg);">
+                            <button id="tab-btn-summary" onclick="setProjectionTab('summary')" class="px-3 py-1 text-xs font-bold rounded-lg transition-all" style="background-color: var(--sage-primary); color: #fff;">
+                                長程綜合推算總表
+                            </button>
+                            <button id="tab-btn-matrix" onclick="setProjectionTab('matrix')" class="px-3 py-1 text-xs font-bold rounded-lg transition-all text-slate-600">
+                                各標的逐年歷程矩陣
+                            </button>
+                        </div>
+                    </div>
+                    <p class="text-xs" style="color: var(--sage-muted);" id="projection-note-text">
+                        支援各標的獨立設定「定期定額/年」與「配息再投入設定」：定額自動持續注入滾存，再投入金額滾入次年本金，未投入配息計入已實現提領現金流。點擊「第 X 年」按鈕可開啟彈跳明細視窗 (方案 A)。
+                    </p>
+                </div>
+
+                <!-- 選擇 1~99 年期控制項、倍數呈現設定與清除標記 -->
+                <div class="flex flex-wrap items-center gap-3 no-print">
+                    <div class="flex items-center space-x-2">
+                        <label for="year-select-input" class="text-xs font-bold" style="color: var(--sage-muted);">推算年期：</label>
+                        <input type="number" id="year-select-input" min="1" max="99" value="20" onfocus="this.select()" onchange="updateProjectionYears(this.value)"
+                            class="w-16 px-2 py-1 rounded-xl border text-xs text-center font-bold font-mono outline-none focus:border-emerald-600"
+                            style="background-color: var(--input-bg); border-color: var(--border-soft); color: var(--text-title);">
+                        <span class="text-xs font-bold" style="color: var(--sage-primary);">年</span>
+                    </div>
+
+                    <!-- 新增：倍數呈現控制項 -->
+                    <div class="flex items-center space-x-2">
+                        <label for="multiplier-select-input" class="text-xs font-bold" style="color: var(--sage-muted);">顯示頻率：</label>
+                        <select id="multiplier-select-input" onchange="updateMultiplierYear(this.value)"
+                            class="px-2 py-1 rounded-xl border text-xs font-bold font-mono outline-none focus:border-emerald-600 cursor-pointer"
+                            style="background-color: var(--input-bg); border-color: var(--border-soft); color: var(--text-title);">
+                            <option value="1">每年呈現 (1x)</option>
+                            <option value="2">每 2 年</option>
+                            <option value="3">每 3 年</option>
+                            <option value="5" selected>每 5 年</option>
+                            <option value="10">每 10 年</option>
+                        </select>
+                    </div>
+
+                    <button onclick="clearAllMarkedRows()" class="px-2.5 py-1 text-xs font-medium rounded-xl border transition text-rose-700 hover:bg-rose-50" style="border-color: var(--highlight-border);">
+                        清除所有年份標記
+                    </button>
+                </div>
+            </div>
+
+            <!-- 標籤 1 容器：長程綜合推算總表 -->
+            <div id="tab-content-summary" class="overflow-x-auto">
+                <table class="w-full text-left text-[13px]">
+                    <thead class="uppercase tracking-wider font-bold border-b text-[11px] text-center shadow-xs" style="background-color: var(--input-bg); color: var(--sage-primary); border-color: var(--border-soft);">
+                        <tr>
+                            <th class="py-3 px-2 w-12 no-print" title="點擊切換該年份的淡紅薄霧標記">標記</th>
+
+                            <!-- 西元/民國/年齡 項目 -->
+                            <th class="py-2.5 px-3 border-r min-w-[210px] text-left" style="border-color: var(--border-soft);">
+                                <div class="flex flex-col space-y-1">
+                                    <div class="flex items-center justify-between text-[11px]">
+                                        <span>西元 / 民國 / 年齡</span>
+                                        <span class="text-[9px] text-slate-400 font-normal no-print">(自訂起始)</span>
+                                    </div>
+                                    <div class="flex items-center space-x-1 font-mono font-normal no-print">
+                                        <input type="number" id="start-year-input" placeholder="西元" title="輸入起始西元年"
+                                            class="w-16 px-1.5 py-0.5 rounded border text-[11px] text-center outline-none focus:border-emerald-600 bg-white"
+                                            style="border-color: var(--border-soft); color: var(--text-title);"
+                                            onfocus="this.select()" onchange="handleStartYearChange(this.value)">
+                                        <span class="text-slate-400 text-[10px]">/</span>
+                                        <input type="number" id="start-roc-input" placeholder="民國" title="輸入起始民國年"
+                                            class="w-12 px-1 py-0.5 rounded border text-[11px] text-center outline-none focus:border-emerald-600 bg-white"
+                                            style="border-color: var(--border-soft); color: var(--text-title);"
+                                            onfocus="this.select()" onchange="handleStartRocChange(this.value)">
+                                        <span class="text-slate-400 text-[10px]">/</span>
+                                        <input type="number" id="start-age-input" placeholder="歲數" title="輸入第1年起始年齡"
+                                            class="w-12 px-1 py-0.5 rounded border text-[11px] text-center outline-none focus:border-emerald-600 bg-white"
+                                            style="border-color: var(--border-soft); color: var(--text-title);"
+                                            onfocus="this.select()" onchange="handleStartAgeChange(this.value)">
+                                    </div>
+                                </div>
+                            </th>
+
+                            <th class="py-3 px-2.5 text-center min-w-[90px]" title="點擊該列按鈕可跳出該年所有標的明細 (方案 A)">
+                                年度 <span class="text-[9.5px] text-slate-400 font-normal block">(點擊查明細)</span>
+                            </th>
+                            
+                            <!-- 現況配置推算群組 -->
+                            <th class="py-3 px-2.5 text-right bg-emerald-900/5">現況 價差收益</th>
+                            <th class="py-3 px-2.5 text-right bg-emerald-900/5" title="歷年未再投入、已領出的配息現金流累積">現況 累計提領配息</th>
+                            <th class="py-3 px-2.5 text-right bg-emerald-900/5 font-bold border-r" style="border-color: var(--border-soft);" title="留在市場內部持續生息的實際在倉資產總額(含定期定額本金與配息滾存)">現況 在倉資產總額</th>
+                            
+                            <!-- 調整後配置推算群組 -->
+                            <th class="py-3 px-2.5 text-right bg-amber-900/5">調整 價差收益</th>
+                            <th class="py-3 px-2.5 text-right bg-amber-900/5" title="歷年未再投入、已領出的配息現金流累積">調整 累計提領配息</th>
+                            <th class="py-3 px-2.5 text-right bg-amber-900/5 font-bold border-r" style="border-color: var(--border-soft);" title="留在市場內部持續生息的實際在倉資產總額(含定期定額本金與配息滾存)">調整 在倉資產總額</th>
+                            
+                            <!-- 差異呈現群組 -->
+                            <th class="py-3 px-2.5 text-right bg-rose-900/5" title="調整後 在倉資產 - 現況 在倉資產">在倉資產差距</th>
+                            <th class="py-3 px-2.5 text-right bg-rose-900/5" title="調整後 累計提領配息 - 現況 累計提領配息">提領現金差距</th>
+                            <th class="py-3 px-2.5 text-right bg-rose-900/5 font-bold" title="(在倉資產+提領現金) 綜合總財富差距">綜合總利益差距</th>
+                        </tr>
+                    </thead>
+                    <tbody id="projection-table-body" class="divide-y font-mono font-medium" style="border-color: var(--border-soft);">
+                        <!-- JS 動態生成綜合推算明細 -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- 標籤 2 容器：各標的逐年歷程矩陣總表 (方案 C) -->
+            <div id="tab-content-matrix" class="overflow-x-auto hidden">
+                <table class="w-full text-left text-[12.5px] border-collapse">
+                    <thead id="matrix-table-head" class="uppercase tracking-wider font-bold border-b text-[11px] shadow-xs" style="background-color: var(--input-bg); color: var(--sage-primary); border-color: var(--border-soft);">
+                        <!-- JS 動態生成多層表頭 -->
+                    </thead>
+                    <tbody id="matrix-table-body" class="divide-y font-mono font-medium" style="border-color: var(--border-soft);">
+                        <!-- JS 動態生成矩陣現值數據 -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- 方案 A：各標的年度現值明細浮動視窗 (Modal) -->
+    <div id="asset-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 hidden transition-opacity duration-200 no-print" onclick="handleModalBackdropClick(event)">
+        <div class="relative w-full max-w-4xl max-h-[90vh] rounded-3xl shadow-2xl border flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150" 
+             style="background-color: var(--card-surface); border-color: var(--border-soft);">
+            
+            <!-- Modal 表頭 -->
+            <div class="p-4 sm:p-5 border-b flex items-center justify-between" style="border-color: var(--border-soft); background-color: var(--summary-bg);">
+                <div class="flex items-center space-x-3">
+                    <div class="p-2 rounded-xl" style="background-color: var(--sage-primary); color: #fff;">
+                        <i data-lucide="layers" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-base font-bold flex items-center gap-2" style="color: var(--text-title);" id="modal-title">
+                            各標的個別現值歷程明細
+                        </h3>
+                        <p class="text-xs font-mono text-slate-500" id="modal-subtitle">
+                            第 X 年 (西元 XXXX 年 / 民國 XXX 年 / XX 歲)
+                        </p>
+                    </div>
+                </div>
+                <button onclick="closeAssetModal()" class="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-200/50 transition" title="關閉視窗 (ESC)">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <!-- Modal 內容區 (左右雙邊對照) -->
+            <div class="p-4 sm:p-6 overflow-y-auto space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    
+                    <!-- 左側：現況各標的個別現值 -->
+                    <div class="rounded-2xl border p-4 flex flex-col justify-between" style="border-color: var(--border-soft); background-color: #ffffff;">
+                        <div>
+                            <div class="flex items-center justify-between pb-3 border-b mb-3" style="border-color: var(--border-soft);">
+                                <div class="flex items-center space-x-2">
+                                    <span class="w-2.5 h-2.5 rounded-full" style="background-color: var(--success-color);"></span>
+                                    <h4 class="text-xs font-bold uppercase tracking-wider" style="color: var(--text-title);">現況配置 標的在倉現值</h4>
+                                </div>
+                                <span class="text-xs font-mono font-bold text-emerald-800" id="modal-cur-subtotal">$0</span>
+                            </div>
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-left text-xs font-mono">
+                                    <thead>
+                                        <tr class="text-slate-400 border-b text-[11px]" style="border-color: var(--border-soft);">
+                                            <th class="py-1.5 px-2">標的名稱</th>
+                                            <th class="py-1.5 px-2 text-right">在倉現值 ($)</th>
+                                            <th class="py-1.5 px-2 text-right" title="每年外部注入定額本金的累計">累計定額投入</th>
+                                            <th class="py-1.5 px-2 text-right" title="歷年未再投入配息累積">累計提領 ($)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="modal-cur-tbody" class="divide-y" style="border-color: var(--border-soft);">
+                                        <!-- JS 生成 -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="mt-4 pt-2.5 border-t text-[11px] text-slate-500 font-sans flex justify-between" style="border-color: var(--border-soft);">
+                            <span>現況綜合總財富：</span>
+                            <span class="font-mono font-bold text-emerald-800" id="modal-cur-totalwealth">$0</span>
+                        </div>
+                    </div>
+
+                    <!-- 右側：調整後各標的個別現值 -->
+                    <div class="rounded-2xl border p-4 flex flex-col justify-between" style="border-color: var(--border-soft); background-color: #ffffff;">
+                        <div>
+                            <div class="flex items-center justify-between pb-3 border-b mb-3" style="border-color: var(--border-soft);">
+                                <div class="flex items-center space-x-2">
+                                    <span class="w-2.5 h-2.5 rounded-full" style="background-color: var(--amber-accent);"></span>
+                                    <h4 class="text-xs font-bold uppercase tracking-wider" style="color: var(--text-title);">調整後目標 標的在倉現值</h4>
+                                </div>
+                                <span class="text-xs font-mono font-bold text-amber-800" id="modal-adj-subtotal">$0</span>
+                            </div>
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-left text-xs font-mono">
+                                    <thead>
+                                        <tr class="text-slate-400 border-b text-[11px]" style="border-color: var(--border-soft);">
+                                            <th class="py-1.5 px-2">標的名稱</th>
+                                            <th class="py-1.5 px-2 text-right">在倉現值 ($)</th>
+                                            <th class="py-1.5 px-2 text-right" title="每年外部注入定額本金的累計">累計定額投入</th>
+                                            <th class="py-1.5 px-2 text-right" title="歷年未再投入配息累積">累計提領 ($)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="modal-adj-tbody" class="divide-y" style="border-color: var(--border-soft);">
+                                        <!-- JS 生成 -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="mt-4 pt-2.5 border-t text-[11px] text-slate-500 font-sans flex justify-between" style="border-color: var(--border-soft);">
+                            <span>調整後綜合總財富：</span>
+                            <span class="font-mono font-bold text-amber-800" id="modal-adj-totalwealth">$0</span>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- 底部差距快速總覽 -->
+                <div class="p-3.5 rounded-2xl border flex flex-wrap items-center justify-between gap-3 text-xs" style="background-color: var(--amber-bg); border-color: var(--border-soft);">
+                    <div class="flex items-center space-x-2 font-medium text-slate-700">
+                        <i data-lucide="info" class="w-4 h-4 text-amber-700"></i>
+                        <span>該年度綜合總利益差距 (調整後 - 現況)：</span>
+                    </div>
+                    <span class="font-mono font-bold text-sm" id="modal-diff-total">$0</span>
+                </div>
+            </div>
+
+            <!-- Modal 底部關閉按鈕列 -->
+            <div class="p-3.5 border-t flex justify-end" style="border-color: var(--border-soft); background-color: var(--card-surface);">
+                <button onclick="closeAssetModal()" class="px-5 py-1.5 text-xs font-bold rounded-xl text-white transition shadow-sm" style="background-color: var(--sage-primary);">
+                    關閉明細
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript 邏輯控制 -->
+    <script>
+        // 初始預設資料：左右分開，數值全為 0，預設 periodicDCA: 0, reinvestType: 'pct', reinvestValue: 100
+        const DEFAULT_CURRENT_ASSETS = [
+            { id: 'c1', name: '標的 A', value: 0, periodicDCA: 0, curDivRate: 0, curCapRate: 0, isAnchor: false, reinvestType: 'pct', reinvestValue: 100 },
+            { id: 'c2', name: '標的 B', value: 0, periodicDCA: 0, curDivRate: 0, curCapRate: 0, isAnchor: false, reinvestType: 'pct', reinvestValue: 100 },
+            { id: 'c3', name: '標的 C', value: 0, periodicDCA: 0, curDivRate: 0, curCapRate: 0, isAnchor: false, reinvestType: 'pct', reinvestValue: 100 },
+            { id: 'c4', name: '標的 D', value: 0, periodicDCA: 0, curDivRate: 0, curCapRate: 0, isAnchor: false, reinvestType: 'pct', reinvestValue: 100 }
+        ];
+
+        const DEFAULT_TARGET_ASSETS = [
+            { id: 't1', name: '標的 A', adjWeight: 0, periodicDCA: 0, adjDivRate: 0, adjCapRate: 0, reinvestType: 'pct', reinvestValue: 100 },
+            { id: 't2', name: '標的 B', adjWeight: 0, periodicDCA: 0, adjDivRate: 0, adjCapRate: 0, reinvestType: 'pct', reinvestValue: 100 },
+            { id: 't3', name: '標的 C', adjWeight: 0, periodicDCA: 0, adjDivRate: 0, adjCapRate: 0, reinvestType: 'pct', reinvestValue: 100 },
+            { id: 't4', name: '標的 D', adjWeight: 0, periodicDCA: 0, adjDivRate: 0, adjCapRate: 0, reinvestType: 'pct', reinvestValue: 100 }
+        ];
+
+        // 高飽和度鮮豔亮色調色盤
+        const VIBRANT_PALETTE = [
+            '#0284c7', '#ea580c', '#16a34a', '#9333ea', '#e11d48',
+            '#0d9488', '#d97706', '#4f46e5', '#db2777', '#059669',
+            '#ca8a04', '#7c3aed', '#2563eb', '#c026d3', '#0891b2', '#dc2626'
+        ];
+
+        // 狀態管理 (嚴格維持原快照版本名稱，不更動)
+        const STORAGE_KEY = 'ASSET_ALLOCATION_DATA_V2';
+        
+        let currentAssets = [];
+        let targetAssets = [];
+        let rebalanceMode = 'rebalance'; // 'rebalance' 或 'anchor'
+        let projectionYears = 20;        // 預設 20 年期
+        let multiplierYear = 1;          // 新增：推算倍數呈現設定 (預設 1 年)
+        let markedYears = new Set();     // 標記年份 Set
+        let trendLineView = 'principal'; // 'principal' (在倉資產) 或 'total' (含提領總財富)
+
+        // 方案 C：分頁籤狀態 ('summary' 綜合總表 或 'matrix' 各標的歷程矩陣)
+        let projectionTab = 'summary';
+
+        // 自行輸入 西元/民國/年齡 狀態儲存
+        let startYear = new Date().getFullYear(); // 預設當年西元
+        let startAge = 35;                        // 預設起始年齡
+
+        // 暫存最後一次推算出的各標的動態軌跡
+        let lastCurTrajectories = [];
+        let lastAdjTrajectories = [];
+        let cachedTargetTotalValue = 0;
+
+        // Chart.js 實例暫存
+        let curDonutChartInstance = null;
+        let adjDonutChartInstance = null;
+        let flowBarChartInstance = null;
+        let trendLineChartInstance = null;
+
+        // 格式化工具
+        function formatCurrency(val) {
+            const num = Math.round(val || 0);
+            if (num < 0) return '-$' + Math.abs(num).toLocaleString('zh-TW');
+            return '$' + num.toLocaleString('zh-TW');
+        }
+
+        function formatPercent(val) {
+            return (val || 0).toFixed(2) + '%';
+        }
+
+        function formatNumberWithCommas(num) {
+            if (num === null || num === undefined || isNaN(num)) return '0';
+            const parts = num.toString().split('.');
+            parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+            return parts.join('.');
+        }
+
+        function parseCommasToNumber(str) {
+            if (!str) return 0;
+            const clean = str.toString().replace(/,/g, '').trim();
+            const val = parseFloat(clean);
+            return isNaN(val) ? 0 : val;
+        }
+
+        function handleGoBack() {
+            if (window.history.length > 1) {
+                window.history.back();
+            } else {
+                alert('已是第一頁，無法再返回。');
+            }
+        }
+
+        // 判斷該年份是否滿足呈現條件 (第 1 年固定呈現，接續依倍數呈現，除不盡則呈現最後一年)
+        function shouldDisplayYear(y, totalYears, multiplier) {
+            if (y === 1) return true;
+            if (y === totalYears) return true;
+            if (multiplier > 1) {
+                return (y % multiplier === 0);
+            }
+            return true;
+        }
+
+        // 方案 C：切換分頁籤
+        function setProjectionTab(tabKey) {
+            projectionTab = tabKey;
+            const btnSummary = document.getElementById('tab-btn-summary');
+            const btnMatrix = document.getElementById('tab-btn-matrix');
+            const tabSummary = document.getElementById('tab-content-summary');
+            const tabMatrix = document.getElementById('tab-content-matrix');
+            const noteText = document.getElementById('projection-note-text');
+
+            if (tabKey === 'summary') {
+                btnSummary.style.backgroundColor = 'var(--sage-primary)';
+                btnSummary.style.color = '#ffffff';
+                btnMatrix.style.backgroundColor = 'transparent';
+                btnMatrix.style.color = 'var(--text-body)';
+                tabSummary.classList.remove('hidden');
+                tabMatrix.classList.add('hidden');
+                noteText.innerText = '長程綜合推算：支援各標的獨立設定定期定額注入與配息再投入，綜合比對現況與調整後之在倉資產與提領總額。點擊「第 X 年」可開啟彈跳明細視窗 (方案 A)。';
+            } else {
+                btnMatrix.style.backgroundColor = 'var(--amber-accent)';
+                btnMatrix.style.color = '#ffffff';
+                btnSummary.style.backgroundColor = 'transparent';
+                btnSummary.style.color = 'var(--text-body)';
+                tabMatrix.classList.remove('hidden');
+                tabSummary.classList.add('hidden');
+                noteText.innerText = '各標的歷程矩陣：橫向展開現況與目標的各獨立標的，縱向逐年展示市場內在倉現值與歷年累計提領配息。點擊「第 X 年」可開啟彈跳明細視窗 (方案 A)。';
+            }
+
+            renderProjectionTable(cachedTargetTotalValue);
+        }
+
+        function setTrendLineView(viewMode) {
+            trendLineView = viewMode;
+            const btnPrincipal = document.getElementById('view-btn-principal');
+            const btnTotal = document.getElementById('view-btn-total');
+            const desc = document.getElementById('trend-view-desc');
+
+            if (viewMode === 'principal') {
+                btnPrincipal.style.backgroundColor = 'var(--sage-primary)';
+                btnPrincipal.style.color = '#ffffff';
+                btnTotal.style.backgroundColor = 'transparent';
+                btnTotal.style.color = 'var(--text-body)';
+                desc.innerText = '顯示留在市場內部持續複利滾存的實際在倉資產總額（含定期定額累積注入，提領現金不重複計入）。';
+            } else {
+                btnTotal.style.backgroundColor = 'var(--amber-accent)';
+                btnTotal.style.color = '#ffffff';
+                btnPrincipal.style.backgroundColor = 'transparent';
+                btnPrincipal.style.color = 'var(--text-body)';
+                desc.innerText = '顯示「在倉資產規模 ＋ 歷年累計已提領花用之現金流」，衡量綜合總財富。';
+            }
+
+            calculate();
+        }
+
+        // 正規化資產資料 (含 periodicDCA 與 reinvestType)
+        function normalizeAssetReinvest(asset, legacyCalcMode) {
+            let rType = asset.reinvestType || 'pct';
+            let rVal = asset.reinvestValue;
+            if (rVal === undefined || rVal === null) {
+                if (asset.calcMode === 'single' || legacyCalcMode === 'single') {
+                    rVal = 0;
+                } else {
+                    rVal = 100;
+                }
+            }
+            return {
+                ...asset,
+                periodicDCA: parseFloat(asset.periodicDCA) || 0,
+                reinvestType: rType,
+                reinvestValue: parseFloat(rVal) || 0
+            };
+        }
+
+        function handleStartYearChange(val) {
+            const y = parseInt(val);
+            if (!isNaN(y) && y > 0) {
+                startYear = y;
+                updateYearInputsUI();
+                renderProjectionTable();
+                saveData();
+            }
+        }
+
+        function handleStartRocChange(val) {
+            const roc = parseInt(val);
+            if (!isNaN(roc)) {
+                startYear = roc + 1911;
+                updateYearInputsUI();
+                renderProjectionTable();
+                saveData();
+            }
+        }
+
+        function handleStartAgeChange(val) {
+            const age = parseInt(val);
+            if (!isNaN(age) && age >= 0) {
+                startAge = age;
+                updateYearInputsUI();
+                renderProjectionTable();
+                saveData();
+            }
+        }
+
+        function updateYearInputsUI() {
+            const inputYear = document.getElementById('start-year-input');
+            const inputRoc = document.getElementById('start-roc-input');
+            const inputAge = document.getElementById('start-age-input');
+
+            if (inputYear) inputYear.value = startYear;
+            if (inputRoc) inputRoc.value = startYear > 1911 ? (startYear - 1911) : '';
+            if (inputAge) inputAge.value = startAge;
+        }
+
+        function initData() {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (saved) {
+                try {
+                    const parsed = JSON.parse(saved);
+                    const legacyCalc = parsed.calcMode || 'compound';
+                    if (Array.isArray(parsed.currentAssets) && Array.isArray(parsed.targetAssets)) {
+                        currentAssets = parsed.currentAssets.map(a => normalizeAssetReinvest(a, legacyCalc));
+                        targetAssets = parsed.targetAssets.map(t => normalizeAssetReinvest(t, legacyCalc));
+                    } else if (Array.isArray(parsed.assets)) {
+                        currentAssets = parsed.assets.map(a => normalizeAssetReinvest({
+                            id: 'c_' + a.id,
+                            name: a.name,
+                            value: a.value || 0,
+                            periodicDCA: a.periodicDCA || 0,
+                            curDivRate: a.curDivRate || 0,
+                            curCapRate: a.curCapRate || 0,
+                            isAnchor: !!a.isAnchor,
+                            calcMode: a.calcMode
+                        }, legacyCalc));
+                        targetAssets = parsed.assets.map(a => normalizeAssetReinvest({
+                            id: 't_' + a.id,
+                            name: a.name,
+                            adjWeight: a.adjWeight || 0,
+                            periodicDCA: a.periodicDCA || 0,
+                            adjDivRate: a.adjDivRate || 0,
+                            adjCapRate: a.adjCapRate || 0,
+                            calcMode: a.calcMode
+                        }, legacyCalc));
+                    } else {
+                        currentAssets = JSON.parse(JSON.stringify(DEFAULT_CURRENT_ASSETS));
+                        targetAssets = JSON.parse(JSON.stringify(DEFAULT_TARGET_ASSETS));
+                    }
+                    rebalanceMode = parsed.rebalanceMode || 'rebalance';
+                    projectionYears = parsed.projectionYears || 20;
+                    multiplierYear = parsed.multiplierYear || 1;
+                    if (Array.isArray(parsed.markedYears)) {
+                        markedYears = new Set(parsed.markedYears);
+                    }
+
+                    if (parsed.startYear !== undefined && !isNaN(parsed.startYear)) startYear = parsed.startYear;
+                    if (parsed.startAge !== undefined && !isNaN(parsed.startAge)) startAge = parsed.startAge;
+
+                } catch (e) {
+                    console.error('LocalStorage 讀取失敗', e);
+                    currentAssets = JSON.parse(JSON.stringify(DEFAULT_CURRENT_ASSETS));
+                    targetAssets = JSON.parse(JSON.stringify(DEFAULT_TARGET_ASSETS));
+                }
+            } else {
+                currentAssets = JSON.parse(JSON.stringify(DEFAULT_CURRENT_ASSETS));
+                targetAssets = JSON.parse(JSON.stringify(DEFAULT_TARGET_ASSETS));
+            }
+
+            document.getElementById('year-select-input').value = projectionYears;
+            document.getElementById('multiplier-select-input').value = multiplierYear;
+            updateYearInputsUI();
+            updateModeUI();
+            renderTables();
+            calculate();
+        }
+
+        function saveData() {
+            const payload = {
+                currentAssets,
+                targetAssets,
+                rebalanceMode,
+                projectionYears,
+                multiplierYear,
+                markedYears: Array.from(markedYears),
+                startYear,
+                startAge
+            };
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+        }
+
+        function setRebalanceMode(mode) {
+            rebalanceMode = mode;
+            updateModeUI();
+            calculate();
+            saveData();
+        }
+
+        function applyBatchReinvest(pctVal) {
+            currentAssets.forEach(a => {
+                a.reinvestType = 'pct';
+                a.reinvestValue = pctVal;
+            });
+            targetAssets.forEach(t => {
+                t.reinvestType = 'pct';
+                t.reinvestValue = pctVal;
+            });
+            renderTables();
+            calculate();
+            saveData();
+        }
+
+        function updateProjectionYears(val) {
+            let y = parseInt(val) || 20;
+            if (y < 1) y = 1;
+            if (y > 99) y = 99;
+            projectionYears = y;
+            document.getElementById('year-select-input').value = y;
+            calculate();
+            saveData();
+        }
+
+        function updateMultiplierYear(val) {
+            let m = parseInt(val) || 1;
+            if (m < 1) m = 1;
+            multiplierYear = m;
+            document.getElementById('multiplier-select-input').value = m;
+            renderProjectionTable();
+            saveData();
+        }
+
+        function toggleMarkYear(year) {
+            if (markedYears.has(year)) {
+                markedYears.delete(year);
+            } else {
+                markedYears.add(year);
+            }
+            renderProjectionTable();
+            saveData();
+        }
+
+        function clearAllMarkedRows() {
+            markedYears.clear();
+            renderProjectionTable();
+            saveData();
+        }
+
+        function copyCurrentToTarget() {
+            if (currentAssets.length === 0) {
+                alert('現況部位目前無任何標的可供複製。');
+                return;
+            }
+
+            if (targetAssets.length > 0) {
+                const ok = confirm('確定要以「現況資產組合」覆蓋「調整後目標組合」嗎？\n系統將自動同步所有標的名稱、目前佔比 %、定期定額、報酬率與再投入設定。');
+                if (!ok) return;
+            }
+
+            const curTotalVal = currentAssets.reduce((sum, a) => sum + (a.value || 0), 0);
+
+            let computedWeights = [];
+            if (curTotalVal > 0) {
+                let accumulatedWeight = 0;
+                computedWeights = currentAssets.map((a, idx) => {
+                    if (idx === currentAssets.length - 1) {
+                        const lastW = Math.max(0, 100 - accumulatedWeight);
+                        return parseFloat(lastW.toFixed(2));
+                    }
+                    const w = parseFloat(((a.value / curTotalVal) * 100).toFixed(2));
+                    accumulatedWeight += w;
+                    return w;
+                });
+            } else {
+                computedWeights = currentAssets.map(() => 0);
+            }
+
+            targetAssets = currentAssets.map((cur, idx) => ({
+                id: 't_' + Date.now().toString() + '_' + idx,
+                name: cur.name,
+                adjWeight: computedWeights[idx] || 0,
+                periodicDCA: cur.periodicDCA || 0,
+                adjDivRate: cur.curDivRate || 0,
+                adjCapRate: cur.curCapRate || 0,
+                reinvestType: cur.reinvestType || 'pct',
+                reinvestValue: cur.reinvestValue !== undefined ? cur.reinvestValue : 100
+            }));
+
+            renderTables();
+            calculate();
+            saveData();
+        }
+
+        function updateModeUI() {
+            const btnRebalance = document.getElementById('mode-btn-rebalance');
+            const btnAnchor = document.getElementById('mode-btn-anchor');
+            
+            if (rebalanceMode === 'rebalance') {
+                btnRebalance.style.backgroundColor = 'var(--sage-primary)';
+                btnRebalance.style.color = '#ffffff';
+                btnAnchor.style.backgroundColor = 'transparent';
+                btnAnchor.style.color = 'var(--sage-muted)';
+            } else {
+                btnAnchor.style.backgroundColor = 'var(--amber-accent)';
+                btnAnchor.style.color = '#ffffff';
+                btnRebalance.style.backgroundColor = 'transparent';
+                btnRebalance.style.color = 'var(--sage-muted)';
+            }
+
+            const anchorPanel = document.getElementById('anchor-info-panel');
+            if (rebalanceMode === 'anchor') {
+                anchorPanel.classList.remove('hidden');
+            } else {
+                anchorPanel.classList.add('hidden');
+            }
+
+            const anchorCheckboxes = document.querySelectorAll('.anchor-checkbox');
+            anchorCheckboxes.forEach(cb => {
+                cb.disabled = (rebalanceMode === 'rebalance');
+                if (rebalanceMode === 'rebalance') {
+                    cb.parentElement.classList.add('opacity-40', 'cursor-not-allowed');
+                } else {
+                    cb.parentElement.classList.remove('opacity-40', 'cursor-not-allowed');
+                }
+            });
+        }
+
+        function addCurrentAssetRow() {
+            currentAssets.push({
+                id: 'c_' + Date.now().toString(),
+                name: `現況標的 ${String.fromCharCode(65 + (currentAssets.length % 26))}`,
+                value: 0,
+                periodicDCA: 0,
+                curDivRate: 0,
+                curCapRate: 0,
+                isAnchor: false,
+                reinvestType: 'pct',
+                reinvestValue: 100
+            });
+            renderTables();
+            calculate();
+            saveData();
+        }
+
+        function deleteCurrentAssetRow(id) {
+            if (currentAssets.length <= 1) {
+                alert('至少需保留一項現況資產標的。');
+                return;
+            }
+            currentAssets = currentAssets.filter(a => a.id !== id);
+            renderTables();
+            calculate();
+            saveData();
+        }
+
+        function addTargetAssetRow() {
+            targetAssets.push({
+                id: 't_' + Date.now().toString(),
+                name: `目標標的 ${String.fromCharCode(65 + (targetAssets.length % 26))}`,
+                adjWeight: 0,
+                periodicDCA: 0,
+                adjDivRate: 0,
+                adjCapRate: 0,
+                reinvestType: 'pct',
+                reinvestValue: 100
+            });
+            renderTables();
+            calculate();
+            saveData();
+        }
+
+        function deleteTargetAssetRow(id) {
+            if (targetAssets.length <= 1) {
+                alert('至少需保留一項調整目標標的。');
+                return;
+            }
+            targetAssets = targetAssets.filter(a => a.id !== id);
+            renderTables();
+            calculate();
+            saveData();
+        }
+
+        function updateCurrentValue(id, field, val) {
+            const target = currentAssets.find(a => a.id === id);
+            if (target) {
+                if (field === 'name' || field === 'reinvestType') {
+                    target[field] = val;
+                } else if (field === 'value' || field === 'periodicDCA') {
+                    target[field] = parseCommasToNumber(val);
+                } else if (field === 'reinvestValue') {
+                    target[field] = target.reinvestType === 'amt' ? parseCommasToNumber(val) : (parseFloat(val) || 0);
+                } else {
+                    target[field] = parseFloat(val) || 0;
+                }
+            }
+            calculate();
+            saveData();
+        }
+
+        function handleCurrentValueInput(inputEl, id, field = 'value') {
+            const rawVal = parseCommasToNumber(inputEl.value);
+            const target = currentAssets.find(a => a.id === id);
+            if (target) {
+                target[field] = rawVal;
+            }
+            calculate();
+            saveData();
+        }
+
+        function handleCurrentValueBlur(inputEl, id, field = 'value') {
+            const target = currentAssets.find(a => a.id === id);
+            const num = target ? target[field] : parseCommasToNumber(inputEl.value);
+            inputEl.value = formatNumberWithCommas(num);
+        }
+
+        function handleTargetValueInput(inputEl, id, field = 'periodicDCA') {
+            const rawVal = parseCommasToNumber(inputEl.value);
+            const target = targetAssets.find(a => a.id === id);
+            if (target) {
+                target[field] = rawVal;
+            }
+            calculate();
+            saveData();
+        }
+
+        function handleTargetValueBlur(inputEl, id, field = 'periodicDCA') {
+            const target = targetAssets.find(a => a.id === id);
+            const num = target ? target[field] : parseCommasToNumber(inputEl.value);
+            inputEl.value = formatNumberWithCommas(num);
+        }
+
+        function handleReinvestInput(inputEl, assetArray, id) {
+            const target = assetArray.find(a => a.id === id);
+            if (!target) return;
+            if (target.reinvestType === 'amt') {
+                target.reinvestValue = parseCommasToNumber(inputEl.value);
+            } else {
+                target.reinvestValue = parseFloat(inputEl.value) || 0;
+            }
+            calculate();
+            saveData();
+        }
+
+        function handleReinvestBlur(inputEl, assetArray, id) {
+            const target = assetArray.find(a => a.id === id);
+            if (!target) return;
+            if (target.reinvestType === 'amt') {
+                inputEl.value = formatNumberWithCommas(target.reinvestValue || 0);
+            } else {
+                inputEl.value = target.reinvestValue !== undefined ? target.reinvestValue : 100;
+            }
+        }
+
+        function updateTargetValue(id, field, val) {
+            const target = targetAssets.find(a => a.id === id);
+            if (target) {
+                if (field === 'name' || field === 'reinvestType') {
+                    target[field] = val;
+                } else if (field === 'periodicDCA') {
+                    target[field] = parseCommasToNumber(val);
+                } else if (field === 'reinvestValue') {
+                    target[field] = target.reinvestType === 'amt' ? parseCommasToNumber(val) : (parseFloat(val) || 0);
+                } else {
+                    target[field] = parseFloat(val) || 0;
+                }
+            }
+            calculate();
+            saveData();
+        }
+
+        function toggleAnchorTarget(id, checked) {
+            const target = currentAssets.find(a => a.id === id);
+            if (target) target.isAnchor = checked;
+            calculate();
+            saveData();
+        }
+
+        function renderTables() {
+            renderCurrentTable();
+            renderTargetTable();
+            lucide.createIcons();
+            updateModeUI();
+        }
+
+        // 精緻化再投入控制組件，貼合收斂後的欄位寬度
+        function generateReinvestControl(asset, prefix) {
+            const isAmt = (asset.reinvestType === 'amt');
+            const displayVal = isAmt ? formatNumberWithCommas(asset.reinvestValue || 0) : (asset.reinvestValue !== undefined ? asset.reinvestValue : 100);
+            const arrayRefStr = (prefix === 'cur') ? 'currentAssets' : 'targetAssets';
+            const focusBorderColor = (prefix === 'cur') ? 'focus:border-emerald-600' : 'focus:border-amber-600';
+
+            return `
+                <div class="flex items-center w-full border rounded-lg p-0.5" style="border-color: var(--border-soft); background-color: #ffffff;">
+                    <select onchange="update${prefix === 'cur' ? 'Current' : 'Target'}Value('${asset.id}', 'reinvestType', this.value); renderTables();"
+                        class="bg-transparent text-[10.5px] font-bold outline-none cursor-pointer px-1 py-0.5 text-slate-700 flex-shrink-0" title="切換按比例(%)或按固定金額($)再投入">
+                        <option value="pct" ${!isAmt ? 'selected' : ''}>%</option>
+                        <option value="amt" ${isAmt ? 'selected' : ''}>$</option>
+                    </select>
+                    <input type="text" value="${displayVal}" onfocus="this.select()"
+                        oninput="handleReinvestInput(this, ${arrayRefStr}, '${asset.id}')"
+                        onblur="handleReinvestBlur(this, ${arrayRefStr}, '${asset.id}')"
+                        placeholder="${isAmt ? '金額' : '比例'}"
+                        class="w-full min-w-0 px-1 py-0.5 text-[11px] text-right font-mono font-bold outline-none rounded bg-transparent ${focusBorderColor}"
+                        title="${isAmt ? '每年固定再投入金額(若配息小於此值則全數投入)' : '每年配息滾入再投入的比例(0%~100%)'}">
+                </div>
+            `;
+        }
+
+        function renderCurrentTable() {
+            const tbody = document.getElementById('cur-asset-table-body');
+            tbody.innerHTML = '';
+            const curTotalVal = currentAssets.reduce((sum, a) => sum + (a.value || 0), 0);
+            const isRebalance = (rebalanceMode === 'rebalance');
+
+            currentAssets.forEach(asset => {
+                const curWeight = curTotalVal > 0 ? (asset.value / curTotalVal) * 100 : 0;
+                const formattedVal = formatNumberWithCommas(asset.value || 0);
+                const formattedDCA = formatNumberWithCommas(asset.periodicDCA || 0);
+
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-100/50 transition';
+                tr.innerHTML = `
+                    <td class="py-2 px-1 text-center no-print ${isRebalance ? 'opacity-40 cursor-not-allowed' : ''}">
+                        <input type="checkbox" ${asset.isAnchor ? 'checked' : ''} ${isRebalance ? 'disabled' : ''}
+                            onchange="toggleAnchorTarget('${asset.id}', this.checked)"
+                            class="anchor-checkbox w-3.5 h-3.5 rounded cursor-pointer accent-amber-600 disabled:cursor-not-allowed" 
+                            title="${isRebalance ? '總資產不變模式下已鎖定' : '勾選作為錨定基準標的(可複選)'}">
+                    </td>
+                    <td class="py-2 px-2 font-sans truncate">
+                        <input type="text" value="${asset.name}" onfocus="this.select()" onchange="updateCurrentValue('${asset.id}', 'name', this.value)"
+                            class="w-full px-2 py-1 rounded-lg border text-[12px] font-semibold outline-none focus:border-emerald-600 truncate" 
+                            style="background-color: var(--input-bg); border-color: var(--border-soft); color: var(--text-title);">
+                    </td>
+                    <td class="py-2 px-2 text-right">
+                        <input type="text" value="${formattedVal}" onfocus="this.select()"
+                            oninput="handleCurrentValueInput(this, '${asset.id}', 'value')"
+                            onblur="handleCurrentValueBlur(this, '${asset.id}', 'value')"
+                            class="w-full px-2 py-1 rounded-lg border text-[12px] text-right font-mono outline-none focus:border-emerald-600"
+                            style="background-color: var(--input-bg); border-color: var(--border-soft); color: var(--text-title);">
+                    </td>
+                    <td class="py-2 px-1 text-right text-slate-500 font-mono text-[11px] truncate">${formatPercent(curWeight)}</td>
+                    
+                    <!-- 定期定額/年 輸入欄 -->
+                    <td class="py-2 px-2 text-right">
+                        <input type="text" value="${formattedDCA}" onfocus="this.select()"
+                            oninput="handleCurrentValueInput(this, '${asset.id}', 'periodicDCA')"
+                            onblur="handleCurrentValueBlur(this, '${asset.id}', 'periodicDCA')"
+                            title="每年外部持續定額加碼投入此標的之金額"
+                            class="w-full px-2 py-1 rounded-lg border text-[12px] text-right font-mono outline-none focus:border-emerald-600"
+                            style="background-color: #ffffff; border-color: var(--border-soft); color: var(--success-color);">
+                    </td>
+
+                    <td class="py-2 px-1 text-right">
+                        <div class="flex items-center justify-end space-x-0.5">
+                            <input type="number" step="0.1" value="${asset.curDivRate}" onfocus="this.select()" onchange="updateCurrentValue('${asset.id}', 'curDivRate', this.value)"
+                                class="w-full px-1 py-1 rounded-lg border text-[11.5px] text-right font-mono outline-none focus:border-emerald-600"
+                                style="background-color: var(--input-bg); border-color: var(--border-soft); color: var(--text-title);">
+                        </div>
+                    </td>
+                    <td class="py-2 px-1 text-right">
+                        <div class="flex items-center justify-end space-x-0.5">
+                            <input type="number" step="0.1" value="${asset.curCapRate}" onfocus="this.select()" onchange="updateCurrentValue('${asset.id}', 'curCapRate', this.value)"
+                                class="w-full px-1 py-1 rounded-lg border text-[11.5px] text-right font-mono outline-none focus:border-emerald-600"
+                                style="background-color: var(--input-bg); border-color: var(--border-soft); color: var(--text-title);">
+                        </div>
+                    </td>
+                    <td class="py-2 px-1 text-center">
+                        ${generateReinvestControl(asset, 'cur')}
+                    </td>
+                    <td class="py-2 px-1 text-center no-print">
+                        <button onclick="deleteCurrentAssetRow('${asset.id}')" class="p-1 text-slate-400 hover:text-rose-600 rounded-lg transition" title="刪除此現況標的">
+                            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function renderTargetTable() {
+            const tbody = document.getElementById('target-asset-table-body');
+            tbody.innerHTML = '';
+
+            targetAssets.forEach(asset => {
+                const formattedDCA = formatNumberWithCommas(asset.periodicDCA || 0);
+
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-100/50 transition';
+                tr.innerHTML = `
+                    <td class="py-2 px-2 font-sans truncate">
+                        <input type="text" value="${asset.name}" onfocus="this.select()" onchange="updateTargetValue('${asset.id}', 'name', this.value)"
+                            class="w-full px-2 py-1 rounded-lg border text-[12px] font-semibold outline-none focus:border-amber-600 truncate" 
+                            style="background-color: #fff; border-color: var(--border-soft); color: var(--text-title);">
+                    </td>
+                    <td class="py-2 px-1 text-right">
+                        <div class="flex items-center justify-end space-x-0.5">
+                            <input type="number" step="0.1" value="${asset.adjWeight}" onfocus="this.select()" onchange="updateTargetValue('${asset.id}', 'adjWeight', this.value)"
+                                class="w-full px-1 py-1 rounded-lg border text-[11.5px] text-right font-bold font-mono outline-none focus:border-amber-600"
+                                style="background-color: #fff; border-color: var(--border-soft); color: var(--amber-accent);">
+                        </div>
+                    </td>
+                    <td class="py-2 px-2 text-right font-mono font-bold text-[12px] truncate" style="color: var(--amber-accent);" id="target-val-${asset.id}">$0</td>
+                    <td class="py-2 px-2 text-right font-mono font-bold text-[12px] truncate" id="target-diff-${asset.id}">$0</td>
+                    
+                    <!-- 定期定額/年 輸入欄 -->
+                    <td class="py-2 px-2 text-right">
+                        <input type="text" value="${formattedDCA}" onfocus="this.select()"
+                            oninput="handleTargetValueInput(this, '${asset.id}', 'periodicDCA')"
+                            onblur="handleTargetValueBlur(this, '${asset.id}', 'periodicDCA')"
+                            title="每年外部持續定額加碼投入此目標標的之金額"
+                            class="w-full px-2 py-1 rounded-lg border text-[12px] text-right font-mono outline-none focus:border-amber-600"
+                            style="background-color: #ffffff; border-color: var(--border-soft); color: var(--amber-accent);">
+                    </td>
+
+                    <td class="py-2 px-1 text-right">
+                        <div class="flex items-center justify-end space-x-0.5">
+                            <input type="number" step="0.1" value="${asset.adjDivRate}" onfocus="this.select()" onchange="updateTargetValue('${asset.id}', 'adjDivRate', this.value)"
+                                class="w-full px-1 py-1 rounded-lg border text-[11.5px] text-right font-mono outline-none focus:border-amber-600"
+                                style="background-color: #fff; border-color: var(--border-soft); color: var(--text-title);">
+                        </div>
+                    </td>
+                    <td class="py-2 px-1 text-right">
+                        <div class="flex items-center justify-end space-x-0.5">
+                            <input type="number" step="0.1" value="${asset.adjCapRate}" onfocus="this.select()" onchange="updateTargetValue('${asset.id}', 'adjCapRate', this.value)"
+                                class="w-full px-1 py-1 rounded-lg border text-[11.5px] text-right font-mono outline-none focus:border-amber-600"
+                                style="background-color: #fff; border-color: var(--border-soft); color: var(--text-title);">
+                        </div>
+                    </td>
+                    <td class="py-2 px-1 text-center">
+                        ${generateReinvestControl(asset, 'adj')}
+                    </td>
+                    <td class="py-2 px-1 text-center no-print">
+                        <button onclick="deleteTargetAssetRow('${asset.id}')" class="p-1 text-slate-400 hover:text-rose-600 rounded-lg transition" title="刪除此目標標的">
+                            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // 核心計算模組：支援定期定額活水與雙軌再投入
+        function calculate() {
+            const curTotalValue = currentAssets.reduce((sum, a) => sum + (a.value || 0), 0);
+            const curTotalDCA = currentAssets.reduce((sum, a) => sum + (a.periodicDCA || 0), 0);
+            const adjTotalDCA = targetAssets.reduce((sum, t) => sum + (t.periodicDCA || 0), 0);
+            
+            const curMapByName = {};
+            currentAssets.forEach(a => {
+                const name = (a.name || '').trim();
+                curMapByName[name] = (curMapByName[name] || 0) + (a.value || 0);
+            });
+
+            const targetWeightMapByName = {};
+            targetAssets.forEach(t => {
+                const name = (t.name || '').trim();
+                targetWeightMapByName[name] = (targetWeightMapByName[name] || 0) + (t.adjWeight || 0);
+            });
+
+            let targetTotalValue = curTotalValue;
+            let anchorCurrentValSum = 0;
+            let anchorMatchedTargetWeightSum = 0;
+            const anchorAssets = currentAssets.filter(a => a.isAnchor);
+
+            if (rebalanceMode === 'anchor' && anchorAssets.length > 0) {
+                anchorAssets.forEach(a => {
+                    const name = (a.name || '').trim();
+                    anchorCurrentValSum += (a.value || 0);
+                    anchorMatchedTargetWeightSum += (targetWeightMapByName[name] || 0);
+                });
+
+                if (anchorMatchedTargetWeightSum > 0) {
+                    targetTotalValue = anchorCurrentValSum / (anchorMatchedTargetWeightSum / 100);
+                }
+            }
+            cachedTargetTotalValue = targetTotalValue;
+
+            let curWeightedDivRate = 0;
+            let curWeightedCapRate = 0;
+            if (curTotalValue > 0) {
+                currentAssets.forEach(a => {
+                    const w = (a.value || 0) / curTotalValue;
+                    curWeightedDivRate += w * (a.curDivRate || 0);
+                    curWeightedCapRate += w * (a.curCapRate || 0);
+                });
+            }
+
+            let totalAdjWeight = 0;
+            let adjWeightedDivRate = 0;
+            let adjWeightedCapRate = 0;
+            const targetAllocations = [];
+
+            targetAssets.forEach(t => {
+                const weight = (t.adjWeight || 0);
+                totalAdjWeight += weight;
+                const ratio = weight / 100;
+
+                adjWeightedDivRate += ratio * (t.adjDivRate || 0);
+                adjWeightedCapRate += ratio * (t.adjCapRate || 0);
+
+                const tVal = targetTotalValue * ratio;
+                const tName = (t.name || '').trim();
+                
+                const curValOfThis = curMapByName[tName] || 0;
+                const diffVal = tVal - curValOfThis;
+
+                targetAllocations.push({
+                    id: t.id,
+                    name: tName,
+                    targetVal: tVal,
+                    diffVal: diffVal
+                });
+
+                const valEl = document.getElementById(`target-val-${t.id}`);
+                if (valEl) valEl.innerText = formatCurrency(tVal);
+
+                const diffEl = document.getElementById(`target-diff-${t.id}`);
+                if (diffEl) {
+                    if (diffVal > 0) {
+                        diffEl.innerText = `+${formatCurrency(diffVal)}`;
+                        diffEl.style.color = 'var(--success-color)';
+                    } else if (diffVal < 0) {
+                        diffEl.innerText = formatCurrency(diffVal);
+                        diffEl.style.color = 'var(--danger-color)';
+                    } else {
+                        diffEl.innerText = '$0';
+                        diffEl.style.color = 'var(--text-body)';
+                    }
+                }
+            });
+
+            const allUniqueNames = new Set([
+                ...currentAssets.map(a => (a.name || '').trim()),
+                ...targetAssets.map(t => (t.name || '').trim())
+            ]);
+
+            const rebalanceDeltas = [];
+            let netDiffCapital = 0;
+
+            allUniqueNames.forEach(name => {
+                if (!name) return;
+                const cVal = curMapByName[name] || 0;
+                const tWeight = targetWeightMapByName[name] || 0;
+                const tVal = targetTotalValue * (tWeight / 100);
+                const delta = tVal - cVal;
+                
+                netDiffCapital += delta;
+                rebalanceDeltas.push({ name, delta });
+            });
+
+            // 佔比防呆警告
+            const alertBox = document.getElementById('alert-weight');
+            const alertMsg = document.getElementById('alert-weight-msg');
+            const alertVal = document.getElementById('alert-weight-val');
+
+            if (Math.abs(totalAdjWeight - 100) > 0.01) {
+                alertBox.classList.remove('hidden');
+                alertVal.innerText = `目前總計: ${totalAdjWeight.toFixed(1)}%`;
+                if (totalAdjWeight < 100) {
+                    alertMsg.innerText = `警告：調整後總佔比尚未達到 100%（還差 ${(100 - totalAdjWeight).toFixed(1)}%）`;
+                } else {
+                    alertMsg.innerText = `警告：調整後總佔比已超過 100%（超出 ${(totalAdjWeight - 100).toFixed(1)}%）`;
+                }
+            } else {
+                alertBox.classList.add('hidden');
+            }
+
+            // 更新 KPIs
+            document.getElementById('kpi-total-val').innerText = formatCurrency(curTotalValue);
+            document.getElementById('kpi-target-total-val').innerText = formatCurrency(targetTotalValue);
+
+            const curTotalReturnRate = curWeightedDivRate + curWeightedCapRate;
+            document.getElementById('kpi-current-weighted-return').innerText = formatPercent(curTotalReturnRate);
+            document.getElementById('kpi-cur-return-breakdown').innerText = `${formatPercent(curWeightedDivRate)} / ${formatPercent(curWeightedCapRate)}`;
+
+            const curAnnualDiv = curTotalValue * (curWeightedDivRate / 100);
+            document.getElementById('kpi-current-dividend').innerText = formatCurrency(curAnnualDiv);
+            document.getElementById('kpi-current-dca').innerText = formatCurrency(curTotalDCA) + '/年';
+
+            const adjAnnualDiv = targetTotalValue * (adjWeightedDivRate / 100);
+            document.getElementById('kpi-adjusted-dividend').innerText = formatCurrency(adjAnnualDiv);
+            document.getElementById('kpi-adjusted-dca').innerText = formatCurrency(adjTotalDCA) + '/年';
+
+            const adjTotalReturnRate = adjWeightedDivRate + adjWeightedCapRate;
+            document.getElementById('kpi-weighted-return').innerText = formatPercent(adjTotalReturnRate);
+            document.getElementById('kpi-return-breakdown').innerText = `${formatPercent(adjWeightedDivRate)} / ${formatPercent(adjWeightedCapRate)}`;
+
+            // 更新左表底部合計
+            document.getElementById('foot-cur-total-val').innerText = formatCurrency(curTotalValue);
+            document.getElementById('foot-cur-total-dca').innerText = formatCurrency(curTotalDCA);
+            document.getElementById('foot-cur-div-rate').innerText = formatPercent(curWeightedDivRate);
+            document.getElementById('foot-cur-cap-rate').innerText = formatPercent(curWeightedCapRate);
+
+            // 更新右表底部合計
+            document.getElementById('foot-adj-total-val').innerText = formatCurrency(targetTotalValue);
+            document.getElementById('foot-adj-total-dca').innerText = formatCurrency(adjTotalDCA);
+            document.getElementById('foot-adj-weight').innerText = formatPercent(totalAdjWeight);
+            document.getElementById('foot-adj-div-rate').innerText = formatPercent(adjWeightedDivRate);
+
+            const footDiffEl = document.getElementById('foot-adj-diff-val');
+            if (rebalanceMode === 'rebalance') {
+                footDiffEl.innerText = '$0 (平衡調度)';
+                footDiffEl.style.color = 'var(--sage-primary)';
+            } else {
+                const reqNewCapital = Math.max(0, targetTotalValue - curTotalValue);
+                footDiffEl.innerText = `+${formatCurrency(reqNewCapital)}`;
+                footDiffEl.style.color = 'var(--amber-accent)';
+            }
+
+            if (anchorAssets.length > 0) {
+                const names = anchorAssets.map(a => a.name).join(', ');
+                const reqNewCapital = Math.max(0, targetTotalValue - curTotalValue);
+                document.getElementById('anchor-target-name').innerText = `${names}`;
+                document.getElementById('anchor-total-needed').innerText = `需再投入新資金：${formatCurrency(reqNewCapital)}`;
+            } else {
+                document.getElementById('anchor-target-name').innerText = `未勾選（請至少在現況勾選一個標的）`;
+                document.getElementById('anchor-total-needed').innerText = `需再投入新資金：$0`;
+            }
+
+            renderAllCharts(curTotalValue, targetTotalValue, rebalanceDeltas, totalAdjWeight);
+            renderProjectionTable(targetTotalValue);
+        }
+
+        // 個別標的動態複利模擬引擎 (結合「起始本金」＋「定期定額活水」＋「配息提領/滾存」)
+        function simulateAssetTrajectory(baseVal, capRatePct, divRatePct, rType, rVal, periodicDCA, maxYears) {
+            const trajectory = [];
+            const rCap = (capRatePct || 0) / 100;
+            const rDiv = (divRatePct || 0) / 100;
+            const annualDCA = Math.max(0, periodicDCA || 0);
+
+            let currentPrincipal = baseVal || 0;
+            let cumCapGain = 0;
+            let cumWithdrawnCash = 0;
+            let cumDCA = 0;
+
+            for (let y = 1; y <= maxYears; y++) {
+                cumDCA += annualDCA;
+
+                const yearCap = (currentPrincipal * rCap) + (annualDCA * 0.5 * rCap);
+                const yearDiv = (currentPrincipal * rDiv) + (annualDCA * 0.5 * rDiv);
+
+                cumCapGain += yearCap;
+
+                let reinvestAmt = 0;
+                if (rType === 'amt') {
+                    reinvestAmt = Math.min(yearDiv, Math.max(0, rVal || 0));
+                } else {
+                    const pct = Math.max(0, Math.min(100, (rVal !== undefined ? rVal : 100))) / 100;
+                    reinvestAmt = yearDiv * pct;
+                }
+
+                const withdrawnThisYear = yearDiv - reinvestAmt;
+                cumWithdrawnCash += withdrawnThisYear;
+
+                currentPrincipal = currentPrincipal + annualDCA + yearCap + reinvestAmt;
+
+                trajectory.push({
+                    year: y,
+                    capGain: cumCapGain,
+                    withdrawnCash: cumWithdrawnCash,
+                    cumDCA: cumDCA,
+                    inMarketAsset: currentPrincipal,
+                    totalWealth: currentPrincipal + cumWithdrawnCash
+                });
+            }
+
+            return trajectory;
+        }
+
+        // 渲染三大圖表
+        function renderAllCharts(curTotal, adjTotal, rebalanceDeltas, totalAdjWeight) {
+            const curLabels = currentAssets.map(a => a.name);
+            const curData = currentAssets.map(a => a.value || 0);
+            const curColors = currentAssets.map((_, i) => VIBRANT_PALETTE[i % VIBRANT_PALETTE.length]);
+
+            const adjLabels = targetAssets.map(t => t.name);
+            const adjData = targetAssets.map(t => adjTotal * ((t.adjWeight || 0) / 100));
+            const adjColors = targetAssets.map((_, i) => VIBRANT_PALETTE[(i + 3) % VIBRANT_PALETTE.length]);
+
+            renderResponsiveDonutsWithCardList(curLabels, curData, curColors, curTotal, adjLabels, adjData, adjColors, adjTotal, totalAdjWeight);
+            renderFlowBarChart(rebalanceDeltas);
+            renderTrendLineChart(curTotal, adjTotal);
+        }
+
+        function renderResponsiveDonutsWithCardList(curLabels, curData, curColors, curTotal, adjLabels, adjData, adjColors, adjTotal, totalAdjWeight) {
+            document.getElementById('center-cur-total').innerText = formatCurrency(curTotal);
+            document.getElementById('center-cur-pct').innerText = curTotal > 0 ? '100.0%' : '0.0%';
+            
+            document.getElementById('center-adj-total').innerText = formatCurrency(adjTotal);
+            document.getElementById('center-adj-pct').innerText = (adjTotal > 0 && Math.abs((totalAdjWeight || 0) - 100) < 0.01) ? '100.0%' : `${((totalAdjWeight || 0)).toFixed(1)}%`;
+
+            const donutOptions = {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '64%',
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        enabled: true,
+                        backgroundColor: 'rgba(34, 46, 39, 0.95)',
+                        titleFont: { family: 'Noto Sans TC', size: 10 },
+                        bodyFont: { family: 'JetBrains Mono', size: 10 },
+                        padding: 7,
+                        cornerRadius: 7,
+                        callbacks: {
+                            label: function(context) {
+                                const val = context.parsed;
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                if (total <= 0 || context.dataset.isPlaceholder) return ' 尚未設定數值';
+                                const pct = total > 0 ? ((val / total) * 100).toFixed(1) : 0;
+                                return ` ${context.label}: $${Math.round(val).toLocaleString()} (${pct}%)`;
+                            }
+                        }
+                    }
+                }
+            };
+
+            const hasCurData = curData.some(v => v > 0);
+            if (curDonutChartInstance) curDonutChartInstance.destroy();
+            const ctxCur = document.getElementById('chart-cur-donut').getContext('2d');
+            curDonutChartInstance = new Chart(ctxCur, {
+                type: 'doughnut',
+                data: {
+                    labels: hasCurData ? curLabels : ['無資料'],
+                    datasets: [{
+                        data: hasCurData ? curData : [1],
+                        backgroundColor: hasCurData ? curColors : ['rgba(211, 204, 192, 0.4)'],
+                        borderWidth: 2,
+                        borderColor: '#ffffff',
+                        isPlaceholder: !hasCurData
+                    }]
+                },
+                options: donutOptions
+            });
+
+            const hasAdjData = adjData.some(v => v > 0);
+            if (adjDonutChartInstance) adjDonutChartInstance.destroy();
+            const ctxAdj = document.getElementById('chart-adj-donut').getContext('2d');
+            adjDonutChartInstance = new Chart(ctxAdj, {
+                type: 'doughnut',
+                data: {
+                    labels: hasAdjData ? adjLabels : ['無資料'],
+                    datasets: [{
+                        data: hasAdjData ? adjData : [1],
+                        backgroundColor: hasAdjData ? adjColors : ['rgba(211, 204, 192, 0.4)'],
+                        borderWidth: 2,
+                        borderColor: '#ffffff',
+                        isPlaceholder: !hasAdjData
+                    }]
+                },
+                options: donutOptions
+            });
+
+            renderBottomCardList('cur', curLabels, curData, curColors, curTotal);
+            renderBottomCardList('adj', adjLabels, adjData, adjColors, adjTotal);
+        }
+
+        function renderBottomCardList(prefix, labels, data, colors, totalVal) {
+            const container = document.getElementById(`${prefix}-card-list`);
+            container.innerHTML = '';
+
+            const items = labels.map((name, i) => {
+                const val = data[i] || 0;
+                const pct = totalVal > 0 ? (val / totalVal) * 100 : 0;
+                return { name, val, pct, color: colors[i % colors.length] };
+            });
+
+            if (totalVal > 0) items.sort((a, b) => b.val - a.val);
+
+            items.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'flex items-center justify-between px-2 py-1 rounded-md border text-[11px] transition hover:bg-slate-50';
+                div.style.borderColor = 'rgba(211, 204, 192, 0.45)';
+                div.style.backgroundColor = '#faf8f5';
+
+                div.innerHTML = `
+                    <div class="flex items-center space-x-1.5 truncate">
+                        <span class="w-2 h-2 rounded-full flex-shrink-0" style="background-color: ${item.color};"></span>
+                        <span class="font-bold text-slate-800 text-[10.5px] truncate" title="${item.name}">${item.name}</span>
+                    </div>
+                    <div class="flex items-center space-x-1.5 text-right flex-shrink-0 font-mono">
+                        <span class="font-bold text-[10.5px]" style="color: ${item.val > 0 ? item.color : 'var(--sage-muted)'};">${item.pct.toFixed(1)}%</span>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function renderFlowBarChart(rebalanceDeltas) {
+            if (flowBarChartInstance) flowBarChartInstance.destroy();
+            const ctx = document.getElementById('chart-flow-bar').getContext('2d');
+            const labels = rebalanceDeltas.map(d => d.name);
+            const deltas = rebalanceDeltas.map(d => d.delta);
+            const barColors = deltas.map(v => v > 0 ? '#16a34a' : (v < 0 ? '#b8334a' : 'rgba(211, 204, 192, 0.5)'));
+
+            flowBarChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '調度差額 ($)',
+                        data: deltas,
+                        backgroundColor: barColors,
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: (ctx) => ` 調度: ${formatCurrency(ctx.parsed.y)}`
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            ticks: {
+                                font: { family: 'JetBrains Mono', size: 9 },
+                                callback: (val) => (val / 10000).toFixed(0) + '萬'
+                            },
+                            grid: { color: 'rgba(211, 204, 192, 0.35)' }
+                        },
+                        x: {
+                            ticks: { 
+                                font: { family: 'Noto Sans TC', size: 9, weight: 600 },
+                                maxRotation: 45,
+                                minRotation: 45
+                            },
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderTrendLineChart(curTotal, adjTotal) {
+            if (trendLineChartInstance) trendLineChartInstance.destroy();
+            const ctx = document.getElementById('chart-trend-line').getContext('2d');
+
+            const curTrajectories = currentAssets.map(a => 
+                simulateAssetTrajectory(a.value || 0, a.curCapRate, a.curDivRate, a.reinvestType, a.reinvestValue, a.periodicDCA, projectionYears)
+            );
+
+            const adjTrajectories = targetAssets.map(t => {
+                const baseVal = adjTotal * ((t.adjWeight || 0) / 100);
+                return simulateAssetTrajectory(baseVal, t.adjCapRate, t.adjDivRate, t.reinvestType, t.reinvestValue, t.periodicDCA, projectionYears);
+            });
+
+            const yearsLabels = [];
+            const curTrend = [];
+            const adjTrend = [];
+            const step = Math.max(1, Math.floor(projectionYears / 12));
+
+            for (let y = 1; y <= projectionYears; y += step) {
+                yearsLabels.push(`第${y}年`);
+
+                let curY = 0;
+                curTrajectories.forEach(traj => {
+                    curY += (trendLineView === 'principal') ? traj[y - 1].inMarketAsset : traj[y - 1].totalWealth;
+                });
+                curTrend.push(curY);
+
+                let adjY = 0;
+                adjTrajectories.forEach(traj => {
+                    adjY += (trendLineView === 'principal') ? traj[y - 1].inMarketAsset : traj[y - 1].totalWealth;
+                });
+                adjTrend.push(adjY);
+            }
+
+            const minInitBase = Math.min(curTotal, adjTotal);
+            const dynamicMin = minInitBase > 0 ? Math.floor(minInitBase * 0.85 / 100000) * 100000 : 0;
+
+            const metricLabel = (trendLineView === 'principal') ? '在倉資產' : '含提領總額';
+
+            trendLineChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: yearsLabels,
+                    datasets: [
+                        {
+                            label: `現況 (${metricLabel})`,
+                            data: curTrend,
+                            borderColor: '#21613e',
+                            backgroundColor: 'rgba(33, 97, 62, 0.08)',
+                            fill: true,
+                            tension: 0.35,
+                            borderWidth: 2.4,
+                            pointRadius: 3
+                        },
+                        {
+                            label: `調整後 (${metricLabel})`,
+                            data: adjTrend,
+                            borderColor: '#c86f32',
+                            backgroundColor: 'rgba(200, 111, 50, 0.08)',
+                            fill: true,
+                            tension: 0.35,
+                            borderWidth: 2.4,
+                            pointRadius: 3
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: { font: { family: 'Noto Sans TC', size: 11, weight: 600 } }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: (ctx) => ` ${ctx.dataset.label}: ${formatCurrency(ctx.parsed.y)}`
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            min: dynamicMin,
+                            ticks: {
+                                font: { family: 'JetBrains Mono', size: 10 },
+                                callback: (val) => '$' + (val / 10000).toFixed(0) + '萬'
+                            },
+                            grid: { color: 'rgba(211, 204, 192, 0.35)' }
+                        },
+                        x: {
+                            ticks: { font: { family: 'Noto Sans TC', size: 10 } },
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+        }
+
+        // 長程逐年推算明細表格繪製 (方案 A + C 結合 + 倍數呈現篩選)
+        function renderProjectionTable(adjTotal) {
+            if (adjTotal === undefined) {
+                adjTotal = cachedTargetTotalValue;
+            }
+
+            const tabSummary = document.getElementById('tab-content-summary');
+            const tabMatrix = document.getElementById('tab-content-matrix');
+            
+            if (projectionYears > 20) {
+                tabSummary.classList.add('scrollable-projection');
+                tabMatrix.classList.add('scrollable-projection');
+            } else {
+                tabSummary.classList.remove('scrollable-projection');
+                tabMatrix.classList.remove('scrollable-projection');
+            }
+
+            // 預先計算各標的完整軌跡
+            lastCurTrajectories = currentAssets.map(a => ({
+                asset: a,
+                trajectory: simulateAssetTrajectory(a.value || 0, a.curCapRate, a.curDivRate, a.reinvestType, a.reinvestValue, a.periodicDCA, projectionYears)
+            }));
+
+            lastAdjTrajectories = targetAssets.map(t => {
+                const baseVal = adjTotal * ((t.adjWeight || 0) / 100);
+                return {
+                    asset: t,
+                    baseVal: baseVal,
+                    trajectory: simulateAssetTrajectory(baseVal, t.adjCapRate, t.adjDivRate, t.reinvestType, t.reinvestValue, t.periodicDCA, projectionYears)
+                };
+            });
+
+            // 1. 渲染綜合總表
+            renderSummaryProjectionBody();
+
+            // 2. 渲染各標的歷程矩陣表 (方案 C)
+            renderMatrixProjectionTable();
+
+            lucide.createIcons();
+        }
+
+        function renderSummaryProjectionBody() {
+            const tbody = document.getElementById('projection-table-body');
+            tbody.innerHTML = '';
+
+            for (let y = 1; y <= projectionYears; y++) {
+                // 根據倍數設定判斷是否呈現該年份
+                if (!shouldDisplayYear(y, projectionYears, multiplierYear)) {
+                    continue;
+                }
+
+                let curCapGain = 0;
+                let curWithdrawn = 0;
+                let curInMarketAsset = 0;
+                let curTotalWealth = 0;
+
+                lastCurTrajectories.forEach(item => {
+                    const row = item.trajectory[y - 1];
+                    curCapGain += row.capGain;
+                    curWithdrawn += row.withdrawnCash;
+                    curInMarketAsset += row.inMarketAsset;
+                    curTotalWealth += row.totalWealth;
+                });
+
+                let adjCapGain = 0;
+                let adjWithdrawn = 0;
+                let adjInMarketAsset = 0;
+                let adjTotalWealth = 0;
+
+                lastAdjTrajectories.forEach(item => {
+                    const row = item.trajectory[y - 1];
+                    adjCapGain += row.capGain;
+                    adjWithdrawn += row.withdrawnCash;
+                    adjInMarketAsset += row.inMarketAsset;
+                    adjTotalWealth += row.totalWealth;
+                });
+
+                const diffAsset = adjInMarketAsset - curInMarketAsset;
+                const diffCash = adjWithdrawn - curWithdrawn;
+                const diffTotalWealth = adjTotalWealth - curTotalWealth;
+                const isMarked = markedYears.has(y);
+
+                const thisYearAD = startYear + (y - 1);
+                const thisYearROC = thisYearAD > 1911 ? (thisYearAD - 1911) : (thisYearAD - 1912);
+                const thisAge = startAge + (y - 1);
+
+                const tr = document.createElement('tr');
+                tr.className = `transition hover:bg-slate-100/60 ${isMarked ? 'marked-row' : ''}`;
+                tr.innerHTML = `
+                    <td class="py-2.5 px-2 text-center no-print">
+                        <button onclick="toggleMarkYear(${y})" title="點擊切換標記該年份"
+                            class="p-1 rounded-lg transition ${isMarked ? 'text-rose-600 bg-rose-200/50' : 'text-slate-300 hover:text-slate-500'}">
+                            <i data-lucide="bookmark" class="w-4 h-4 ${isMarked ? 'fill-rose-500' : ''}"></i>
+                        </button>
+                    </td>
+
+                    <td class="py-2.5 px-3 text-left font-mono border-r whitespace-nowrap" style="border-color: var(--border-soft);">
+                        <span class="font-bold text-slate-800 text-[12px]">${thisYearAD}</span>
+                        <span class="text-slate-400 text-[11px] mx-1">/</span>
+                        <span class="text-slate-600 text-[11px]">${thisYearROC}年</span>
+                        <span class="text-slate-400 text-[11px] mx-1">/</span>
+                        <span class="font-bold text-emerald-800 text-[11.5px]">${thisAge}歲</span>
+                    </td>
+
+                    <!-- 年度欄位：設計為可點擊彈出該年所有標的現值明細 (方案 A) -->
+                    <td class="py-2.5 px-2 text-center font-bold font-sans text-xs">
+                        <button onclick="openAssetModal(${y})" title="點擊開啟第 ${y} 年所有標的個別現值明細 (方案 A)"
+                            class="group inline-flex items-center gap-1 px-2 py-0.5 rounded-lg border text-slate-700 bg-white/80 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-300 transition shadow-xs">
+                            <span>第 ${y} 年</span>
+                            <i data-lucide="search" class="w-3 h-3 text-slate-400 group-hover:text-emerald-600 transition"></i>
+                        </button>
+                    </td>
+                    
+                    <td class="py-2.5 px-2.5 text-right bg-emerald-900/5">${formatCurrency(curCapGain)}</td>
+                    <td class="py-2.5 px-2.5 text-right bg-emerald-900/5 text-slate-600">${formatCurrency(curWithdrawn)}</td>
+                    <td class="py-2.5 px-2.5 text-right bg-emerald-900/5 font-bold border-r" style="border-color: var(--border-soft); color: var(--success-color);">${formatCurrency(curInMarketAsset)}</td>
+                    
+                    <td class="py-2.5 px-2.5 text-right bg-amber-900/5">${formatCurrency(adjCapGain)}</td>
+                    <td class="py-2.5 px-2.5 text-right bg-amber-900/5 text-slate-600">${formatCurrency(adjWithdrawn)}</td>
+                    <td class="py-2.5 px-2.5 text-right bg-amber-900/5 font-bold border-r" style="border-color: var(--border-soft); color: var(--amber-accent);">${formatCurrency(adjInMarketAsset)}</td>
+                    
+                    <td class="py-2.5 px-2.5 text-right bg-rose-900/5 font-bold ${diffAsset >= 0 ? 'text-emerald-700' : 'text-rose-700'}">${diffAsset > 0 ? '+' : ''}${formatCurrency(diffAsset)}</td>
+                    <td class="py-2.5 px-2.5 text-right bg-rose-900/5 ${diffCash >= 0 ? 'text-emerald-700' : 'text-rose-700'}">${diffCash > 0 ? '+' : ''}${formatCurrency(diffCash)}</td>
+                    <td class="py-2.5 px-2.5 text-right bg-rose-900/5 font-bold ${diffTotalWealth >= 0 ? 'text-emerald-700' : 'text-rose-700'}">${diffTotalWealth > 0 ? '+' : ''}${formatCurrency(diffTotalWealth)}</td>
+                `;
+                tbody.appendChild(tr);
+            }
+        }
+
+        // 方案 C：各標的歷程矩陣表 (橫軸展開各標的，各年度單元格亦可點擊開啟 Modal 方案 A，同步倍數呈現)
+        function renderMatrixProjectionTable() {
+            const thead = document.getElementById('matrix-table-head');
+            const tbody = document.getElementById('matrix-table-body');
+            
+            let curColsHtml = '';
+            lastCurTrajectories.forEach(item => {
+                curColsHtml += `<th class="py-2 px-2 text-right border-r whitespace-nowrap min-w-[130px]" style="border-color: var(--border-soft);" title="${item.asset.name}">
+                    <div class="truncate max-w-[130px] font-bold text-slate-800">${item.asset.name || '未命名'}</div>
+                    <div class="text-[9.5px] text-slate-400 font-normal">在倉 / 累計提領</div>
+                </th>`;
+            });
+
+            let adjColsHtml = '';
+            lastAdjTrajectories.forEach(item => {
+                adjColsHtml += `<th class="py-2 px-2 text-right border-r whitespace-nowrap min-w-[130px]" style="border-color: var(--border-soft);" title="${item.asset.name}">
+                    <div class="truncate max-w-[130px] font-bold text-amber-900">${item.asset.name || '未命名'}</div>
+                    <div class="text-[9.5px] text-slate-400 font-normal">在倉 / 累計提領</div>
+                </th>`;
+            });
+
+            thead.innerHTML = `
+                <tr class="border-b" style="border-color: var(--border-soft); background-color: var(--summary-bg);">
+                    <th rowspan="2" class="py-2.5 px-2 text-center w-10 no-print border-r" style="border-color: var(--border-soft);">標記</th>
+                    <th rowspan="2" class="py-2.5 px-3 text-left whitespace-nowrap border-r" style="border-color: var(--border-soft);">西元 / 民國 / 年齡</th>
+                    <th rowspan="2" class="py-2.5 px-2 text-center whitespace-nowrap border-r min-w-[85px]" style="border-color: var(--border-soft);">年度</th>
+                    
+                    <th colspan="${Math.max(1, lastCurTrajectories.length)}" class="py-1.5 px-3 text-center bg-emerald-900/10 text-emerald-900 border-r" style="border-color: var(--border-soft);">
+                        現況資產組合 各標的在倉現值與歷年累計提領
+                    </th>
+                    <th colspan="${Math.max(1, lastAdjTrajectories.length)}" class="py-1.5 px-3 text-center bg-amber-900/10 text-amber-900">
+                        調整後目標組合 各標的在倉現值與歷年累計提領
+                    </th>
+                </tr>
+                <tr class="border-b text-[10.5px]" style="border-color: var(--border-soft); background-color: var(--input-bg);">
+                    ${curColsHtml || '<th class="py-2 px-2 text-center text-slate-400 border-r" style="border-color: var(--border-soft);">無現況標的</th>'}
+                    ${adjColsHtml || '<th class="py-2 px-2 text-center text-slate-400">無目標標的</th>'}
+                </tr>
+            `;
+
+            tbody.innerHTML = '';
+            for (let y = 1; y <= projectionYears; y++) {
+                // 根據倍數設定判斷是否呈現該年份
+                if (!shouldDisplayYear(y, projectionYears, multiplierYear)) {
+                    continue;
+                }
+
+                const isMarked = markedYears.has(y);
+                const thisYearAD = startYear + (y - 1);
+                const thisYearROC = thisYearAD > 1911 ? (thisYearAD - 1911) : (thisYearAD - 1912);
+                const thisAge = startAge + (y - 1);
+
+                let curTds = '';
+                if (lastCurTrajectories.length > 0) {
+                    lastCurTrajectories.forEach(item => {
+                        const row = item.trajectory[y - 1];
+                        curTds += `
+                            <td class="py-2 px-2 text-right border-r whitespace-nowrap bg-emerald-900/5" style="border-color: var(--border-soft);">
+                                <div class="font-bold text-emerald-800 text-[11.5px]">${formatCurrency(row.inMarketAsset)}</div>
+                                <div class="text-[10px] text-slate-400 font-normal">${formatCurrency(row.withdrawnCash)}</div>
+                            </td>
+                        `;
+                    });
+                } else {
+                    curTds = `<td class="py-2 px-2 text-center text-slate-400 border-r" style="border-color: var(--border-soft);">-</td>`;
+                }
+
+                let adjTds = '';
+                if (lastAdjTrajectories.length > 0) {
+                    lastAdjTrajectories.forEach(item => {
+                        const row = item.trajectory[y - 1];
+                        adjTds += `
+                            <td class="py-2 px-2 text-right border-r whitespace-nowrap bg-amber-900/5" style="border-color: var(--border-soft);">
+                                <div class="font-bold text-amber-800 text-[11.5px]">${formatCurrency(row.inMarketAsset)}</div>
+                                <div class="text-[10px] text-slate-400 font-normal">${formatCurrency(row.withdrawnCash)}</div>
+                            </td>
+                        `;
+                    });
+                } else {
+                    adjTds = `<td class="py-2 px-2 text-center text-slate-400">-</td>`;
+                }
+
+                const tr = document.createElement('tr');
+                tr.className = `transition hover:bg-slate-100/60 ${isMarked ? 'marked-row' : ''}`;
+                tr.innerHTML = `
+                    <td class="py-2 px-2 text-center no-print border-r" style="border-color: var(--border-soft);">
+                        <button onclick="toggleMarkYear(${y})" title="點擊切換標記該年份"
+                            class="p-1 rounded-lg transition ${isMarked ? 'text-rose-600 bg-rose-200/50' : 'text-slate-300 hover:text-slate-500'}">
+                            <i data-lucide="bookmark" class="w-4 h-4 ${isMarked ? 'fill-rose-500' : ''}"></i>
+                        </button>
+                    </td>
+
+                    <td class="py-2 px-3 text-left font-mono border-r whitespace-nowrap" style="border-color: var(--border-soft);">
+                        <span class="font-bold text-slate-800 text-[12px]">${thisYearAD}</span>
+                        <span class="text-slate-400 text-[11px] mx-1">/</span>
+                        <span class="text-slate-600 text-[11px]">${thisYearROC}年</span>
+                        <span class="text-slate-400 text-[11px] mx-1">/</span>
+                        <span class="font-bold text-emerald-800 text-[11.5px]">${thisAge}歲</span>
+                    </td>
+
+                    <td class="py-2 px-2 text-center font-bold font-sans text-xs border-r whitespace-nowrap" style="border-color: var(--border-soft);">
+                        <button onclick="openAssetModal(${y})" title="點擊開啟第 ${y} 年個別標的現值明細 (方案 A)"
+                            class="group inline-flex items-center gap-1 px-2 py-0.5 rounded-lg border text-slate-700 bg-white/80 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-300 transition shadow-xs">
+                            <span>第 ${y} 年</span>
+                            <i data-lucide="search" class="w-3 h-3 text-slate-400 group-hover:text-emerald-600 transition"></i>
+                        </button>
+                    </td>
+
+                    ${curTds}
+                    ${adjTds}
+                `;
+                tbody.appendChild(tr);
+            }
+        }
+
+        // 方案 A：彈跳視窗 Modal 控制函式 (整合 定期定額 累計注入)
+        function openAssetModal(year) {
+            const thisYearAD = startYear + (year - 1);
+            const thisYearROC = thisYearAD > 1911 ? (thisYearAD - 1911) : (thisYearAD - 1912);
+            const thisAge = startAge + (year - 1);
+
+            document.getElementById('modal-title').innerText = `各標的個別現值歷程明細 - 第 ${year} 年`;
+            document.getElementById('modal-subtitle').innerText = `西元 ${thisYearAD} 年 / 民國 ${thisYearROC} 年 / ${thisAge} 歲 (以當年度在倉滾存終值推算)`;
+
+            // 填充左邊：現況各標的
+            const curTbody = document.getElementById('modal-cur-tbody');
+            curTbody.innerHTML = '';
+            let curSubtotal = 0;
+            let curTotalWithdrawn = 0;
+
+            if (lastCurTrajectories.length > 0) {
+                lastCurTrajectories.forEach(item => {
+                    const rowData = item.trajectory[year - 1];
+                    curSubtotal += rowData.inMarketAsset;
+                    curTotalWithdrawn += rowData.withdrawnCash;
+
+                    const tr = document.createElement('tr');
+                    tr.className = 'hover:bg-slate-50 transition';
+                    tr.innerHTML = `
+                        <td class="py-2 px-2 font-sans font-semibold text-slate-800">${item.asset.name || '未命名標的'}</td>
+                        <td class="py-2 px-2 text-right font-bold text-emerald-800">${formatCurrency(rowData.inMarketAsset)}</td>
+                        <td class="py-2 px-2 text-right text-emerald-700 font-mono">${formatCurrency(rowData.cumDCA)}</td>
+                        <td class="py-2 px-2 text-right text-slate-500">${formatCurrency(rowData.withdrawnCash)}</td>
+                    `;
+                    curTbody.appendChild(tr);
+                });
+            } else {
+                curTbody.innerHTML = `<tr><td colspan="4" class="py-3 text-center text-slate-400">尚無現況標的資料</td></tr>`;
+            }
+
+            document.getElementById('modal-cur-subtotal').innerText = `在倉小計: ${formatCurrency(curSubtotal)}`;
+            document.getElementById('modal-cur-totalwealth').innerText = formatCurrency(curSubtotal + curTotalWithdrawn);
+
+            // 填充右邊：調整後各標的
+            const adjTbody = document.getElementById('modal-adj-tbody');
+            adjTbody.innerHTML = '';
+            let adjSubtotal = 0;
+            let adjTotalWithdrawn = 0;
+
+            if (lastAdjTrajectories.length > 0) {
+                lastAdjTrajectories.forEach(item => {
+                    const rowData = item.trajectory[year - 1];
+                    adjSubtotal += rowData.inMarketAsset;
+                    adjTotalWithdrawn += rowData.withdrawnCash;
+
+                    const tr = document.createElement('tr');
+                    tr.className = 'hover:bg-slate-50 transition';
+                    tr.innerHTML = `
+                        <td class="py-2 px-2 font-sans font-semibold text-slate-800">${item.asset.name || '未命名標的'}</td>
+                        <td class="py-2 px-2 text-right font-bold text-amber-800">${formatCurrency(rowData.inMarketAsset)}</td>
+                        <td class="py-2 px-2 text-right text-amber-700 font-mono">${formatCurrency(rowData.cumDCA)}</td>
+                        <td class="py-2 px-2 text-right text-slate-500">${formatCurrency(rowData.withdrawnCash)}</td>
+                    `;
+                    adjTbody.appendChild(tr);
+                });
+            } else {
+                adjTbody.innerHTML = `<tr><td colspan="4" class="py-3 text-center text-slate-400">尚無目標標的資料</td></tr>`;
+            }
+
+            document.getElementById('modal-adj-subtotal').innerText = `在倉小計: ${formatCurrency(adjSubtotal)}`;
+            document.getElementById('modal-adj-totalwealth').innerText = formatCurrency(adjSubtotal + adjTotalWithdrawn);
+
+            // 底部差距計算
+            const totalDiffWealth = (adjSubtotal + adjTotalWithdrawn) - (curSubtotal + curTotalWithdrawn);
+            const modalDiffTotalEl = document.getElementById('modal-diff-total');
+            if (totalDiffWealth >= 0) {
+                modalDiffTotalEl.innerText = `+${formatCurrency(totalDiffWealth)}`;
+                modalDiffTotalEl.className = 'font-mono font-bold text-sm text-emerald-800';
+            } else {
+                modalDiffTotalEl.innerText = formatCurrency(totalDiffWealth);
+                modalDiffTotalEl.className = 'font-mono font-bold text-sm text-rose-700';
+            }
+
+            // 顯示 Modal
+            const modal = document.getElementById('asset-modal');
+            modal.classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function closeAssetModal() {
+            const modal = document.getElementById('asset-modal');
+            modal.classList.add('hidden');
+        }
+
+        function handleModalBackdropClick(event) {
+            if (event.target.id === 'asset-modal') {
+                closeAssetModal();
+            }
+        }
+
+        // 監聽鍵盤 ESC 鍵關閉 Modal
+        window.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                closeAssetModal();
+            }
+        });
+
+        // 匯出 JSON (含定期定額、雙軌再投入、西元/年齡設定與倍數呈現設定)
+        function exportData() {
+            const payload = {
+                currentAssets,
+                targetAssets,
+                rebalanceMode,
+                projectionYears,
+                multiplierYear,
+                markedYears: Array.from(markedYears),
+                startYear,
+                startAge,
+                exportTime: new Date().toISOString()
+            };
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(payload, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", `資產配置試算備份_${new Date().toISOString().slice(0,10)}.json`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+        }
+
+        // 匯入 JSON (相容新舊結構)
+        function importData(event) {
+            const fileReader = new FileReader();
+            fileReader.onload = function(e) {
+                try {
+                    const imported = JSON.parse(e.target.result);
+                    const legacyCalc = imported.calcMode || 'compound';
+
+                    if (imported && (Array.isArray(imported.currentAssets) || Array.isArray(imported.assets))) {
+                        if (Array.isArray(imported.currentAssets) && Array.isArray(imported.targetAssets)) {
+                            currentAssets = imported.currentAssets.map(a => normalizeAssetReinvest(a, legacyCalc));
+                            targetAssets = imported.targetAssets.map(t => normalizeAssetReinvest(t, legacyCalc));
+                        } else if (Array.isArray(imported.assets)) {
+                            currentAssets = imported.assets.map(a => normalizeAssetReinvest({
+                                id: 'c_' + a.id,
+                                name: a.name,
+                                value: a.value || 0,
+                                periodicDCA: a.periodicDCA || 0,
+                                curDivRate: a.curDivRate || 0,
+                                curCapRate: a.curCapRate || 0,
+                                isAnchor: !!a.isAnchor,
+                                calcMode: a.calcMode
+                            }, legacyCalc));
+                            targetAssets = imported.assets.map(a => normalizeAssetReinvest({
+                                id: 't_' + a.id,
+                                name: a.name,
+                                adjWeight: a.adjWeight || 0,
+                                periodicDCA: a.periodicDCA || 0,
+                                adjDivRate: a.adjDivRate || 0,
+                                adjCapRate: a.adjCapRate || 0,
+                                calcMode: a.calcMode
+                            }, legacyCalc));
+                        }
+                        if (imported.rebalanceMode) rebalanceMode = imported.rebalanceMode;
+                        if (imported.projectionYears) projectionYears = imported.projectionYears;
+                        if (imported.multiplierYear) multiplierYear = imported.multiplierYear;
+                        if (Array.isArray(imported.markedYears)) markedYears = new Set(imported.markedYears);
+
+                        if (imported.startYear !== undefined) startYear = imported.startYear;
+                        if (imported.startAge !== undefined) startAge = imported.startAge;
+
+                        document.getElementById('year-select-input').value = projectionYears;
+                        document.getElementById('multiplier-select-input').value = multiplierYear;
+                        updateYearInputsUI();
+                        renderTables();
+                        calculate();
+                        saveData();
+                        alert('資產配置 JSON 檔案已順利匯入！');
+                    } else {
+                        alert('匯入失敗：檔案格式不正確。');
+                    }
+                } catch (err) {
+                    alert('讀取檔案失敗：請確保選擇正確的 JSON 檔案。');
+                }
+            };
+            if (event.target.files[0]) {
+                fileReader.readAsText(event.target.files[0]);
+            }
+        }
+
+        // 重置資料
+        function resetDataWithConfirm() {
+            if (confirm('確定要將所有現況與目標配置重置為初始預設值（數值歸零）嗎？')) {
+                currentAssets = JSON.parse(JSON.stringify(DEFAULT_CURRENT_ASSETS));
+                targetAssets = JSON.parse(JSON.stringify(DEFAULT_TARGET_ASSETS));
+                rebalanceMode = 'rebalance';
+                projectionYears = 20;
+                multiplierYear = 1;
+                markedYears.clear();
+                startYear = new Date().getFullYear();
+                startAge = 35;
+                
+                document.getElementById('year-select-input').value = 20;
+                document.getElementById('multiplier-select-input').value = 1;
+                updateYearInputsUI();
+                renderTables();
+                calculate();
+                saveData();
+            }
+        }
+
+        // 頁面載入完成
+        window.onload = function() {
+            initData();
+        };
+    </script>
+</body>
+</html>
