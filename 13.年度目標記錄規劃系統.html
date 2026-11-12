@@ -1,0 +1,1910 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>年度目標紀錄規劃系統</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  
+  <!-- 引入 Vue 3 全域版與 SheetJS (Excel 匯入匯出引擎) -->
+  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+
+  <style>
+    /* ==========================================================================
+       1. 系統全域設計變數 (Misty Natural Archive Theme)
+       ========================================================================== */
+    :root {
+      --bg-canvas: #dfe5e1;
+      --card-surface: #faf8f5;
+      --header-deep: #4a6353;
+      --header-hover: #3d5244;
+      --sage-primary: #3b5245;
+      --sage-muted: #5e7568;
+      --amber-accent: #c86f32;
+      --amber-bg: #fcf3eb;
+      --border-soft: #d3ccc0;
+      --input-bg: #e9edea;
+      --text-title: #222e27;
+      --text-body: #3c4b42;
+      --summary-bg: #f7efe4;
+      --danger-color: #b8334a;
+      --success-color: #21613e;
+      --breakeven-bg: #fcedf0;
+      --gantt-today-border: #e05338;
+      --tag-bg: #e4ebe6;
+
+      --shadow-sm: 0 2px 6px rgba(34, 46, 39, 0.05);
+      --shadow-md: 0 6px 18px rgba(34, 46, 39, 0.08);
+      --radius: 12px;
+      --transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    body.dark-mode {
+      --bg-canvas: #1b241e;
+      --card-surface: #243028;
+      --header-deep: #384e3f;
+      --header-hover: #2e4134;
+      --sage-primary: #b0c4b6;
+      --sage-muted: #889e90;
+      --amber-accent: #e58d52;
+      --amber-bg: #382c22;
+      --border-soft: #38483d;
+      --input-bg: #2d3b32;
+      --text-title: #edf4ef;
+      --text-body: #d0ded4;
+      --summary-bg: #2c3a30;
+      --danger-color: #e06c7d;
+      --success-color: #5bb37e;
+      --breakeven-bg: #3a2227;
+      --gantt-today-border: #ff7056;
+      --tag-bg: #334338;
+
+      --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.25);
+      --shadow-md: 0 6px 18px rgba(0, 0, 0, 0.35);
+    }
+
+    /* ==========================================================================
+       2. 基礎核心排版
+       ========================================================================== */
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: var(--bg-canvas);
+      color: var(--text-body);
+      font-family: 'Noto Sans TC', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.6;
+      padding: 1.2rem 1.5vw;
+      min-height: 100vh;
+      font-size: clamp(14px, 0.88vw, 17px);
+      transition: background-color 0.3s ease, color 0.3s ease;
+    }
+    .container { width: 100%; max-width: 100%; margin: 0 auto; }
+
+    /* ==========================================================================
+       3. 頁首與功能操作列
+       ========================================================================== */
+    header {
+      background: var(--card-surface);
+      border: 1px solid var(--border-soft);
+      border-radius: var(--radius);
+      padding: 1.1rem 1.6rem;
+      margin-bottom: 1.2rem;
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+    .brand-title { display: flex; align-items: center; gap: 0.85rem; }
+    .brand-title .icon { width: 14px; height: 26px; background-color: var(--amber-accent); border-radius: 3px; }
+    h1 { color: var(--text-title); font-size: clamp(1.3rem, 1.4vw, 1.8rem); font-weight: 700; letter-spacing: -0.02em; }
+    .header-actions { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
+
+    .btn {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      background-color: var(--input-bg); color: var(--sage-primary);
+      border: 1px solid var(--border-soft); padding: 0.48rem 0.85rem;
+      border-radius: 8px; font-size: 0.85rem; font-weight: 600;
+      cursor: pointer; transition: var(--transition); font-family: inherit; white-space: nowrap;
+    }
+    .btn:hover { background-color: var(--border-soft); color: var(--text-title); }
+    .btn-primary { background-color: var(--header-deep); color: #fff; border-color: var(--header-deep); }
+    .btn-primary:hover { background-color: var(--header-hover); color: #fff; }
+    .btn-danger { background-color: var(--breakeven-bg); color: var(--danger-color); border-color: #f2c4ce; }
+    .btn-danger:hover { background-color: var(--danger-color); color: #fff; }
+
+    /* ==========================================================================
+       4. 儀表板與環形進度圖表 (Dashboard Grid)
+       ========================================================================== */
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.2rem;
+    }
+    .stat-card {
+      background: var(--card-surface);
+      border: 1px solid var(--border-soft);
+      border-radius: var(--radius);
+      padding: 1.1rem 1.4rem;
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+    .stat-card-main { display: flex; justify-content: space-between; align-items: center; }
+    .stat-card .label { font-size: 0.82rem; color: var(--sage-muted); font-weight: 600; margin-bottom: 0.2rem; }
+    .stat-card .value { font-size: clamp(1.6rem, 1.8vw, 2.2rem); font-weight: 700; color: var(--text-title); font-family: 'JetBrains Mono', monospace; }
+    .stat-card .subtext { font-size: 0.76rem; color: var(--sage-muted); margin-top: 0.35rem; }
+    
+    .ring-chart-wrap { width: 52px; height: 52px; position: relative; }
+    .ring-chart-wrap svg { transform: rotate(-90deg); width: 100%; height: 100%; }
+    .ring-bg { fill: none; stroke: var(--input-bg); stroke-width: 5; }
+    .ring-progress { fill: none; stroke-width: 5; stroke-linecap: round; transition: stroke-dashoffset 0.6s ease; }
+
+    /* ==========================================================================
+       5. 分類統計與雷達視覺化卡片
+       ========================================================================== */
+    .category-breakdown-card {
+      background: var(--card-surface);
+      border: 1px solid var(--border-soft);
+      border-radius: var(--radius);
+      padding: 1.1rem 1.4rem;
+      margin-bottom: 1.2rem;
+      box-shadow: var(--shadow-sm);
+    }
+    .cat-breakdown-header {
+      font-size: 0.92rem; font-weight: 700; color: var(--text-title);
+      margin-bottom: 0.9rem; display: flex; justify-content: space-between; align-items: center;
+    }
+    .cat-visual-container {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 260px;
+      gap: 1.5rem;
+      align-items: center;
+    }
+    @media (max-width: 900px) {
+      .cat-visual-container { grid-template-columns: 1fr; }
+      .radar-wrapper { display: none; }
+    }
+    .cat-bars-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 0.8rem 1.2rem; }
+    .cat-bar-item { display: flex; flex-direction: column; gap: 0.25rem; }
+    .cat-bar-label { display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--text-body); font-weight: 600; }
+    .cat-bar-track { height: 9px; background: var(--input-bg); border-radius: 6px; overflow: hidden; border: 1px solid var(--border-soft); }
+    .cat-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #9bbad3 0%, #c4b5cb 50%, #f0bec8 100%);
+      border-radius: 6px; transition: width 0.4s ease;
+    }
+    .radar-wrapper { display: flex; justify-content: center; align-items: center; }
+
+    /* ==========================================================================
+       6. 視角切換與篩選列
+       ========================================================================== */
+    .controls-bar {
+      background: var(--card-surface);
+      border: 1px solid var(--border-soft);
+      border-radius: var(--radius);
+      padding: 0.85rem 1.3rem;
+      margin-bottom: 1.2rem;
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.9rem;
+    }
+    .tabs-container { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
+    .tabs { display: flex; gap: 0.3rem; background: var(--input-bg); padding: 4px; border-radius: 8px; flex-wrap: wrap; }
+    .tab-btn {
+      border: none; background: transparent; padding: 0.42rem 0.88rem;
+      border-radius: 6px; font-size: 0.86rem; font-weight: 600;
+      color: var(--sage-muted); cursor: pointer; transition: var(--transition); font-family: inherit;
+    }
+    .tab-btn.active { background: var(--card-surface); color: var(--text-title); box-shadow: 0 2px 5px rgba(0,0,0,0.08); }
+    .tab-btn-accent { background: var(--summary-bg); color: var(--amber-accent); border: 1px solid var(--border-soft); }
+
+    .filter-group { display: flex; gap: 0.55rem; align-items: center; flex-wrap: wrap; }
+    .search-input, .select-input {
+      background: var(--input-bg); border: 1px solid var(--border-soft);
+      padding: 0.44rem 0.8rem; border-radius: 8px; font-size: 0.86rem;
+      color: var(--text-title); outline: none; font-family: inherit; transition: var(--transition);
+    }
+    .search-input:focus, .select-input:focus { border-color: var(--header-deep); background: var(--card-surface); }
+
+    /* ==========================================================================
+       7. 主清單表格與手機 RWD 卡片模式
+       ========================================================================== */
+    .table-container {
+      background: var(--card-surface);
+      border: 1px solid var(--border-soft);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-md);
+      overflow-x: auto;
+      margin-bottom: 2rem;
+    }
+    .table-header-info {
+      padding: 0.9rem 1.4rem; background: var(--summary-bg);
+      border-bottom: 1px solid var(--border-soft);
+      display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;
+    }
+    .table-header-info h2 { font-size: 1.15rem; color: var(--text-title); font-weight: 700; }
+    .table-header-info .meta {
+      font-size: 0.85rem; color: var(--sage-muted); font-family: 'JetBrains Mono', monospace;
+      display: flex; align-items: center; gap: 0.75rem;
+    }
+
+    table { width: 100%; border-collapse: collapse; text-align: left; }
+    th {
+      background: var(--header-deep); color: #faf8f5; padding: 0.85rem 0.9rem;
+      font-size: 0.88rem; font-weight: 600; letter-spacing: 0.02em; user-select: none; white-space: nowrap;
+    }
+    th.sortable { cursor: pointer; transition: background 0.2s; }
+    th.sortable:hover { background: var(--header-hover); }
+    .sort-icon { font-size: 0.75rem; margin-left: 0.35rem; display: inline-block; opacity: 0.8; }
+    td { padding: 0.85rem 0.9rem; border-bottom: 1px solid var(--border-soft); font-size: 0.92rem; vertical-align: top; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background-color: rgba(74, 99, 83, 0.05); }
+
+    .year-badge-cell {
+      display: inline-block; background-color: var(--input-bg); color: var(--sage-primary);
+      border: 1px solid var(--border-soft); padding: 0.15rem 0.45rem; border-radius: 4px;
+      font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 0.82rem;
+    }
+
+    /* 需求 1 強化：可即時切換之分類標籤下拉選單 */
+    .cat-select-badge {
+      appearance: none; -webkit-appearance: none; -moz-appearance: none;
+      background-color: var(--input-bg); color: var(--sage-primary);
+      border: 1px solid var(--border-soft); border-radius: 4px;
+      padding: 0.25rem 0.6rem; font-size: 0.8rem; font-weight: 600;
+      font-family: inherit; cursor: pointer; transition: var(--transition);
+      outline: none; max-width: 140px; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .cat-select-badge:hover, .cat-select-badge:focus {
+      border-color: var(--header-deep); background-color: var(--card-surface);
+      box-shadow: 0 0 0 2px rgba(74, 99, 83, 0.2);
+    }
+
+    /* 需求 2 強化：多行文字自適應與完整換行輸入框 (不吃字) */
+    .goal-title-textarea {
+      width: 100%; min-height: 48px; background: transparent; border: 1px solid transparent;
+      border-radius: 6px; font-weight: 600; font-size: 0.92rem; color: var(--text-title);
+      font-family: inherit; line-height: 1.5; resize: vertical; padding: 0.2rem 0.4rem;
+      outline: none; transition: var(--transition); white-space: pre-wrap; word-break: break-word;
+    }
+    .goal-title-textarea:hover {
+      background: var(--input-bg); border-color: var(--border-soft);
+    }
+    .goal-title-textarea:focus {
+      background: var(--card-surface); border-color: var(--header-deep);
+      box-shadow: 0 0 0 2px rgba(74, 99, 83, 0.2);
+    }
+
+    .tag-pill {
+      display: inline-block; padding: 0.1rem 0.45rem; border-radius: 12px;
+      font-size: 0.72rem; font-weight: 600; background: var(--tag-bg);
+      color: var(--sage-muted); margin-right: 0.25rem; margin-top: 0.2rem;
+    }
+    .priority-badge {
+      font-size: 0.78rem; font-weight: 700; cursor: pointer; user-select: none;
+      padding: 0.15rem 0.45rem; border-radius: 4px;
+    }
+    .priority-high { color: var(--danger-color); background: var(--breakeven-bg); }
+    .priority-medium { color: var(--amber-accent); background: var(--amber-bg); }
+    .priority-low { color: var(--sage-muted); background: var(--input-bg); }
+
+    .period-badge {
+      display: inline-block; font-family: 'JetBrains Mono', monospace; font-size: 0.78rem;
+      font-weight: 600; padding: 0.15rem 0.45rem; border-radius: 4px;
+      background: var(--input-bg); color: var(--sage-primary); border: 1px solid var(--border-soft);
+      cursor: pointer; white-space: nowrap;
+    }
+
+    .badge {
+      display: inline-block; padding: 0.22rem 0.65rem; border-radius: 20px;
+      font-size: 0.8rem; font-weight: 700; text-align: center; cursor: pointer;
+      user-select: none; transition: var(--transition); white-space: nowrap;
+    }
+    .badge-excellent { background-color: #e5eee7; color: #456950; border: 1px solid #c2d9c7; }
+    .badge-good { background-color: #fcf1e3; color: #99642e; border: 1px solid #ebd3ba; }
+    .badge-normal { background-color: #eeeaf3; color: #6b5a82; border: 1px solid #d4c8e1; }
+    .badge-poor { background-color: #f9eaec; color: #94444e; border: 1px solid #eec4c9; }
+    .badge-paused { background-color: #eceeed; color: #5d6863; border: 1px solid #cfd5d1; }
+
+    /* 滑桿與輸入元件 */
+    .progress-slider-wrapper { display: flex; flex-direction: column; gap: 0.35rem; }
+    .progress-header { display: flex; justify-content: space-between; align-items: center; font-size: 0.78rem; font-family: 'JetBrains Mono', monospace; font-weight: 700; color: var(--text-title); }
+    .progress-num-input {
+      width: 48px; background: var(--input-bg); border: 1px solid var(--border-soft);
+      border-radius: 4px; padding: 0.1rem 0.3rem; text-align: right;
+      font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; font-weight: 700; color: var(--text-title);
+    }
+    .range-slider {
+      -webkit-appearance: none; appearance: none; width: 100%; height: 9px;
+      border-radius: 5px; outline: none; cursor: pointer; border: 1px solid var(--border-soft);
+    }
+    .range-slider::-webkit-slider-thumb {
+      -webkit-appearance: none; appearance: none; width: 16px; height: 16px;
+      border-radius: 50%; background: var(--header-deep); border: 2px solid #fff;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.3); cursor: pointer;
+    }
+
+    .kr-expand-btn {
+      font-size: 0.74rem; background: transparent; border: 1px solid var(--border-soft);
+      color: var(--sage-primary); padding: 0.12rem 0.45rem; border-radius: 4px; cursor: pointer; margin-top: 0.3rem;
+    }
+
+    /* 需求 3 強化：OKR 說明指引與實戰範例卡片樣式 */
+    .okr-guide-box {
+      background: var(--summary-bg); border: 1px solid var(--border-soft);
+      border-radius: 8px; padding: 0.85rem 1rem; margin-bottom: 1.1rem; font-size: 0.82rem; line-height: 1.6;
+    }
+    .okr-guide-title { font-weight: 700; color: var(--amber-accent); display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+    .okr-guide-content { margin-top: 0.5rem; color: var(--text-body); border-top: 1px dashed var(--border-soft); padding-top: 0.5rem; }
+    .okr-example-pill { background: var(--input-bg); padding: 0.2rem 0.5rem; border-radius: 4px; display: inline-block; margin-top: 0.2rem; font-size: 0.78rem; }
+
+    /* ==========================================================================
+       8. 甘特圖專屬樣式 (支援邊界拉動與滑鼠拖曳)
+       ========================================================================== */
+    .gantt-view-card {
+      background: var(--card-surface); border: 1px solid var(--border-soft);
+      border-radius: var(--radius); box-shadow: var(--shadow-md); overflow: hidden; margin-bottom: 2rem;
+    }
+    .gantt-toolbar {
+      padding: 0.9rem 1.4rem; background: var(--summary-bg); border-bottom: 1px solid var(--border-soft);
+      display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.8rem;
+    }
+    .gantt-wrapper { width: 100%; overflow-x: auto; padding: 1.1rem 1.3rem; background: var(--card-surface); }
+    .gantt-board { min-width: 980px; position: relative; user-select: none; }
+    .gantt-header-row {
+      display: grid; grid-template-columns: 280px repeat(12, 1fr);
+      background: var(--header-deep); color: #faf8f5; border-radius: 6px 6px 0 0;
+      font-weight: 700; font-size: 0.84rem; text-align: center; align-items: center;
+    }
+    .gantt-header-row .gantt-col-task { text-align: left; padding: 0.75rem 1rem; }
+    .gantt-header-row .gantt-col-m { padding: 0.75rem 0.2rem; font-family: 'JetBrains Mono', monospace; border-left: 1px solid rgba(255, 255, 255, 0.15); }
+    .gantt-group-header {
+      background: var(--input-bg); color: var(--sage-primary); padding: 0.5rem 1rem;
+      font-weight: 700; font-size: 0.86rem; border: 1px solid var(--border-soft); border-top: none;
+    }
+    .gantt-row {
+      display: grid; grid-template-columns: 280px repeat(12, 1fr);
+      border-bottom: 1px solid var(--border-soft); border-left: 1px solid var(--border-soft); border-right: 1px solid var(--border-soft);
+      background: var(--card-surface); position: relative; min-height: 48px;
+    }
+    .gantt-task-info {
+      padding: 0.5rem 0.8rem; display: flex; flex-direction: column; justify-content: center; gap: 0.2rem;
+      border-right: 1px solid var(--border-soft); z-index: 2;
+    }
+    .gantt-timeline-area {
+      grid-column: 2 / span 12; position: relative; display: grid; grid-template-columns: repeat(12, 1fr);
+      height: 100%; align-items: center;
+    }
+    .gantt-grid-cell { height: 100%; border-left: 1px dashed var(--border-soft); }
+    .gantt-grid-cell:first-child { border-left: none; }
+
+    .gantt-current-month-box {
+      position: absolute; top: 0; bottom: 0; border: 2px solid var(--gantt-today-border);
+      background: rgba(224, 83, 56, 0.08); border-radius: 4px; z-index: 6; pointer-events: none;
+    }
+
+    .gantt-bar-container {
+      position: absolute; height: 26px; border-radius: 6px; overflow: visible;
+      box-shadow: 0 1px 3px rgba(34, 46, 39, 0.04); display: flex; align-items: center; z-index: 3;
+      cursor: grab; border: 1px solid;
+    }
+    .gantt-bar-container:active { cursor: grabbing; }
+    .gantt-bar-fill { height: 100%; border-radius: 5px 0 0 5px; opacity: 0.88; }
+    .gantt-bar-text {
+      position: absolute; left: 10px; font-size: 0.72rem; font-family: 'JetBrains Mono', monospace;
+      font-weight: 700; white-space: nowrap; pointer-events: none;
+    }
+    .gantt-handle { position: absolute; top: 0; bottom: 0; width: 8px; cursor: col-resize; z-index: 5; }
+    .gantt-handle-left { left: 0; }
+    .gantt-handle-right { right: 0; }
+    .gantt-handle:hover { background: rgba(0,0,0,0.15); }
+
+    /* ==========================================================================
+       9. 三年度並列對照視角 (Triple View)
+       ========================================================================== */
+    .triple-view-toolbar {
+      display: flex; justify-content: space-between; align-items: center;
+      background: var(--card-surface); border: 1px solid var(--border-soft);
+      border-radius: var(--radius); padding: 0.8rem 1.4rem; margin-bottom: 1.2rem; flex-wrap: wrap; gap: 0.8rem;
+    }
+    .triple-view-container {
+      display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 1.2vw; margin-bottom: 2rem; align-items: stretch;
+    }
+    @media (max-width: 1050px) { .triple-view-container { grid-template-columns: 1fr; } }
+    .year-card-column {
+      background: var(--card-surface); border: 1px solid var(--border-soft);
+      border-radius: var(--radius); box-shadow: var(--shadow-sm); overflow: hidden; display: flex; flex-direction: column;
+    }
+    .year-card-column.is-center { border: 2px solid var(--header-deep); box-shadow: var(--shadow-md); }
+    .year-card-header {
+      background: var(--summary-bg); padding: 0.9rem 1.2rem; border-bottom: 1px solid var(--border-soft);
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .year-card-column.is-center .year-card-header { background: var(--header-deep); color: #fff; }
+    .year-card-body { flex: 1; padding: 1rem; display: flex; flex-direction: column; gap: 0.8rem; max-height: calc(100vh - 330px); overflow-y: auto; }
+    .mini-goal-item {
+      background: var(--card-surface); border: 1px solid var(--border-soft);
+      border-radius: 8px; padding: 0.75rem; margin-bottom: 0.6rem;
+    }
+
+    /* ==========================================================================
+       10. 互動視窗樣式 (Modals)
+       ========================================================================== */
+    .modal-overlay {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(34, 46, 39, 0.45); backdrop-filter: blur(3px);
+      display: flex; justify-content: center; align-items: center; z-index: 1000;
+      opacity: 0; pointer-events: none; transition: var(--transition);
+    }
+    .modal-overlay.active { opacity: 1; pointer-events: auto; }
+    .modal {
+      background: var(--card-surface); border: 1px solid var(--border-soft);
+      border-radius: var(--radius); width: 95%; max-width: 580px; padding: 1.6rem;
+      box-shadow: var(--shadow-md); max-height: 90vh; overflow-y: auto;
+    }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.2rem; }
+    .form-group { margin-bottom: 1.05rem; }
+    .form-group label { display: block; font-size: 0.85rem; font-weight: 600; color: var(--sage-primary); margin-bottom: 0.35rem; }
+    .form-control {
+      width: 100%; background: var(--input-bg); border: 1px solid var(--border-soft);
+      padding: 0.52rem 0.8rem; border-radius: 8px; font-size: 0.9rem; color: var(--text-title);
+      outline: none; font-family: inherit;
+    }
+    .modal-footer { display: flex; justify-content: flex-end; gap: 0.65rem; margin-top: 1.4rem; }
+
+    .cat-manage-list, .log-timeline-list { display: flex; flex-direction: column; gap: 0.5rem; max-height: 250px; overflow-y: auto; margin-bottom: 1rem; }
+    .cat-manage-item, .log-entry {
+      background: var(--input-bg); padding: 0.55rem 0.8rem; border-radius: 6px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .log-entry { flex-direction: column; align-items: stretch; gap: 0.3rem; border: 1px solid var(--border-soft); background: var(--card-surface); }
+    .action-icon-btn { border: none; background: transparent; color: var(--sage-muted); cursor: pointer; padding: 0.2rem 0.4rem; font-size: 0.9rem; }
+    .action-icon-btn:hover { color: var(--header-deep); }
+    .action-icon-btn.btn-del:hover { color: var(--danger-color); }
+
+    #save-indicator { font-size: 0.8rem; color: var(--success-color); opacity: 0; transition: opacity 0.3s ease; font-weight: 600; margin-right: 0.4rem; }
+    #save-indicator.show { opacity: 1; }
+
+    /* RWD 手機版檢視切換 */
+    @media (max-width: 768px) {
+      body { padding: 0.8rem; font-size: 14px; }
+      header { padding: 0.9rem 1rem; }
+      .header-actions { width: 100%; justify-content: flex-start; }
+      .table-container table { display: none; }
+      .mobile-cards-view { display: block !important; }
+    }
+    .mobile-cards-view { display: none; padding: 0.8rem; }
+    .mobile-goal-card {
+      background: var(--card-surface); border: 1px solid var(--border-soft);
+      border-radius: 8px; padding: 0.9rem; margin-bottom: 0.8rem;
+    }
+
+    @media print {
+      body { background: #fff; padding: 0; }
+      .btn, .controls-bar, .header-actions, .range-slider, .kr-expand-btn { display: none !important; }
+      .table-container { box-shadow: none; border: 1px solid #000; }
+      th, .gantt-header-row { background: #4a6353 !important; color: #fff !important; }
+    }
+  </style>
+</head>
+<body :class="{'dark-mode': darkMode}">
+
+  <div id="app" class="container">
+    <!-- 頁首與全域功能列 -->
+    <header>
+      <div class="brand-title">
+        <div class="icon"></div>
+        <div>
+          <h1>年度目標紀錄規劃系統</h1>
+          <p style="font-size: 0.82rem; color: var(--sage-muted);">Annual Goal Tracker & OKR Action Planner</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <span id="save-indicator" :class="{ show: showSaveToast }">✓ 已自動儲存</span>
+        <!-- 返回上一頁按鈕置於「+ 新增目標」的左方 -->
+        <button class="btn" @click="goBack" title="返回上一頁">← 返回上一頁</button>
+        <button class="btn btn-primary" @click="openAddModal">＋ 新增目標</button>
+        <button class="btn" @click="modals.addYear = true">＋ 新增年度</button>
+        <button class="btn" @click="modals.cat = true">⚙ 管理分類</button>
+        
+        <!-- 深色模式切換 -->
+        <button class="btn" @click="toggleDarkMode" :title="darkMode ? '切換淺色模式' : '切換深色模式'">
+          {{ darkMode ? '☀️ 淺色' : '🌓 深色' }}
+        </button>
+
+        <!-- Excel / CSV 匯入與匯出 -->
+        <button class="btn" @click="exportExcel">📊 匯出 Excel/CSV</button>
+        <button class="btn" @click="triggerImportExcel">📥 匯入 Excel/CSV</button>
+        <input type="file" ref="importExcelInput" accept=".xlsx, .xls, .csv" style="display:none;" @change="handleImportExcel">
+
+        <button class="btn" @click="exportJSON">匯出 JSON</button>
+        <button class="btn" @click="triggerImportJSON">匯入 JSON</button>
+        <input type="file" ref="importJsonInput" accept=".json" style="display:none;" @change="handleImportJSON">
+        <button class="btn btn-danger" @click="resetToEmptyData" title="清空全部資料庫">重設為空白資料</button>
+        <button class="btn" @click="printPage">列印 / PDF</button>
+      </div>
+    </header>
+
+    <!-- 儀表板關鍵指標卡片 (內建 SVG 環形進度圖表，數據100%全域即時連動) -->
+    <div class="dashboard-grid">
+      <div class="stat-card">
+        <div class="stat-card-main">
+          <div>
+            <div class="label">全年度總目標數</div>
+            <div class="value">{{ stats.total }}</div>
+          </div>
+          <div class="ring-chart-wrap">
+            <svg viewBox="0 0 36 36">
+              <path class="ring-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+              <path class="ring-progress" :stroke-dasharray="`${stats.total > 0 ? 100 : 0}, 100`" stroke="var(--header-deep)" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+            </svg>
+          </div>
+        </div>
+        <span class="subtext">累積目標規劃項目</span>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-card-main">
+          <div>
+            <div class="label">優良達成率 (優/佳)</div>
+            <div class="value" style="color: var(--success-color);">{{ stats.excellentRate }}%</div>
+          </div>
+          <div class="ring-chart-wrap">
+            <svg viewBox="0 0 36 36">
+              <path class="ring-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+              <path class="ring-progress" :stroke-dasharray="`${stats.excellentRate}, 100`" stroke="var(--success-color)" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+            </svg>
+          </div>
+        </div>
+        <span class="subtext">{{ stats.excellentCount }} 個項目進度正常或超前</span>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-card-main">
+          <div>
+            <div class="label">核心高優先級達成率 (★★★)</div>
+            <div class="value" style="color: var(--amber-accent);">{{ stats.highRate }}%</div>
+          </div>
+          <div class="ring-chart-wrap">
+            <svg viewBox="0 0 36 36">
+              <path class="ring-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+              <path class="ring-progress" :stroke-dasharray="`${stats.highRate}, 100`" stroke="var(--amber-accent)" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+            </svg>
+          </div>
+        </div>
+        <span class="subtext">共 {{ stats.highCount }} 個高優先級關鍵項目</span>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-card-main">
+          <div>
+            <div class="label">待調整 / 落後項目 (不佳)</div>
+            <div class="value" style="color: var(--danger-color);">{{ stats.poorCount }}</div>
+          </div>
+          <div class="ring-chart-wrap">
+            <svg viewBox="0 0 36 36">
+              <path class="ring-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+              <path class="ring-progress" :stroke-dasharray="`${stats.total ? (stats.poorCount/stats.total*100) : 0}, 100`" stroke="var(--danger-color)" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+            </svg>
+          </div>
+        </div>
+        <span class="subtext">需重點覆盤或重分配資源</span>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-card-main">
+          <div>
+            <div class="label">暫停執行項目 (暫停)</div>
+            <div class="value" style="color: var(--sage-muted);">{{ stats.pausedCount }}</div>
+          </div>
+        </div>
+        <span class="subtext">暫緩推動之規劃</span>
+      </div>
+    </div>
+
+    <!-- 分類別進度條與 SVG 分類雷達圖一覽卡片 -->
+    <div class="category-breakdown-card">
+      <div class="cat-breakdown-header">
+        <span>分類別進度分析 ({{ currentView === 'OVERVIEW' || currentView === 'GANTT' || currentView === 'TRIPLE' ? '全年度累計' : currentView + ' 年度' }})</span>
+        <button class="btn" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;" @click="showRadar = !showRadar">
+          {{ showRadar ? '隱藏雷達圖' : '顯示分類雷達圖' }}
+        </button>
+      </div>
+
+      <div class="cat-visual-container">
+        <div class="cat-bars-grid">
+          <div v-for="cat in db.categories" :key="cat" class="cat-bar-item">
+            <div class="cat-bar-label">
+              <span>{{ cat }} ({{ getCategoryStats(cat).count }})</span>
+              <span style="font-family:'JetBrains Mono',monospace;">{{ getCategoryStats(cat).avg }}%</span>
+            </div>
+            <div class="cat-bar-track">
+              <div class="cat-bar-fill" :style="{ width: getCategoryStats(cat).avg + '%' }"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SVG 分類雷達圖視覺化 -->
+        <div v-if="showRadar" class="radar-wrapper">
+          <svg width="220" height="200" viewBox="0 0 220 200">
+            <polygon :points="getRadarPolygonPoints(100)" fill="none" stroke="var(--border-soft)" stroke-dasharray="2,2"/>
+            <polygon :points="getRadarPolygonPoints(50)" fill="none" stroke="var(--border-soft)" stroke-dasharray="2,2"/>
+            <polygon :points="getRadarDataPoints()" fill="rgba(74, 99, 83, 0.25)" stroke="var(--header-deep)" stroke-width="2"/>
+            <text v-for="(p, i) in getRadarLabels()" :key="i" :x="p.x" :y="p.y" font-size="10" text-anchor="middle" fill="var(--sage-muted)">{{ p.text }}</text>
+          </svg>
+        </div>
+      </div>
+    </div>
+
+    <!-- 視角切換與篩選控制列 -->
+    <div class="controls-bar">
+      <div class="tabs-container">
+        <div class="tabs">
+          <button v-for="year in sortedYears" :key="year" 
+                  class="tab-btn" :class="{ active: currentView === year }" 
+                  @click="currentView = year">
+            {{ year }} 年度
+          </button>
+        </div>
+        <button class="tab-btn tab-btn-accent" :class="{ active: currentView === 'GANTT' }" @click="currentView = 'GANTT'">📊 年度甘特圖</button>
+        <button class="tab-btn tab-btn-accent" :class="{ active: currentView === 'OVERVIEW' }" @click="currentView = 'OVERVIEW'">全年度總覽</button>
+        <button class="tab-btn tab-btn-accent" :class="{ active: currentView === 'TRIPLE' }" @click="currentView = 'TRIPLE'">三年度並列對照</button>
+      </div>
+
+      <div class="filter-group">
+        <select class="select-input" v-model="filters.category">
+          <option value="ALL">全部分類別</option>
+          <option v-for="cat in db.categories" :key="cat" :value="cat">{{ cat }}</option>
+        </select>
+        <select class="select-input" v-model="filters.priority">
+          <option value="ALL">全部優先級</option>
+          <option value="高">高優先級 (★★★)</option>
+          <option value="中">中優先級 (★★)</option>
+          <option value="低">低優先級 (★)</option>
+        </select>
+        <select class="select-input" v-model="filters.status">
+          <option value="ALL">全部執行狀態</option>
+          <option value="優">優 (超前/符合)</option>
+          <option value="佳">佳 (良好)</option>
+          <option value="普">普 (正常推動)</option>
+          <option value="不佳">不佳 (落後/赤字)</option>
+          <option value="暫停">暫停 (暫緩)</option>
+        </select>
+        <select class="select-input" v-model="filters.tag">
+          <option value="ALL">全部標籤 (Tags)</option>
+          <option v-for="tag in allExistingTags" :key="tag" :value="tag">#{{ tag }}</option>
+        </select>
+        <input type="text" class="search-input" v-model="filters.search" placeholder="搜尋目標、標籤或備註...">
+      </div>
+    </div>
+
+    <!-- 主要視角 1：年度清單表格檢視 (Table View & RWD Cards) -->
+    <div v-if="currentView !== 'GANTT' && currentView !== 'TRIPLE'" class="table-container">
+      <div class="table-header-info">
+        <h2>{{ currentView === 'OVERVIEW' ? '全年度跨分類與狀態總覽清單' : currentView + ' 年度目標與檢視清單' }}</h2>
+        <div class="meta">
+          <span>最後維護：{{ currentView === 'OVERVIEW' ? '全域累計' : (db.years[currentView]?.metaDate || '持續記錄中') }}</span>
+          <button v-if="currentView !== 'OVERVIEW'" class="btn btn-danger" @click="deleteCurrentYear" style="padding: 0.2rem 0.6rem; font-size: 0.8rem;">刪除此年度</button>
+        </div>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th class="col-year-num sortable" @click="toggleSort('year')">年度 <span class="sort-icon">{{ getSortIcon('year') }}</span></th>
+            <th class="col-id sortable" @click="toggleSort('id')">編號 <span class="sort-icon">{{ getSortIcon('id') }}</span></th>
+            <th class="col-priority sortable" @click="toggleSort('priority')">優先級 <span class="sort-icon">{{ getSortIcon('priority') }}</span></th>
+            <th class="col-period sortable" @click="toggleSort('startMonth')">推進週期 <span class="sort-icon">{{ getSortIcon('startMonth') }}</span></th>
+            <th class="col-category sortable" @click="toggleSort('category')">分類別 (可點擊修改) <span class="sort-icon">{{ getSortIcon('category') }}</span></th>
+            <th class="col-goal sortable" @click="toggleSort('title')">目標項目與具體內容 (支援換行) <span class="sort-icon">{{ getSortIcon('title') }}</span></th>
+            <th class="col-progress sortable" @click="toggleSort('progress')">進度 (%) <span class="sort-icon">{{ getSortIcon('progress') }}</span></th>
+            <th class="col-status sortable" @click="toggleSort('status')">狀態 <span class="sort-icon">{{ getSortIcon('status') }}</span></th>
+            <th class="col-notes">備註檢視與 OKR 子任務</th>
+            <th class="col-actions">操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-if="filteredGoals.length === 0">
+            <td colspan="10" style="text-align:center; padding: 3.5rem; color: var(--sage-muted);">
+              尚無符合條件的目標項目，請點擊上方「＋ 新增目標」建立規劃
+            </td>
+          </tr>
+          <tr v-for="item in filteredGoals" :key="item.year + '-' + item.id">
+            <td class="col-year-num"><span class="year-badge-cell">{{ item.year }}</span></td>
+            <td class="col-id">{{ item.id }}</td>
+            <td class="col-priority">
+              <span class="priority-badge" :class="getPriorityClass(item.priority)" @click="cyclePriority(item)">
+                {{ formatPriorityStars(item.priority) }}
+              </span>
+            </td>
+            <td class="col-period">
+              <span class="period-badge" @click="openPeriodModal(item)" title="自訂起訖月份">
+                {{ item.startMonth }}月~{{ item.endMonth }}月 ✎
+              </span>
+            </td>
+
+            <!-- 需求 1 解決：分類別改為可直接切換之手帳下拉標籤 -->
+            <td class="col-category">
+              <select v-model="item.category" class="cat-select-badge" title="點擊直接修改分類別">
+                <option v-for="cat in db.categories" :key="cat" :value="cat">{{ cat }}</option>
+              </select>
+            </td>
+
+            <!-- 需求 2 解決：目標項目具體內容改為多行文字自適應 Textarea，支援完整換行不吃字 -->
+            <td class="col-goal">
+              <textarea v-model="item.title" class="goal-title-textarea" rows="2" placeholder="輸入具體目標內容..."></textarea>
+              <div v-if="item.tags && item.tags.length">
+                <span v-for="tag in item.tags" :key="tag" class="tag-pill">#{{ tag }}</span>
+              </div>
+            </td>
+
+            <td class="col-progress">
+              <div class="progress-slider-wrapper">
+                <div class="progress-header">
+                  <span>進度</span>
+                  <div>
+                    <input type="number" min="0" max="100" class="progress-num-input" v-model.number="item.progress"> %
+                  </div>
+                </div>
+                <input type="range" min="0" max="100" class="range-slider" v-model.number="item.progress" 
+                       :style="{ background: getGradientBackground(item.progress) }">
+              </div>
+            </td>
+            <td class="col-status">
+              <span class="badge" :class="getBadgeClass(item.status)" @click="cycleStatus(item)">{{ item.status }}</span>
+            </td>
+            <td class="col-notes">
+              <input type="text" v-model="item.notes" class="form-control" style="background:transparent; font-size:0.85rem;" placeholder="備註...">
+              
+              <div style="display:flex; gap:0.4rem; align-items:center; margin-top:0.35rem; flex-wrap:wrap;">
+                <button class="kr-expand-btn" @click="openKRModal(item)">
+                  🎯 關鍵成果 ({{ item.keyResults ? item.keyResults.length : 0 }})
+                </button>
+                <button class="kr-expand-btn" @click="openLogModal(item)">
+                  📜 歷程 ({{ item.logs ? item.logs.length : 0 }})
+                </button>
+              </div>
+            </td>
+            <td class="col-actions">
+              <button class="action-icon-btn" @click="rolloverGoal(item)" title="⧉ 延續到下一年">⧉</button>
+              <button class="action-icon-btn btn-del" @click="deleteGoal(item)" title="刪除項目">✕</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- 手機端 RWD 折疊卡片清單 (螢幕寬度 < 768px 自動啟用) -->
+      <div class="mobile-cards-view">
+        <div v-for="item in filteredGoals" :key="'m-' + item.year + '-' + item.id" class="mobile-goal-card">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.4rem;">
+            <span class="year-badge-cell">{{ item.year }} #{{ item.id }}</span>
+            <span class="badge" :class="getBadgeClass(item.status)" @click="cycleStatus(item)">{{ item.status }}</span>
+          </div>
+          <textarea v-model="item.title" class="goal-title-textarea" rows="2" style="margin-bottom:0.4rem;"></textarea>
+          <div style="display:flex; gap:0.4rem; margin-bottom:0.5rem; flex-wrap:wrap; align-items:center;">
+            <select v-model="item.category" class="cat-select-badge">
+              <option v-for="cat in db.categories" :key="cat" :value="cat">{{ cat }}</option>
+            </select>
+            <span class="priority-badge" :class="getPriorityClass(item.priority)" @click="cyclePriority(item)">{{ formatPriorityStars(item.priority) }}</span>
+            <span class="period-badge" @click="openPeriodModal(item)">{{ item.startMonth }}月~{{ item.endMonth }}月</span>
+          </div>
+          <div class="progress-slider-wrapper">
+            <div class="progress-header">
+              <span>進度: {{ item.progress }}%</span>
+            </div>
+            <input type="range" min="0" max="100" class="range-slider" v-model.number="item.progress" 
+                   :style="{ background: getGradientBackground(item.progress) }">
+          </div>
+          <div style="display:flex; justify-content:flex-end; gap:0.4rem; margin-top:0.6rem;">
+            <button class="btn" style="padding:0.2rem 0.5rem; font-size:0.75rem;" @click="openKRModal(item)">🎯 KR 子任務</button>
+            <button class="btn" style="padding:0.2rem 0.5rem; font-size:0.75rem;" @click="openLogModal(item)">📜 歷程</button>
+            <button class="action-icon-btn" @click="rolloverGoal(item)">⧉</button>
+            <button class="action-icon-btn btn-del" @click="deleteGoal(item)">✕</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 主要視角 2：年度甘特圖檢視 (Gantt View - 支援整條平移與邊緣縮放) -->
+    <div v-if="currentView === 'GANTT'" class="gantt-view-card">
+      <div class="gantt-toolbar">
+        <div style="display:flex; align-items:center; gap:0.8rem; flex-wrap:wrap;">
+          <strong>甘特檢視年度：</strong>
+          <select class="select-input" v-model="ganttTargetYear">
+            <option v-for="y in sortedYears" :key="y" :value="y">{{ y }} 年度</option>
+          </select>
+          <label style="font-size:0.85rem; cursor:pointer; display:flex; align-items:center; gap:0.3rem;">
+            <input type="checkbox" v-model="ganttGroupByCat"> 按分類分組對齊
+          </label>
+        </div>
+        <span style="font-size:0.8rem; color:var(--sage-muted);">
+          提示：滑鼠按住甘特條可直接左右平移；拖拉左/右兩側手把可直接拉長或縮短月份！
+        </span>
+      </div>
+
+      <div class="gantt-wrapper" @pointermove="onGanttPointerMove" @pointerup="onGanttPointerUp">
+        <div class="gantt-board" ref="ganttBoard">
+          <!-- 當月橘紅色直式定位外框 -->
+          <div v-if="ganttTargetYear === currentSystemYear" class="gantt-current-month-box"
+               :style="{ left: `calc(280px + (100% - 280px) * ${(currentSystemMonth - 1) / 12})`, width: `calc((100% - 280px) * (1 / 12))` }">
+          </div>
+
+          <div class="gantt-header-row">
+            <div class="gantt-col-task">目標項目 (名稱 / 分類 / 狀態)</div>
+            <div v-for="m in 12" :key="m" class="gantt-col-m">{{ m }}月</div>
+          </div>
+
+          <template v-if="ganttGroupByCat">
+            <template v-for="cat in db.categories" :key="cat">
+              <div v-if="getGanttItemsByCat(cat).length > 0" class="gantt-group-header">
+                {{ cat }} ({{ getGanttItemsByCat(cat).length }})
+              </div>
+              <div v-for="item in getGanttItemsByCat(cat)" :key="item.id" class="gantt-row">
+                <div class="gantt-task-info">
+                  <div class="gantt-task-title" :title="item.title">#{{ item.id }} {{ item.title }}</div>
+                  <div style="display:flex; gap:0.3rem; align-items:center;">
+                    <span class="priority-badge" :class="getPriorityClass(item.priority)">{{ formatPriorityStars(item.priority) }}</span>
+                    <span class="badge" :class="getBadgeClass(item.status)" @click="cycleStatus(item)">{{ item.status }}</span>
+                  </div>
+                </div>
+                <div class="gantt-timeline-area">
+                  <div v-for="m in 12" :key="m" class="gantt-grid-cell"></div>
+                  <!-- 甘特條本體與拖曳控制手把 -->
+                  <div class="gantt-bar-container"
+                       :style="getGanttBarStyle(item)"
+                       @pointerdown="startGanttDrag($event, item, 'move')">
+                    <div class="gantt-handle gantt-handle-left" @pointerdown.stop="startGanttDrag($event, item, 'resize-left')"></div>
+                    <div class="gantt-bar-fill" :style="{ width: item.progress + '%', background: getGanttStatusColor(item.status) }"></div>
+                    <span class="gantt-bar-text">{{ item.startMonth }}月~{{ item.endMonth }}月 ({{ item.progress }}%)</span>
+                    <div class="gantt-handle gantt-handle-right" @pointerdown.stop="startGanttDrag($event, item, 'resize-right')"></div>
+                  </div>
+                </div>
+              </div>
+            </template>
+          </template>
+
+          <template v-else>
+            <div v-for="item in currentGanttItems" :key="item.id" class="gantt-row">
+              <div class="gantt-task-info">
+                <div class="gantt-task-title" :title="item.title">#{{ item.id }} {{ item.title }}</div>
+                <div style="display:flex; gap:0.3rem; align-items:center;">
+                  <span class="cat-tag" style="font-size:0.7rem; padding:0 0.3rem;">{{ item.category }}</span>
+                  <span class="badge" :class="getBadgeClass(item.status)" @click="cycleStatus(item)">{{ item.status }}</span>
+                </div>
+              </div>
+              <div class="gantt-timeline-area">
+                <div v-for="m in 12" :key="m" class="gantt-grid-cell"></div>
+                <div class="gantt-bar-container"
+                     :style="getGanttBarStyle(item)"
+                     @pointerdown="startGanttDrag($event, item, 'move')">
+                  <div class="gantt-handle gantt-handle-left" @pointerdown.stop="startGanttDrag($event, item, 'resize-left')"></div>
+                  <div class="gantt-bar-fill" :style="{ width: item.progress + '%', background: getGanttStatusColor(item.status) }"></div>
+                  <span class="gantt-bar-text">{{ item.startMonth }}月~{{ item.endMonth }}月 ({{ item.progress }}%)</span>
+                  <div class="gantt-handle gantt-handle-right" @pointerdown.stop="startGanttDrag($event, item, 'resize-right')"></div>
+                </div>
+              </div>
+            </div>
+          </template>
+        </div>
+      </div>
+    </div>
+
+    <!-- 主要視角 3：三年度並列對照視角 (Triple View) -->
+    <div v-if="currentView === 'TRIPLE'">
+      <div class="triple-view-toolbar">
+        <div style="display:flex; align-items:center; gap:0.6rem; flex-wrap:wrap;">
+          <strong>基準核心年度：</strong>
+          <select class="select-input" v-model="tripleCenterYear">
+            <option v-for="y in sortedYears" :key="y" :value="y">{{ y }} 年度</option>
+          </select>
+          <label style="font-size:0.85rem; cursor:pointer; display:flex; align-items:center; gap:0.3rem;">
+            <input type="checkbox" v-model="tripleGroupByCat"> 按分類群組對齊
+          </label>
+        </div>
+        <span style="font-size:0.8rem; color:var(--sage-muted);">可直接拖曳進度、切換狀態或點選 ⧉ 跨年延續</span>
+      </div>
+
+      <div class="triple-view-container">
+        <div v-for="col in tripleColumns" :key="col.label" class="year-card-column" :class="{ 'is-center': col.isCenter }">
+          <div class="year-card-header">
+            <h3>{{ col.year ? col.year + ' 年度' : '無對照年度' }}</h3>
+            <span style="font-size:0.75rem; opacity:0.85;">{{ col.label }}</span>
+          </div>
+          <div class="year-card-body">
+            <div v-if="!col.year" style="text-align:center; padding:3rem; color:var(--sage-muted);">無年份資料</div>
+            <div v-for="item in (col.year ? db.years[col.year]?.items || [] : [])" :key="item.id" class="mini-goal-item">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.3rem;">
+                <span class="cat-tag">{{ item.category }}</span>
+                <span class="badge" :class="getBadgeClass(item.status)" @click="cycleStatus(item)">{{ item.status }}</span>
+              </div>
+              <div style="font-weight:600; font-size:0.88rem; margin-bottom:0.4rem; white-space:pre-wrap;">#{{ item.id }} {{ item.title }}</div>
+              <div class="progress-slider-wrapper">
+                <div class="progress-header"><span>進度: {{ item.progress }}%</span></div>
+                <input type="range" min="0" max="100" class="range-slider" v-model.number="item.progress" 
+                       :style="{ background: getGradientBackground(item.progress) }">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==========================================================================
+         彈出互動視窗群 (Modals)
+         ========================================================================== -->
+    <!-- Modal: 新增目標 -->
+    <div class="modal-overlay" :class="{ active: modals.add }">
+      <div class="modal">
+        <div class="modal-header">
+          <h3>新增目標項目</h3>
+          <button class="action-icon-btn" @click="modals.add = false">✕</button>
+        </div>
+        <form @submit.prevent="submitAddGoal">
+          <div class="form-group">
+            <label>目標年份</label>
+            <select v-model="newGoal.year" class="form-control">
+              <option v-for="y in sortedYears" :key="y" :value="y">{{ y }} 年度</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>分類別</label>
+            <select v-model="newGoal.category" class="form-control">
+              <option v-for="cat in db.categories" :key="cat" :value="cat">{{ cat }}</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>目標具體內容 (可換行)</label>
+            <textarea v-model="newGoal.title" class="form-control" rows="2" required placeholder="例如：資產累積、體脂下降目標..."></textarea>
+          </div>
+          <div class="form-group">
+            <label>自訂標籤 (Tags，以逗號或空格分隔)</label>
+            <input type="text" v-model="newGoal.tagsInput" class="form-control" placeholder="投資, 健康, OKR2026">
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.8rem;">
+            <div class="form-group">
+              <label>優先級</label>
+              <select v-model="newGoal.priority" class="form-control">
+                <option value="高">★★★ 高</option>
+                <option value="中">★★ 中</option>
+                <option value="低">★ 低</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>推進起訖月份</label>
+              <div style="display:flex; align-items:center; gap:0.4rem;">
+                <select v-model.number="newGoal.startMonth" class="form-control">
+                  <option v-for="m in 12" :key="m" :value="m">{{ m }}月</option>
+                </select>
+                <span>至</span>
+                <select v-model.number="newGoal.endMonth" class="form-control">
+                  <option v-for="m in 12" :key="m" :value="m">{{ m }}月</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>初始進度 (0~100%)</label>
+            <input type="number" min="0" max="100" v-model.number="newGoal.progress" class="form-control">
+          </div>
+          <div class="form-group">
+            <label>備註檢視說明</label>
+            <textarea v-model="newGoal.notes" class="form-control" rows="2"></textarea>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn" @click="modals.add = false">取消</button>
+            <button type="submit" class="btn btn-primary">儲存目標</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Modal: OKR / 關鍵成果 (Key Results) 子任務管理 (需求 3 強化說明與實戰範例) -->
+    <div class="modal-overlay" :class="{ active: modals.kr }">
+      <div class="modal">
+        <div class="modal-header">
+          <h3>🎯 關鍵成果 (KR) 與子任務拆解</h3>
+          <button class="action-icon-btn" @click="modals.kr = false">✕</button>
+        </div>
+        <div v-if="currentEditingItem">
+          <!-- 詳細新手教學與情境範例卡片 -->
+          <div class="okr-guide-box">
+            <div class="okr-guide-title" @click="showOkrGuide = !showOkrGuide">
+              <span>💡 什麼是 OKR？如何使用此功能？ (點擊{{ showOkrGuide ? '折疊' : '展開說明' }})</span>
+              <span>{{ showOkrGuide ? '▲' : '▼' }}</span>
+            </div>
+            <div v-if="showOkrGuide" class="okr-guide-content">
+              <p><strong>1. 目標 (Objective)</strong>：指引大方向的定性願景（如：建立健全資產組合、改善體態活力）。</p>
+              <p><strong>2. 關鍵成果 (Key Results, KR)</strong>：用來檢驗目標是否達成的具體「行動指標」或「關鍵里程碑」。</p>
+              <div style="margin-top:0.4rem;"><strong>📝 實戰拆解範例：</strong></div>
+              <div class="okr-example-pill">💰 財務投資：每季完成定期定額 6 萬元 / 閱讀 2 本投資書籍 / 進行 Q2 再平衡</div><br>
+              <div class="okr-example-pill">🏃 體態健康：每週慢跑 3 次 / 減脂期間戒除含糖飲料 / 每日喝水達 2500c.c</div>
+              <p style="margin-top:0.4rem; color:var(--amber-accent); font-weight:600;">
+                ✓ 當您完成並勾選 KR 後，點擊下方的「計算並更新進度」，系統便會自動按比例將進度%同步至主目標及甘特圖！
+              </p>
+            </div>
+          </div>
+
+          <p style="font-weight:700; margin-bottom:0.8rem; color:var(--text-title); white-space:pre-wrap;">
+            [{{ currentEditingItem.year }} #{{ currentEditingItem.id }}] {{ currentEditingItem.title }}
+          </p>
+
+          <div class="cat-manage-list">
+            <div v-if="!currentEditingItem.keyResults || currentEditingItem.keyResults.length === 0" style="text-align:center; color:var(--sage-muted); padding:1rem;">
+              尚未建立關鍵成果，請於下方新增具體 KR 行動子任務
+            </div>
+            <div v-for="(kr, idx) in currentEditingItem.keyResults" :key="kr.id" class="cat-manage-item">
+              <div style="display:flex; align-items:center; gap:0.5rem; flex:1;">
+                <input type="checkbox" v-model="kr.done">
+                <input type="text" v-model="kr.text" class="form-control" style="padding:0.2rem 0.4rem; font-size:0.85rem;">
+              </div>
+              <button class="action-icon-btn btn-del" @click="deleteKR(idx)">✕</button>
+            </div>
+          </div>
+
+          <form @submit.prevent="addKR" style="display:flex; gap:0.5rem; margin-top:0.8rem;">
+            <input type="text" v-model="newKRText" class="form-control" required placeholder="輸入具體可衡量的關鍵成果 (例如: 每週慢跑3次)...">
+            <button type="submit" class="btn btn-primary" style="white-space:nowrap;">新增 KR</button>
+          </form>
+
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-top:1.2rem; background:var(--input-bg); padding:0.6rem 0.8rem; border-radius:6px;">
+            <span style="font-size:0.82rem; font-weight:600;">根據已完成之 KR 成果比例：</span>
+            <button type="button" class="btn" style="padding:0.25rem 0.6rem; font-size:0.8rem;" @click="syncProgressFromKR">
+              計算並更新進度
+            </button>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn" @click="modals.kr = false">完成關閉</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: 目標覆盤歷程 (具備 修改與刪除 功能) -->
+    <div class="modal-overlay" :class="{ active: modals.log }">
+      <div class="modal">
+        <div class="modal-header">
+          <h3>📜 目標檢視覆盤歷程</h3>
+          <button class="action-icon-btn" @click="modals.log = false">✕</button>
+        </div>
+        <div v-if="currentEditingItem">
+          <div class="log-timeline-list">
+            <div v-if="!currentEditingItem.logs || currentEditingItem.logs.length === 0" style="text-align:center; color:var(--sage-muted); padding:1rem;">
+              尚無覆盤紀錄，請於下方新增歷程
+            </div>
+            <div v-for="(logText, idx) in currentEditingItem.logs" :key="idx" class="log-entry">
+              <template v-if="editingLogIndex !== idx">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                  <span style="font-size:0.75rem; color:var(--sage-muted); font-family:'JetBrains Mono',monospace;">第 {{ idx + 1 }} 筆歷程</span>
+                  <div>
+                    <button class="action-icon-btn" @click="startEditLog(idx, logText)" title="修改">✎</button>
+                    <button class="action-icon-btn btn-del" @click="deleteLog(idx)" title="刪除">✕</button>
+                  </div>
+                </div>
+                <div style="word-break:break-word; font-size:0.84rem;">{{ logText }}</div>
+              </template>
+              <template v-else>
+                <textarea v-model="editingLogText" class="form-control" rows="2"></textarea>
+                <div style="display:flex; justify-content:flex-end; gap:0.4rem; margin-top:0.3rem;">
+                  <button class="btn" style="padding:0.15rem 0.5rem; font-size:0.75rem;" @click="editingLogIndex = null">取消</button>
+                  <button class="btn btn-primary" style="padding:0.15rem 0.5rem; font-size:0.75rem;" @click="saveLogEdit(idx)">儲存</button>
+                </div>
+              </template>
+            </div>
+          </div>
+
+          <form @submit.prevent="submitAddLog">
+            <div class="form-group">
+              <label>新增歷程筆記 (自動標記當前時間)</label>
+              <textarea v-model="newLogInput" class="form-control" rows="2" required placeholder="輸入本期推動成果、檢視說明或障礙..."></textarea>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn" @click="modals.log = false">關閉</button>
+              <button type="submit" class="btn btn-primary">新增紀錄</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: 新增年度 -->
+    <div class="modal-overlay" :class="{ active: modals.addYear }">
+      <div class="modal">
+        <div class="modal-header">
+          <h3>新增目標年度</h3>
+          <button class="action-icon-btn" @click="modals.addYear = false">✕</button>
+        </div>
+        <form @submit.prevent="submitAddYear">
+          <div class="form-group">
+            <label>輸入新年度 (YYYY)</label>
+            <input type="text" v-model="newYearInput" class="form-control" pattern="[0-9]{4}" required placeholder="例如：2028">
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn" @click="modals.addYear = false">取消</button>
+            <button type="submit" class="btn btn-primary">新增年度</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Modal: 分類管理 -->
+    <div class="modal-overlay" :class="{ active: modals.cat }">
+      <div class="modal">
+        <div class="modal-header">
+          <h3>⚙ 管理分類別</h3>
+          <button class="action-icon-btn" @click="modals.cat = false">✕</button>
+        </div>
+        <div class="cat-manage-list">
+          <div v-for="(cat, idx) in db.categories" :key="cat" class="cat-manage-item">
+            <span>{{ cat }}</span>
+            <button class="action-icon-btn btn-del" @click="deleteCategory(idx)">✕</button>
+          </div>
+        </div>
+        <form @submit.prevent="submitAddCat" style="display:flex; gap:0.5rem;">
+          <input type="text" v-model="newCatInput" class="form-control" required placeholder="新增分類名稱...">
+          <button type="submit" class="btn btn-primary" style="white-space:nowrap;">新增</button>
+        </form>
+        <div class="modal-footer">
+          <button type="button" class="btn" @click="modals.cat = false">關閉</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: 調整月份區間 -->
+    <div class="modal-overlay" :class="{ active: modals.period }">
+      <div class="modal">
+        <div class="modal-header">
+          <h3>調整目標起訖月份</h3>
+          <button class="action-icon-btn" @click="modals.period = false">✕</button>
+        </div>
+        <div v-if="currentEditingItem">
+          <p style="font-weight:700; margin-bottom:0.8rem; color:var(--text-title); white-space:pre-wrap;">
+            [{{ currentEditingItem.year }} #{{ currentEditingItem.id }}] {{ currentEditingItem.title }}
+          </p>
+          <div style="display:flex; align-items:center; gap:0.6rem;">
+            <select v-model.number="currentEditingItem.startMonth" class="form-control" @change="validatePeriodRange">
+              <option v-for="m in 12" :key="m" :value="m">{{ m }}月</option>
+            </select>
+            <span>至</span>
+            <select v-model.number="currentEditingItem.endMonth" class="form-control" @change="validatePeriodRange">
+              <option v-for="m in 12" :key="m" :value="m">{{ m }}月</option>
+            </select>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-primary" @click="modals.period = false">確認更新</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    const STORAGE_KEY = 'annual_goals_app_db_v3';
+    const DARK_MODE_KEY = 'annual_goals_dark_mode';
+
+    const defaultDatabase = {
+      categories: ["財務投資", "體態健康", "音響設備", "技能學習", "生活設備", "旅遊休閒", "其他規劃"],
+      years: {
+        "2026": { metaDate: "2026年規劃", items: [] },
+        "2027": { metaDate: "2027年規劃", items: [] }
+      }
+    };
+
+    const { createApp, ref, reactive, computed, watch, onMounted } = Vue;
+
+    createApp({
+      setup() {
+        // 核心資料庫響應式狀態
+        const db = reactive(JSON.parse(JSON.stringify(defaultDatabase)));
+        const currentView = ref('2026');
+        const ganttTargetYear = ref('2026');
+        const ganttGroupByCat = ref(true);
+        const tripleCenterYear = ref('2026');
+        const tripleGroupByCat = ref(false);
+        const darkMode = ref(false);
+        const showRadar = ref(true);
+        const showOkrGuide = ref(true);
+        const showSaveToast = ref(false);
+
+        // 篩選與排序
+        const filters = reactive({ category: 'ALL', priority: 'ALL', status: 'ALL', tag: 'ALL', search: '' });
+        const sortState = reactive({ col: null, dir: 'asc' });
+
+        // 彈窗控制
+        const modals = reactive({ add: false, addYear: false, cat: false, log: false, kr: false, period: false });
+        const currentEditingItem = ref(null);
+        const newGoal = reactive({ year: '2026', category: '', title: '', tagsInput: '', priority: '中', startMonth: 1, endMonth: 12, progress: 0, notes: '' });
+        const newYearInput = ref('');
+        const newCatInput = ref('');
+        const newKRText = ref('');
+        const newLogInput = ref('');
+        const editingLogIndex = ref(null);
+        const editingLogText = ref('');
+
+        const importExcelInput = ref(null);
+        const importJsonInput = ref(null);
+        const ganttBoard = ref(null);
+
+        // 甘特圖拖曳狀態暫存
+        const draggingGantt = reactive({ active: false, item: null, type: null, startX: 0, originalStart: 1, originalEnd: 12 });
+
+        // 時間常數
+        const now = new Date();
+        const currentSystemYear = now.getFullYear().toString();
+        const currentSystemMonth = now.getMonth() + 1;
+
+        // 計算屬性
+        const sortedYears = computed(() => Object.keys(db.years).sort());
+
+        // 保證全域「參照同一記憶體物件實體」，確保任何修改毫秒級即時同步
+        const ensureYearProperty = (item, y) => {
+          if (item.year !== y) {
+            Object.defineProperty(item, 'year', {
+              value: y,
+              writable: true,
+              enumerable: true,
+              configurable: true
+            });
+          }
+          return item;
+        };
+
+        const allGoalsWithYear = computed(() => {
+          const list = [];
+          Object.keys(db.years).forEach(y => {
+            (db.years[y].items || []).forEach(item => {
+              list.push(ensureYearProperty(item, y));
+            });
+          });
+          return list;
+        });
+
+        const allExistingTags = computed(() => {
+          const tagSet = new Set();
+          allGoalsWithYear.value.forEach(item => {
+            (item.tags || []).forEach(t => tagSet.add(t));
+          });
+          return Array.from(tagSet);
+        });
+
+        const currentYearGoals = computed(() => {
+          if (currentView.value === 'OVERVIEW') return allGoalsWithYear.value;
+          const y = currentView.value;
+          return (db.years[y]?.items || []).map(item => ensureYearProperty(item, y));
+        });
+
+        const filteredGoals = computed(() => {
+          let list = currentYearGoals.value.slice();
+          if (filters.category !== 'ALL') list = list.filter(i => i.category === filters.category);
+          if (filters.priority !== 'ALL') list = list.filter(i => i.priority === filters.priority);
+          if (filters.status !== 'ALL') list = list.filter(i => i.status === filters.status);
+          if (filters.tag !== 'ALL') list = list.filter(i => (i.tags || []).includes(filters.tag));
+          if (filters.search.trim()) {
+            const kw = filters.search.toLowerCase().trim();
+            list = list.filter(i => i.title.toLowerCase().includes(kw) || (i.notes || '').toLowerCase().includes(kw) || (i.tags || []).some(t => t.toLowerCase().includes(kw)));
+          }
+
+          if (sortState.col) {
+            const { col, dir } = sortState;
+            list.sort((a, b) => {
+              let valA = a[col], valB = b[col];
+              if (['id', 'year', 'progress', 'startMonth'].includes(col)) {
+                valA = Number(valA) || 0; valB = Number(valB) || 0;
+              } else if (col === 'status') {
+                const w = { '優': 5, '佳': 4, '普': 3, '暫停': 2, '不佳': 1 };
+                valA = w[valA] || 0; valB = w[valB] || 0;
+              } else if (col === 'priority') {
+                const w = { '高': 3, '中': 2, '低': 1 };
+                valA = w[valA] || 0; valB = w[valB] || 0;
+              } else {
+                return dir === 'asc' ? String(valA).localeCompare(String(valB), 'zh-TW') : String(valB).localeCompare(String(valA), 'zh-TW');
+              }
+              return dir === 'asc' ? (valA > valB ? 1 : -1) : (valA < valB ? 1 : -1);
+            });
+          }
+          return list;
+        });
+
+        // 儀表板實時統計指標 (直接追蹤原資料庫實體狀態)
+        const stats = computed(() => {
+          let total = 0, excellentCount = 0, poorCount = 0, pausedCount = 0;
+          let highCount = 0, highProgressSum = 0;
+          allGoalsWithYear.value.forEach(item => {
+            total++;
+            if (item.status === '優' || item.status === '佳') excellentCount++;
+            if (item.status === '不佳') poorCount++;
+            if (item.status === '暫停') pausedCount++;
+            if (item.priority === '高') {
+              highCount++;
+              highProgressSum += (Number(item.progress) || 0);
+            }
+          });
+          return {
+            total,
+            excellentCount,
+            poorCount,
+            pausedCount,
+            highCount,
+            excellentRate: total > 0 ? Math.round((excellentCount / total) * 100) : 0,
+            highRate: highCount > 0 ? Math.round(highProgressSum / highCount) : 0
+          };
+        });
+
+        const currentGanttItems = computed(() => {
+          return (db.years[ganttTargetYear.value]?.items || []).filter(item => {
+            if (filters.category !== 'ALL' && item.category !== filters.category) return false;
+            if (filters.priority !== 'ALL' && item.priority !== filters.priority) return false;
+            if (filters.status !== 'ALL' && item.status !== filters.status) return false;
+            if (filters.tag !== 'ALL' && !(item.tags || []).includes(filters.tag)) return false;
+            if (filters.search.trim()) {
+              const kw = filters.search.toLowerCase().trim();
+              return item.title.toLowerCase().includes(kw) || (item.notes || '').toLowerCase().includes(kw);
+            }
+            return true;
+          });
+        });
+
+        const tripleColumns = computed(() => {
+          const years = sortedYears.value;
+          const idx = years.indexOf(tripleCenterYear.value);
+          return [
+            { year: idx > 0 ? years[idx - 1] : null, label: '前一年度', isCenter: false },
+            { year: tripleCenterYear.value, label: '核心基準年度', isCenter: true },
+            { year: idx < years.length - 1 ? years[idx + 1] : null, label: '後續年度', isCenter: false }
+          ];
+        });
+
+        // 核心存取與加固自動儲存機制
+        let isInitializing = true;
+        const loadStorage = () => {
+          const saved = localStorage.getItem(STORAGE_KEY);
+          if (saved) {
+            try {
+              const parsed = JSON.parse(saved);
+              if (parsed && parsed.years) {
+                Object.assign(db, parsed);
+              }
+            } catch (e) {
+              console.error("讀取本機儲存失敗，使用預設值", e);
+            }
+          }
+          // 向下相容結構修復
+          Object.keys(db.years).forEach(y => {
+            (db.years[y].items || []).forEach(item => {
+              if (!item.keyResults) item.keyResults = [];
+              if (!item.tags) item.tags = [];
+              if (!item.logs) item.logs = [];
+              if (item.startMonth === undefined) item.startMonth = 1;
+              if (item.endMonth === undefined) item.endMonth = 12;
+            });
+          });
+
+          darkMode.value = localStorage.getItem(DARK_MODE_KEY) === 'true';
+          isInitializing = false;
+        };
+
+        let saveTimer = null;
+        const saveStorage = () => {
+          if (isInitializing) return;
+          try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
+            showSaveToast.value = true;
+            clearTimeout(saveTimer);
+            saveTimer = setTimeout(() => { showSaveToast.value = false; }, 1200);
+          } catch (e) {
+            alert('本機儲存失敗（容量可能已滿）：' + e.message);
+          }
+        };
+
+        // 深度監聽 Vue 3 狀態庫，任何細微變更自動精準防抖存入 localStorage
+        let watchDebounceTimer = null;
+        watch(db, () => {
+          if (isInitializing) return;
+          clearTimeout(watchDebounceTimer);
+          watchDebounceTimer = setTimeout(() => {
+            saveStorage();
+          }, 300);
+        }, { deep: true });
+
+        const toggleDarkMode = () => {
+          darkMode.value = !darkMode.value;
+          localStorage.setItem(DARK_MODE_KEY, darkMode.value ? 'true' : 'false');
+        };
+
+        const goBack = () => {
+          window.history.back();
+        };
+
+        const printPage = () => {
+          window.print();
+        };
+
+        // 排序與圖示
+        const toggleSort = (col) => {
+          if (sortState.col === col) {
+            sortState.dir = sortState.dir === 'asc' ? 'desc' : 'asc';
+          } else {
+            sortState.col = col;
+            sortState.dir = 'asc';
+          }
+        };
+
+        const getSortIcon = (col) => {
+          if (sortState.col !== col) return '↕';
+          return sortState.dir === 'asc' ? '▲' : '▼';
+        };
+
+        const getGradientBackground = (val) => {
+          return `linear-gradient(to right, #f2a9a9 0%, #ffe082 50%, #81c784 100%) 0% / ${val}% 100% no-repeat, var(--input-bg)`;
+        };
+
+        const getBadgeClass = (s) => ({
+          '優': 'badge-excellent', '佳': 'badge-good', '普': 'badge-normal', '不佳': 'badge-poor', '暫停': 'badge-paused'
+        }[s] || 'badge-normal');
+
+        const getPriorityClass = (p) => ({
+          '高': 'priority-high', '中': 'priority-medium', '低': 'priority-low'
+        }[p] || 'priority-medium');
+
+        const formatPriorityStars = (p) => ({ '高': '★★★', '中': '★★', '低': '★' }[p] || '★★');
+
+        const cyclePriority = (item) => {
+          const list = ['高', '中', '低'];
+          item.priority = list[(list.indexOf(item.priority || '中') + 1) % list.length];
+        };
+
+        const cycleStatus = (item) => {
+          const list = ['優', '佳', '普', '不佳', '暫停'];
+          item.status = list[(list.indexOf(item.status) + 1) % list.length];
+        };
+
+        const getCategoryStats = (cat) => {
+          const items = currentYearGoals.value.filter(i => i.category === cat);
+          if (items.length === 0) return { count: 0, avg: 0 };
+          const sum = items.reduce((acc, cur) => acc + (Number(cur.progress) || 0), 0);
+          return { count: items.length, avg: Math.round(sum / items.length) };
+        };
+
+        // 雷達圖繪製邏輯
+        const getRadarPolygonPoints = (scalePercent) => {
+          const total = db.categories.length;
+          const r = 70 * (scalePercent / 100);
+          const cx = 110, cy = 95;
+          return db.categories.map((_, i) => {
+            const angle = (Math.PI * 2 / total) * i - Math.PI / 2;
+            return `${cx + r * Math.cos(angle)},${cy + r * Math.sin(angle)}`;
+          }).join(' ');
+        };
+
+        const getRadarDataPoints = () => {
+          const total = db.categories.length;
+          const cx = 110, cy = 95;
+          return db.categories.map((cat, i) => {
+            const avg = getCategoryStats(cat).avg;
+            const r = 70 * (avg / 100);
+            const angle = (Math.PI * 2 / total) * i - Math.PI / 2;
+            return `${cx + r * Math.cos(angle)},${cy + r * Math.sin(angle)}`;
+          }).join(' ');
+        };
+
+        const getRadarLabels = () => {
+          const total = db.categories.length;
+          const cx = 110, cy = 95;
+          return db.categories.map((cat, i) => {
+            const angle = (Math.PI * 2 / total) * i - Math.PI / 2;
+            return {
+              x: cx + 86 * Math.cos(angle),
+              y: cy + 86 * Math.sin(angle) + 4,
+              text: cat.slice(0, 4)
+            };
+          });
+        };
+
+        // 甘特圖樣式與拖曳
+        const getGanttItemsByCat = (cat) => currentGanttItems.value.filter(i => i.category === cat);
+
+        const getGanttStatusColor = (s) => ({
+          '優': '#6a8f75', '佳': '#c79659', '普': '#8c7ba3', '不佳': '#b86b75', '暫停': '#85908b'
+        }[s] || '#829687');
+
+        const getGanttBarStyle = (item) => {
+          const s = Math.max(1, Math.min(12, item.startMonth || 1));
+          const e = Math.max(s, Math.min(12, item.endMonth || 12));
+          return {
+            gridColumn: `${s} / span ${e - s + 1}`,
+            width: '100%',
+            background: 'var(--card-surface)',
+            borderColor: getGanttStatusColor(item.status)
+          };
+        };
+
+        const startGanttDrag = (e, item, type) => {
+          draggingGantt.active = true;
+          draggingGantt.item = item;
+          draggingGantt.type = type;
+          draggingGantt.startX = e.clientX;
+          draggingGantt.originalStart = item.startMonth;
+          draggingGantt.originalEnd = item.endMonth;
+          e.currentTarget.setPointerCapture(e.pointerId);
+        };
+
+        const onGanttPointerMove = (e) => {
+          if (!draggingGantt.active || !draggingGantt.item) return;
+          const boardEl = ganttBoard.value;
+          if (!boardEl) return;
+          const boardRect = boardEl.getBoundingClientRect();
+          const timelineWidth = boardRect.width - 280;
+          const monthPx = timelineWidth / 12;
+
+          const deltaX = e.clientX - draggingGantt.startX;
+          const deltaMonth = Math.round(deltaX / monthPx);
+
+          const item = draggingGantt.item;
+          if (draggingGantt.type === 'move') {
+            const span = draggingGantt.originalEnd - draggingGantt.originalStart;
+            let newStart = Math.max(1, Math.min(12 - span, draggingGantt.originalStart + deltaMonth));
+            item.startMonth = newStart;
+            item.endMonth = newStart + span;
+          } else if (draggingGantt.type === 'resize-left') {
+            item.startMonth = Math.max(1, Math.min(item.endMonth, draggingGantt.originalStart + deltaMonth));
+          } else if (draggingGantt.type === 'resize-right') {
+            item.endMonth = Math.max(item.startMonth, Math.min(12, draggingGantt.originalEnd + deltaMonth));
+          }
+        };
+
+        const onGanttPointerUp = () => {
+          if (draggingGantt.active) {
+            draggingGantt.active = false;
+            draggingGantt.item = null;
+          }
+        };
+
+        // 目標操作
+        const openAddModal = () => {
+          newGoal.year = currentView.value === 'OVERVIEW' || currentView.value === 'GANTT' ? sortedYears.value[0] : currentView.value;
+          newGoal.category = db.categories[0] || '其他規劃';
+          newGoal.title = '';
+          newGoal.tagsInput = '';
+          newGoal.priority = '中';
+          newGoal.startMonth = 1;
+          newGoal.endMonth = 12;
+          newGoal.progress = 0;
+          newGoal.notes = '';
+          modals.add = true;
+        };
+
+        const submitAddGoal = () => {
+          const y = newGoal.year;
+          if (!db.years[y]) db.years[y] = { metaDate: `${y}年規劃`, items: [] };
+          const tags = newGoal.tagsInput.split(/[,，\s]+/).filter(Boolean);
+          const newId = (db.years[y].items.length ? Math.max(...db.years[y].items.map(i => i.id)) : 0) + 1;
+
+          db.years[y].items.push({
+            id: newId,
+            category: newGoal.category,
+            title: newGoal.title.trim(),
+            tags,
+            priority: newGoal.priority,
+            startMonth: Math.min(newGoal.startMonth, newGoal.endMonth),
+            endMonth: Math.max(newGoal.startMonth, newGoal.endMonth),
+            progress: Number(newGoal.progress) || 0,
+            status: '普',
+            notes: newGoal.notes.trim(),
+            keyResults: [],
+            logs: []
+          });
+
+          modals.add = false;
+        };
+
+        const deleteGoal = (item) => {
+          if (confirm(`確定要刪除目標 #${item.id} [${item.title}] 嗎？`)) {
+            const arr = db.years[item.year].items;
+            const idx = arr.findIndex(i => i.id === item.id);
+            if (idx !== -1) {
+              arr.splice(idx, 1);
+              arr.forEach((it, i) => it.id = i + 1);
+            }
+          }
+        };
+
+        const rolloverGoal = (item) => {
+          const nextY = (Number(item.year) + 1).toString();
+          if (!db.years[nextY]) {
+            if (confirm(`次年度 [${nextY}] 尚未建立，是否自動建立並延續此目標？`)) {
+              db.years[nextY] = { metaDate: `${nextY}年規劃`, items: [] };
+            } else return;
+          }
+          const nextId = (db.years[nextY].items.length ? Math.max(...db.years[nextY].items.map(i => i.id)) : 0) + 1;
+          db.years[nextY].items.push({
+            id: nextId,
+            category: item.category,
+            title: item.title,
+            tags: [...(item.tags || [])],
+            priority: item.priority || '中',
+            startMonth: item.startMonth || 1,
+            endMonth: item.endMonth || 12,
+            progress: 0,
+            status: '普',
+            notes: `延續自 ${item.year} 年 (${item.notes || '無'})`,
+            keyResults: JSON.parse(JSON.stringify(item.keyResults || [])).map(kr => ({ ...kr, done: false })),
+            logs: [`${new Date().toISOString().slice(0, 10)} 延續自 ${item.year} 年度`]
+          });
+          alert(`已成功將目標 #${item.id} 複製延續至 ${nextY} 年度！`);
+        };
+
+        // 關鍵成果 (Key Results / OKR) 管理
+        const openKRModal = (item) => {
+          currentEditingItem.value = item;
+          if (!currentEditingItem.value.keyResults) currentEditingItem.value.keyResults = [];
+          newKRText.value = '';
+          modals.kr = true;
+        };
+
+        const addKR = () => {
+          if (!newKRText.value.trim() || !currentEditingItem.value) return;
+          currentEditingItem.value.keyResults.push({
+            id: Date.now(),
+            text: newKRText.value.trim(),
+            done: false
+          });
+          newKRText.value = '';
+        };
+
+        const deleteKR = (idx) => {
+          currentEditingItem.value.keyResults.splice(idx, 1);
+        };
+
+        const syncProgressFromKR = () => {
+          const krs = currentEditingItem.value.keyResults;
+          if (!krs || krs.length === 0) return;
+          const doneCount = krs.filter(k => k.done).length;
+          currentEditingItem.value.progress = Math.round((doneCount / krs.length) * 100);
+        };
+
+        // 歷程紀錄 (Logs) 管理
+        const openLogModal = (item) => {
+          currentEditingItem.value = item;
+          if (!currentEditingItem.value.logs) currentEditingItem.value.logs = [];
+          newLogInput.value = '';
+          editingLogIndex.value = null;
+          modals.log = true;
+        };
+
+        const submitAddLog = () => {
+          if (!newLogInput.value.trim() || !currentEditingItem.value) return;
+          const time = new Date().toLocaleString('zh-TW', { hour12: false });
+          currentEditingItem.value.logs.push(`[${time}] ${newLogInput.value.trim()}`);
+          newLogInput.value = '';
+        };
+
+        const startEditLog = (idx, text) => {
+          editingLogIndex.value = idx;
+          editingLogText.value = text;
+        };
+
+        const saveLogEdit = (idx) => {
+          if (!editingLogText.value.trim()) return;
+          currentEditingItem.value.logs[idx] = editingLogText.value.trim();
+          editingLogIndex.value = null;
+        };
+
+        const deleteLog = (idx) => {
+          if (confirm(`確定要刪除第 ${idx + 1} 筆歷程紀錄嗎？`)) {
+            currentEditingItem.value.logs.splice(idx, 1);
+          }
+        };
+
+        // 月份區間微調
+        const openPeriodModal = (item) => {
+          currentEditingItem.value = item;
+          modals.period = true;
+        };
+
+        const validatePeriodRange = () => {
+          if (currentEditingItem.value.startMonth > currentEditingItem.value.endMonth) {
+            currentEditingItem.value.endMonth = currentEditingItem.value.startMonth;
+          }
+        };
+
+        // 分類管理
+        const submitAddCat = () => {
+          const val = newCatInput.value.trim();
+          if (val && !db.categories.includes(val)) {
+            db.categories.push(val);
+            newCatInput.value = '';
+          }
+        };
+
+        const deleteCategory = (idx) => {
+          if (confirm('確定要刪除此分類嗎？')) {
+            db.categories.splice(idx, 1);
+          }
+        };
+
+        // 年度管理
+        const submitAddYear = () => {
+          const y = newYearInput.value.trim();
+          if (y && /^[0-9]{4}$/.test(y) && !db.years[y]) {
+            db.years[y] = { metaDate: `${y}年規劃`, items: [] };
+            currentView.value = y;
+            modals.addYear = false;
+            newYearInput.value = '';
+          } else {
+            alert('請輸入有效且未存在的 4 位數年份 (如 2028)');
+          }
+        };
+
+        const deleteCurrentYear = () => {
+          if (confirm(`確定要刪除整個 ${currentView.value} 年度及所有項目嗎？`)) {
+            delete db.years[currentView.value];
+            currentView.value = sortedYears.value[0] || 'OVERVIEW';
+          }
+        };
+
+        // 重設系統資料
+        const resetToEmptyData = () => {
+          if (confirm('確定要清空所有年度與目標，回復為純淨空白系統嗎？此動作將清除所有紀錄。')) {
+            Object.assign(db, JSON.parse(JSON.stringify(defaultDatabase)));
+            currentView.value = '2026';
+            alert('已重設為純淨空白系統！');
+          }
+        };
+
+        // Excel / CSV 匯出與匯入功能
+        const exportExcel = () => {
+          const rows = [];
+          Object.keys(db.years).forEach(y => {
+            (db.years[y].items || []).forEach(i => {
+              rows.push({
+                '年度': y,
+                '編號': i.id,
+                '分類別': i.category,
+                '目標名稱': i.title,
+                '標籤': (i.tags || []).join('; '),
+                '優先級': i.priority,
+                '起始月份': i.startMonth,
+                '結束月份': i.endMonth,
+                '進度(%)': i.progress,
+                '狀態': i.status,
+                '備註': i.notes,
+                '關鍵成果(OKR)': (i.keyResults || []).map(k => `[${k.done ? 'V' : ' '}] ${k.text}`).join(' | '),
+                '覆盤歷程': (i.logs || []).join(' | ')
+              });
+            });
+          });
+
+          const ws = XLSX.utils.json_to_sheet(rows);
+          const wb = XLSX.utils.book_new();
+          XLSX.utils.book_append_sheet(wb, ws, "年度目標規劃清單");
+          XLSX.writeFile(wb, `年度目標規劃總表_${new Date().toISOString().slice(0, 10)}.xlsx`);
+        };
+
+        const triggerImportExcel = () => importExcelInput.value.click();
+
+        const handleImportExcel = (e) => {
+          const file = e.target.files[0];
+          if (!file) return;
+          const reader = new FileReader();
+          reader.onload = (evt) => {
+            try {
+              const data = new Uint8Array(evt.target.result);
+              const workbook = XLSX.read(data, { type: 'array' });
+              const sheetName = workbook.SheetNames[0];
+              const jsonRows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
+
+              if (jsonRows.length === 0) {
+                alert('匯入的試算表內無有效資料！');
+                return;
+              }
+
+              if (confirm(`讀取到 ${jsonRows.length} 筆資料，確認依內容匯入並合併至系統？`)) {
+                jsonRows.forEach(row => {
+                  const y = String(row['年度'] || '2026').trim();
+                  if (!db.years[y]) db.years[y] = { metaDate: `${y}年規劃`, items: [] };
+
+                  const cat = String(row['分類別'] || '其他規劃').trim();
+                  if (!db.categories.includes(cat)) db.categories.push(cat);
+
+                  const tags = row['標籤'] ? String(row['標籤']).split(/[;；,，]+/).map(s => s.trim()).filter(Boolean) : [];
+
+                  const newId = (db.years[y].items.length ? Math.max(...db.years[y].items.map(i => i.id)) : 0) + 1;
+                  db.years[y].items.push({
+                    id: newId,
+                    category: cat,
+                    title: String(row['目標名稱'] || '未命名目標'),
+                    tags,
+                    priority: ['高', '中', '低'].includes(row['優先級']) ? row['優先級'] : '中',
+                    startMonth: Math.max(1, Math.min(12, Number(row['起始月份']) || 1)),
+                    endMonth: Math.max(1, Math.min(12, Number(row['結束月份']) || 12)),
+                    progress: Math.max(0, Math.min(100, Number(row['進度(%)']) || 0)),
+                    status: ['優', '佳', '普', '不佳', '暫停'].includes(row['狀態']) ? row['狀態'] : '普',
+                    notes: String(row['備註'] || ''),
+                    keyResults: [],
+                    logs: row['覆盤歷程'] ? String(row['覆盤歷程']).split(' | ').filter(Boolean) : []
+                  });
+                });
+                alert('Excel/CSV 目標資料匯入合併完成！');
+              }
+            } catch (err) {
+              alert('解析 Excel/CSV 失敗：' + err.message);
+            }
+            e.target.value = '';
+          };
+          reader.readAsArrayBuffer(file);
+        };
+
+        // JSON 匯出與匯入
+        const exportJSON = () => {
+          const blob = new Blob([JSON.stringify(db, null, 2)], { type: 'application/json' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `年度目標備份_${new Date().toISOString().slice(0, 10)}.json`;
+          a.click();
+          URL.revokeObjectURL(url);
+        };
+
+        const triggerImportJSON = () => importJsonInput.value.click();
+
+        const handleImportJSON = (e) => {
+          const file = e.target.files[0];
+          if (!file) return;
+          const reader = new FileReader();
+          reader.onload = (evt) => {
+            try {
+              const data = JSON.parse(evt.target.result);
+              if (data && data.years && data.categories) {
+                if (confirm('確定匯入 JSON 備份？現有所有目標將被取代。')) {
+                  Object.assign(db, data);
+                  alert('JSON 備份資料庫成功還原！');
+                }
+              } else {
+                alert('JSON 格式不符！');
+              }
+            } catch (err) {
+              alert('JSON 解析錯誤：' + err.message);
+            }
+            e.target.value = '';
+          };
+          reader.readAsText(file);
+        };
+
+        onMounted(() => {
+          loadStorage();
+        });
+
+        return {
+          db, currentView, ganttTargetYear, ganttGroupByCat, tripleCenterYear, tripleGroupByCat,
+          darkMode, showRadar, showOkrGuide, showSaveToast, filters, sortState, modals, currentEditingItem,
+          newGoal, newYearInput, newCatInput, newKRText, newLogInput, editingLogIndex, editingLogText,
+          importExcelInput, importJsonInput, ganttBoard,
+          currentSystemYear, currentSystemMonth,
+          sortedYears, filteredGoals, stats, currentGanttItems, tripleColumns, allExistingTags,
+          loadStorage, saveStorage, toggleDarkMode, goBack, printPage,
+          toggleSort, getSortIcon, getGradientBackground, getBadgeClass, getPriorityClass, formatPriorityStars,
+          cyclePriority, cycleStatus, getCategoryStats, getRadarPolygonPoints, getRadarDataPoints, getRadarLabels,
+          getGanttItemsByCat, getGanttStatusColor, getGanttBarStyle,
+          startGanttDrag, onGanttPointerMove, onGanttPointerUp,
+          openAddModal, submitAddGoal, deleteGoal, rolloverGoal,
+          openKRModal, addKR, deleteKR, syncProgressFromKR,
+          openLogModal, submitAddLog, startEditLog, saveLogEdit, deleteLog,
+          openPeriodModal, validatePeriodRange,
+          submitAddCat, deleteCategory, submitAddYear, deleteCurrentYear, resetToEmptyData,
+          exportExcel, triggerImportExcel, handleImportExcel, exportJSON, triggerImportJSON, handleImportJSON
+        };
+      }
+    }).mount('#app');
+  </script>
+</body>
+</html>
